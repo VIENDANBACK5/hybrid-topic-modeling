@@ -1,0 +1,226 @@
+# TopicGPT Configuration
+# ========================
+
+# API Settings
+api:
+  provider: "openai"  # openai | gemini | azure | vertex
+  model: "gpt-4o-mini"  # Cost-effective model
+  temperature: 0.7
+  max_tokens: 2000
+  
+  # API Keys (override with environment variables)
+  openai_api_key: "${OPENAI_API_KEY}"
+  gemini_api_key: "${GEMINI_API_KEY}"
+  azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"
+  azure_api_key: "${AZURE_OPENAI_API_KEY}"
+
+# Cost Management
+cost:
+  daily_budget: 10.0  # USD per day
+  monthly_budget: 300.0  # USD per month
+  alert_threshold: 0.8  # Alert at 80% budget
+  
+  # Operation costs (USD)
+  operation_costs:
+    generate_topic_label: 0.005
+    generate_topic_description: 0.008
+    categorize_content: 0.003
+    summarize_content: 0.01
+    extract_keywords: 0.005
+    detect_similarity: 0.008
+    refine_topics: 0.01
+    batch_categorize: 0.015
+
+# Smart Pipeline Features
+pipeline:
+  # Feature toggles (can be overridden per request)
+  enable_llm_enrichment: true
+  enable_semantic_dedupe: true
+  enable_auto_categorization: true
+  enable_summarization: false
+  
+  # Smart selection criteria
+  high_value_threshold:
+    min_length: 1000  # chars
+    min_score: 0.7
+    trusted_domains:
+      - "vnexpress.net"
+      - "tuoitre.vn"
+      - "thanhnien.vn"
+      - "dantri.com.vn"
+      - "baomoi.com"
+  
+  # Processing priorities
+  priority_modes:
+    low:
+      enrich_percentage: 0.1  # Only 10% of docs
+      use_cache_aggressively: true
+      max_cost_per_doc: 0.01
+    
+    balanced:
+      enrich_percentage: 0.3  # 30% of docs
+      use_cache: true
+      max_cost_per_doc: 0.05
+    
+    high:
+      enrich_percentage: 0.8  # 80% of docs
+      use_cache: false
+      max_cost_per_doc: 0.1
+
+# Content Enrichment
+enrichment:
+  # What to extract
+  extract_keywords: true
+  extract_entities: true
+  extract_topics: true
+  generate_summary: false  # Expensive, only on-demand
+  detect_sentiment: true
+  categorize: true
+  
+  # Quality filters
+  min_content_length: 500  # Don't enrich very short content
+  max_content_length: 50000  # Truncate very long content
+  
+  # Smart selection
+  force_enrich_if:
+    - "domain in trusted_domains"
+    - "length > 2000"
+    - "has_media > 3"
+    - "recency < 24h"
+
+# Semantic Deduplication
+deduplication:
+  # Two-stage approach
+  stage1_hash:
+    use_md5: true
+    use_simhash: true
+    simhash_threshold: 3  # Hamming distance
+  
+  stage2_semantic:
+    enabled: true
+    similarity_threshold: 0.85
+    use_llm: true
+    max_comparisons: 1000  # Limit for cost control
+    sample_size: 500  # Sample large batches
+  
+  # When to skip semantic dedupe
+  skip_if:
+    - "doc_count < 10"  # Too few docs
+    - "daily_budget_exceeded"
+    - "all_from_same_source"
+
+# Caching
+cache:
+  enabled: true
+  cache_dir: "data/cache/topicgpt"
+  cache_ttl: 86400  # 24 hours
+  max_cache_size_mb: 500
+  
+  # What to cache
+  cache_operations:
+    - "generate_topic_label"
+    - "categorize_content"
+    - "extract_keywords"
+    - "detect_similarity"
+  
+  # Cache strategy
+  invalidate_on:
+    - "config_change"
+    - "model_change"
+
+# Vietnamese Language Support
+language:
+  primary: "vi"
+  fallback: "en"
+  
+  # Tokenization
+  tokenizer: "underthesea"
+  remove_stopwords: true
+  normalize_diacritics: true
+  
+  # Prompt templates
+  prompts:
+    categorize_vi: |
+      Phân loại bài viết sau vào một trong các danh mục:
+      - Chính trị
+      - Kinh tế
+      - Xã hội
+      - Văn hóa
+      - Thể thao
+      - Công nghệ
+      - Giải trí
+      
+      Nội dung: {content}
+      
+      Trả về JSON: {{"category": "...", "confidence": 0.95}}
+    
+    summarize_vi: |
+      Tóm tắt ngắn gọn bài viết sau (2-3 câu):
+      
+      {content}
+      
+      Tóm tắt:
+    
+    keywords_vi: |
+      Trích xuất 5-10 từ khóa quan trọng nhất từ bài viết:
+      
+      {content}
+      
+      Trả về JSON: {{"keywords": ["từ khóa 1", "từ khóa 2", ...]}}
+
+# Monitoring & Logging
+monitoring:
+  log_level: "INFO"
+  log_file: "logs/topicgpt.log"
+  
+  # Metrics to track
+  track_metrics:
+    - "operation_count"
+    - "total_cost"
+    - "avg_latency"
+    - "error_rate"
+    - "cache_hit_rate"
+  
+  # Alerts
+  alerts:
+    budget_exceeded:
+      enabled: true
+      notification: "email"
+    
+    error_rate_high:
+      enabled: true
+      threshold: 0.1  # 10% error rate
+    
+    latency_high:
+      enabled: true
+      threshold: 5.0  # 5 seconds
+
+# Performance Tuning
+performance:
+  # Batch processing
+  batch_size: 10
+  max_parallel_requests: 5
+  request_timeout: 30
+  
+  # Rate limiting
+  max_requests_per_minute: 60
+  backoff_factor: 2
+  max_retries: 3
+  
+  # Memory management
+  max_documents_in_memory: 1000
+  clear_cache_interval: 3600  # 1 hour
+
+# Integration
+integration:
+  # BERTopic fallback
+  use_bertopic_fallback: true
+  bertopic_threshold: 100  # Use BERTopic if > 100 docs
+  
+  # Database
+  save_to_db: true
+  db_table: "articles"
+  
+  # Export
+  export_format: "json"
+  export_dir: "data/results/topicgpt"

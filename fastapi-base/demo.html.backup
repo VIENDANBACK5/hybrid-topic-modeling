@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline MXH - API Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        .section { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .section h2 { color: #667eea; margin-top: 0; }
+        .btn { background: #667eea; color: white; border: none; padding: 8px 16px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #5a67d8; }
+        .btn-secondary { background: #718096; }
+        .btn-secondary:hover { background: #5a6c7d; }
+        .result { margin-top: 10px; padding: 10px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 4px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        input, select { padding: 5px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; }
+        .api-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .api-item { padding: 10px; border: 1px solid #e2e8f0; border-radius: 5px; }
+        .api-item h3 { margin: 0 0 10px 0; color: #2d3748; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Pipeline MXH - API Demo</h1>
+        <p style="text-align: center; color: #666;">Demo 9 API endpoints chính của hệ thống ETL Pipeline</p>
+
+        <div class="api-list">
+            <!-- CRAWL APIs -->
+            <div class="api-item">
+                <h3>📡 Crawl APIs</h3>
+                <button class="btn" onclick="callAPI('GET', '/crawl/status')">Status</button>
+                <button class="btn" onclick="previewCrawl()">Preview</button>
+                <button class="btn" onclick="previewFullDomain()">Preview Full</button>
+                <button class="btn" onclick="startCrawl()">Crawl</button>
+                <button class="btn" onclick="crawlByCategory()">By Category</button>
+            </div>
+
+            <!-- TOPICS APIs -->
+            <div class="api-item">
+                <h3>🏷️ Topics APIs</h3>
+                <button class="btn" onclick="fitTopics()">Fit Topics</button>
+                <button class="btn" onclick="loadTopics()">Get Topics</button>
+                <button class="btn" onclick="getTopicDetail()">Topic Detail</button>
+                <button class="btn" onclick="searchTopics()">Search</button>
+            </div>
+
+            <!-- DASHBOARD APIs -->
+            <div class="api-item">
+                <h3>📊 Dashboard APIs</h3>
+                <button class="btn" onclick="loadDashboardStats()">Stats</button>
+                <button class="btn" onclick="loadDashboardTopics()">Topics</button>
+            </div>
+        </div>
+
+        <!-- Quick Config -->
+        <div class="section">
+            <h2>⚙️ Quick Config</h2>
+            <label>URL: <input type="text" id="crawlUrl" value="https://vnexpress.net" style="width: 300px;"></label>
+            <label>Topic ID: <input type="number" id="topicIdInput" value="0" style="width: 80px;"></label>
+            <label>Search: <input type="text" id="topicSearchInput" value="công nghệ" style="width: 150px;"></label>
+        </div>
+
+        <!-- Results -->
+        <div class="section">
+            <h2>📋 Results</h2>
+            <div id="apiResult" class="result">Click any button above to test API...</div>
+        </div>
+
+        <!-- API Docs Link -->
+        <div class="section">
+            <h2>📚 Full API Documentation</h2>
+            <a href="http://localhost:7777/docs" target="_blank" class="btn">Open Swagger Docs</a>
+            <a href="http://localhost:7777/redoc" target="_blank" class="btn btn-secondary">Open ReDoc</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:7777/api';
+
+        async function callAPI(method, endpoint, data = null) {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.textContent = 'Loading...';
+
+            try {
+                const config = { method };
+                if (data) {
+                    config.headers = { 'Content-Type': 'application/json' };
+                    config.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(`${API_BASE}${endpoint}`, config);
+                const result = await response.json();
+
+                resultDiv.textContent = `✅ ${method} ${endpoint}\n\nStatus: ${response.status}\n\nResponse:\n${JSON.stringify(result, null, 2)}`;
+            } catch (error) {
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        // CRAWL FUNCTIONS
+        async function previewCrawl() {
+            const url = document.getElementById('crawlUrl').value;
+            await callAPI('POST', '/crawl/preview', {
+                source_type: 'web',
+                source: url,
+                max_pages: 3
+            });
+        }
+
+        async function previewFullDomain() {
+            const url = document.getElementById('crawlUrl').value;
+            await callAPI('POST', '/crawl/preview-full', {
+                domain: url,
+                max_pages: 5
+            });
+        }
+
+        async function startCrawl() {
+            const url = document.getElementById('crawlUrl').value;
+            await callAPI('POST', '/crawl', {
+                source_type: 'web',
+                source: url,
+                max_pages: 5
+            });
+        }
+
+        async function crawlByCategory() {
+            await callAPI('POST', '/crawl/by-category', {
+                categories: ['technology', 'business'],
+                max_pages_per_category: 3
+            });
+        }
+
+        // TOPICS FUNCTIONS
+        async function fitTopics() {
+            await callAPI('POST', '/topics/fit', {
+                documents: [
+                    'AI đang thay đổi thế giới công nghệ.',
+                    'Machine learning rất hữu ích.',
+                    'Big data analytics quan trọng.'
+                ],
+                min_topic_size: 2
+            });
+        }
+
+        async function loadTopics() {
+            await callAPI('GET', '/topics');
+        }
+
+        async function getTopicDetail() {
+            const topicId = document.getElementById('topicIdInput').value;
+            await callAPI('GET', `/topics/${topicId}`);
+        }
+
+        async function searchTopics() {
+            const query = document.getElementById('topicSearchInput').value;
+            await callAPI('POST', '/topics/search', { query });
+        }
+
+        // DASHBOARD FUNCTIONS
+        async function loadDashboardStats() {
+            await callAPI('GET', '/dashboard/stats');
+        }
+
+        async function loadDashboardTopics() {
+            await callAPI('GET', '/dashboard/topics');
+        }
+    </script>
+</body>
+</html>
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: #5a6268;
+        }
+        
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .btn-warning:hover:not(:disabled) {
+            background: #f57c00;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .result-box h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .result-box pre {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .stat-card h3 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card p {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            color: #0c5460;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 4px solid #856404;
+            color: #856404;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border-left: 4px solid #155724;
+            color: #155724;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            border-left: 4px solid #721c24;
+            color: #721c24;
+        }
+        
+        .section-divider {
+            margin: 30px 0;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .section-divider h4 {
+            color: #28a745;
+            margin-bottom: 5px;
+        }
+        
+        .inline-input {
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-left: 8px;
+        }
+        
+        .inline-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Pipeline MXH - Demo Dashboard</h1>
+            <p>Hệ thống crawl, xử lý và phân tích nội dung thông minh</p>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('crawl', event)">📡 Crawl Data</div>
+            <div class="tab" onclick="switchTab('topics', event)">🏷️ Topic Analysis</div>
+            <div class="tab" onclick="switchTab('dashboard', event)">📊 Dashboard</div>
+            <div class="tab" onclick="switchTab('api', event)">📚 API Docs</div>
+        </div>
+        
+        <div class="content">
+            <!-- TAB 1: CRAWL -->
+            <div id="crawl" class="tab-content active">
+                <h2>📡 Crawl & Extract Content</h2>
+                <p style="color: #666; margin-bottom: 25px;">Thu thập và xử lý nội dung từ các nguồn web</p>
+                
+                <div class="form-group">
+                    <label>Source Type</label>
+                    <select id="sourceType">
+                        <option value="web">Web (Single Page/Multiple Pages)</option>
+                        <option value="rss">RSS Feed</option>
+                        <option value="file">JSON File</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>URL hoặc Source</label>
+                    <input type="text" id="crawlUrl" placeholder="https://example.com hoặc đường dẫn file">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Max Pages</label>
+                        <input type="number" id="maxPages" value="10" min="1" max="100">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Max Depth</label>
+                        <input type="number" id="maxDepth" value="1" min="0" max="5">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="followLinks" checked>
+                            Follow Internal Links
+                        </label>
+                        <label>
+                            <input type="checkbox" id="clean" checked>
+                            Clean Text
+                        </label>
+                        <label>
+                            <input type="checkbox" id="dedupe" checked>
+                            Remove Duplicates
+                        </label>
+                        <label>
+                            <input type="checkbox" id="save" checked>
+                            Save to File
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="previewCrawl()">
+                        🔍 Preview (Quick Check)
+                    </button>
+                    <button class="btn btn-warning" onclick="previewFullDomain()" id="previewFullBtn">
+                        🌐 Preview Full Domain
+                    </button>
+                    <button class="btn btn-primary" onclick="startCrawl()" id="crawlBtn">
+                        🚀 Start Crawling
+                    </button>
+                </div>
+                
+                <div id="crawlResult" style="display: none;"></div>
+                <div id="previewFullResult" style="display: none;"></div>
+                
+                <!-- Crawl By Category Section -->
+                <div class="section-divider">
+                    <h4>🗂️ Crawl By Category (Advanced)</h4>
+                    <p style="color: #666; margin: 0;">Crawl theo category hoặc subcategory cụ thể</p>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <input type="text" id="categoryInput" placeholder="Ví dụ: dich-vu, tin-tuc">
+                    </div>
+                    <div class="form-group">
+                        <label>Subcategory (tùy chọn)</label>
+                        <input type="text" id="subcategoryInput" placeholder="Ví dụ: spa-cham-soc-da">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Pages</label>
+                        <input type="number" id="catMaxPages" value="50" min="1" max="200">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Depth</label>
+                        <input type="number" id="catMaxDepth" value="2" min="1" max="5">
+                    </div>
+                </div>
+                
+                <button class="btn btn-success" onclick="crawlByCategory()" id="byCategoryBtn">
+                    🗂️ Crawl By Category
+                </button>
+                
+                <div id="byCategoryResult" style="display: none;"></div>
+            </div>
+            
+            <!-- TAB 2: TOPICS -->
+            <div id="topics" class="tab-content">
+                <h2>🏷️ Topic Analysis & Modeling</h2>
+                <p style="color: #666; margin-bottom: 25px;">Phân tích chủ đề, fit model, tra cứu, search theo topic</p>
+                
+                <div class="alert alert-info">
+                    <strong>💡 Lưu ý:</strong> Để fit topics, cần có dữ liệu đã được crawl. Documents sẽ được load tự động từ dữ liệu crawl mới nhất.
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Minimum Topic Size</label>
+                            <input type="number" id="minTopicSize" value="10" min="5" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Model Name</label>
+                            <input type="text" id="modelName" placeholder="my_model" value="demo_model">
+                        </div>
+                    </div>
+                <div class="form-group">
+                    <label>Documents (tự động lấy từ dữ liệu crawl mới nhất)</label>
+                    <p style="color: #666; font-size: 0.9em;">Không cần nhập tay, hệ thống sẽ tự động lấy từ file crawl mới nhất khi fit topic.</p>
+                </div>                <div class="form-group">
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="useOpenAI">
+                            Use OpenAI for Better Labels
+                        </label>
+                        <label>
+                            <input type="checkbox" id="saveModel" checked>
+                            Save Model
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap; align-items: center;">
+                    <button class="btn btn-primary" onclick="fitTopics()" id="fitBtn">
+                        🎯 Fit Topic Model
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadTopics()">
+                        📥 Get All Topics
+                    </button>
+                    <button class="btn btn-warning" onclick="getTopicDetail()">
+                        🔎 Get Topic Detail
+                    </button>
+                    <input type="number" class="inline-input" id="topicIdInput" placeholder="Topic ID" style="width:120px;">
+                    <button class="btn btn-success" onclick="searchTopics()">
+                        🔍 Search Documents
+                    </button>
+                    <input type="text" class="inline-input" id="topicSearchInput" placeholder="Search query" style="width:200px;">
+                </div>
+                
+                <div id="topicsResult" style="display: none;"></div>
+            </div>
+            
+            <!-- TAB 3: DASHBOARD -->
+            <div id="dashboard" class="tab-content">
+                <h2>📊 Analytics Dashboard</h2>
+                <p style="color: #666; margin-bottom: 25px;">Tổng quan thống kê và phân tích dữ liệu</p>
+                
+                <button class="btn btn-primary" onclick="loadDashboard()">
+                    🔄 Refresh Dashboard
+                </button>
+                
+                <div id="dashboardStats" style="margin-top: 30px;"></div>
+                <div id="dashboardTopics" style="margin-top: 30px;"></div>
+            </div>
+            
+            <!-- TAB 4: API DOCS -->
+            <div id="api" class="tab-content">
+                <h2>📚 API Documentation</h2>
+                <p style="color: #666; margin-bottom: 25px;">Tài liệu chi tiết về các API endpoints</p>
+                
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">🔗 Base URL</h3>
+                    <div style="background: #f8f9fa; padding: 10px 15px; border-radius: 6px; font-family: monospace;">
+                        <strong>Backend API:</strong> <span id="apiBaseUrl">http://localhost:7777</span>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <strong>📖 Swagger Docs:</strong> Truy cập <a id="swaggerLink" href="http://localhost:7777/docs" target="_blank" style="color: #0c5460; font-weight: 600;">http://localhost:7777/docs</a> để xem API interactive documentation
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ==================== CONFIGURATION ====================
+        const API_PORT = 7777;
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? `http://localhost:${API_PORT}/api`
+            : `http://${window.location.hostname}:${API_PORT}/api`;
+        
+        // ==================== TAB MANAGEMENT ====================
+        function switchTab(tabName, evt) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('active');
+            } else if (evt && evt.target) {
+                evt.target.classList.add('active');
+            }
+            if (tabName === 'dashboard') {
+                loadDashboard();
+            } else if (tabName === 'topics') {
+                loadTopics();
+            }
+        }
+        
+        // ==================== CRAWL FUNCTIONS ====================
+        async function previewCrawl() {
+            const url = document.getElementById('crawlUrl').value.trim();
+            if (!url) {
+                showAlert('crawlResult', 'Vui lòng nhập URL', 'error');
+                return;
+            }
+            
+            showLoading('crawlResult', 'Đang preview...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/crawl/preview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, max_depth: 1 })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayPreviewResult(data);
+                } else {
+                    showAlert('crawlResult', `Error: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('crawlResult', `Lỗi kết nối: ${error.message}`, 'error');
+            }
+        }
+
+        async function previewFullDomain() {
+            const url = document.getElementById('crawlUrl').value.trim();
+            const resultDiv = document.getElementById('previewFullResult');
+            resultDiv.innerHTML = '';
+            resultDiv.style.display = 'none';
+            
+            if (!url) {
+                showAlert('previewFullResult', 'Vui lòng nhập URL', 'error');
+                return;
+            }
+            
+            showLoading('previewFullResult', 'Đang preview full domain...');
+            document.getElementById('previewFullBtn').disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/crawl/preview-full`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url: url, 
+                        max_depth: 3, 
+                        max_pages: 100 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayPreviewFullResult(data);
+                } else {
+                    showAlert('previewFullResult', `Error: ${data.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showAlert('previewFullResult', `Lỗi kết nối: ${error.message}`, 'error');
+                console.error('Preview full domain error:', error);
+            } finally {
+                document.getElementById('previewFullBtn').disabled = false;
+            }
+        }
+
+        async function startCrawl() {
+            const url = document.getElementById('crawlUrl').value.trim();
+            if (!url) {
+                showAlert('crawlResult', 'Vui lòng nhập URL', 'error');
+                return;
+            }
+            
+            showLoading('crawlResult', 'Đang crawl...');
+            document.getElementById('crawlBtn').disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/crawl`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source_type: document.getElementById('sourceType').value,
+                        source: url,
+                        clean: document.getElementById('clean').checked,
+                        dedupe: document.getElementById('dedupe').checked,
+                        save: document.getElementById('save').checked,
+                        params: {
+                            max_pages: parseInt(document.getElementById('maxPages').value),
+                            follow_links: document.getElementById('followLinks').checked,
+                            max_depth: parseInt(document.getElementById('maxDepth').value)
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('crawlResult', `✅ Crawl thành công! Processed: ${data.processed} documents`, 'success');
+                } else {
+                    showAlert('crawlResult', `Error: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('crawlResult', `Lỗi: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('crawlBtn').disabled = false;
+            }
+        }
+
+        async function crawlByCategory() {
+            const url = document.getElementById('crawlUrl').value.trim();
+            const category = document.getElementById('categoryInput').value.trim();
+            const subcategory = document.getElementById('subcategoryInput').value.trim();
+            const max_pages = parseInt(document.getElementById('catMaxPages').value) || 50;
+            const max_depth = parseInt(document.getElementById('catMaxDepth').value) || 2;
+            const clean = document.getElementById('clean').checked;
+            const dedupe = document.getElementById('dedupe').checked;
+            const save = document.getElementById('save').checked;
+            
+            if (!url || !category) {
+                showAlert('byCategoryResult', 'Vui lòng nhập URL và Category!', 'error');
+                return;
+            }
+            
+            showLoading('byCategoryResult', 'Đang crawl theo category...');
+            document.getElementById('byCategoryBtn').disabled = true;
+            
+            try {
+                const body = {
+                    url,
+                    category,
+                    subcategory: subcategory || null,
+                    max_pages,
+                    max_depth,
+                    clean,
+                    dedupe,
+                    save
+                };
+                
+                const response = await fetch(`${API_BASE}/crawl/by-category`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayByCategoryResult(data);
+                } else {
+                    showAlert('byCategoryResult', `Error: ${data.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showAlert('byCategoryResult', `Lỗi kết nối: ${error.message}`, 'error');
+                console.error('Crawl by category error:', error);
+            } finally {
+                document.getElementById('byCategoryBtn').disabled = false;
+            }
+        }
+        
+        // ==================== DISPLAY FUNCTIONS ====================
+        function displayPreviewResult(data) {
+            const resultDiv = document.getElementById('crawlResult');
+            resultDiv.style.display = 'block';
+            
+            const warningHtml = data.warning ? `<div class="alert alert-warning">${data.warning}</div>` : '';
+            
+            resultDiv.innerHTML = `
+                <div class="result-box">
+                    <h3>📋 Preview Results</h3>
+                    ${warningHtml}
+                    <div class="stats-grid" style="margin-top: 20px;">
+                        <div class="stat-card">
+                            <h3>${data.total_internal_links}</h3>
+                            <p>Internal Links</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${data.estimated_pages}</h3>
+                            <p>Estimated Pages</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>${data.metadata_summary.content_length}</h3>
+                            <p>Content Length</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <strong>Page Type:</strong> ${data.page_type}<br>
+                        <strong>Title:</strong> ${data.title}<br><br>
+                        <strong>Sample Links (${data.internal_links_sample.length} shown):</strong>
+                        <pre style="max-height: 200px;">${data.internal_links_sample.join('\n')}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayPreviewFullResult(data) {
+            const resultDiv = document.getElementById('previewFullResult');
+            resultDiv.style.display = 'block';
+            
+            const warningHtml = data.warning ? `<div class="alert alert-warning">${data.warning}</div>` : '';
+            
+            let categoriesHtml = '';
+            if (data.categories_detail) {
+                categoriesHtml = Object.entries(data.categories_detail).map(([cat, detail]) => {
+                    let subcatsHtml = '';
+                    if (detail.subcategories && Object.keys(detail.subcategories).length > 0) {
+                        subcatsHtml = '<ul style="margin-left:20px;">' +
+                            Object.entries(detail.subcategories).map(([sub, cnt]) => 
+                                `<li>${sub}: ${cnt} links</li>`
+                            ).join('') + '</ul>';
+                    }
+                    return `<li><strong>${cat}</strong>: ${detail.total_links} links${subcatsHtml}</li>`;
+                }).join('');
+            }
+            
+            let depthHtml = '';
+            if (data.depth_breakdown) {
+                depthHtml = Object.entries(data.depth_breakdown).map(([d, cnt]) => 
+                    `<li>Depth ${d}: ${cnt} links</li>`
+                ).join('');
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="result-box">
+                    <h3>🌐 Preview Full Domain</h3>
+                    ${warningHtml}
+                    <div><strong>URL:</strong> ${data.url}</div>
+                    <div><strong>Total Pages Found:</strong> ${data.total_pages_found}</div>
+                    <div><strong>Total Unique Links:</strong> ${data.total_unique_links}</div>
+                    <div><strong>Total Categories:</strong> ${data.total_categories}</div>
+                    <div><strong>Standalone Links:</strong> ${data.standalone_links}</div>
+                    <div style="margin-top:10px;"><strong>Categories Detail:</strong><ul>${categoriesHtml}</ul></div>
+                    <div style="margin-top:10px;"><strong>Depth Breakdown:</strong><ul>${depthHtml}</ul></div>
+                    <div style="margin-top:10px;"><strong>Recommendation:</strong> ${data.recommendation || ''}</div>
+                </div>
+            `;
+        }
+
+        function displayByCategoryResult(data) {
+            const resultDiv = document.getElementById('byCategoryResult');
+            resultDiv.style.display = 'block';
+            
+            const docCount = data.documents ? data.documents.length : 0;
+            const statsHtml = data.stats ? 
+                `<pre style="max-height:200px;overflow:auto;">${JSON.stringify(data.stats, null, 2)}</pre>` : '';
+            
+            resultDiv.innerHTML = `
+                <div class="result-box">
+                    <h3>🗂️ Crawl By Category</h3>
+                    <div><strong>Status:</strong> ${data.status}</div>
+                    <div><strong>Category:</strong> ${data.category}${data.subcategory ? ' / ' + data.subcategory : ''}</div>
+                    <div><strong>Total Crawled:</strong> ${data.total_crawled}</div>
+                    <div><strong>Saved File:</strong> ${data.saved_file || 'N/A'}</div>
+                    <div><strong>Documents:</strong> ${docCount}</div>
+                    ${statsHtml ? `<div style="margin-top:10px;"><strong>Stats:</strong>${statsHtml}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        // ==================== TOPIC FUNCTIONS ====================
+        async function fitTopics() {
+            showLoading('topicsResult', 'Đang train topic model...');
+            document.getElementById('fitBtn').disabled = true;
+            try {
+                // Luôn tự động lấy documents từ file crawl mới nhất
+                let docs = [];
+                try {
+                    // Lấy danh sách file JSON trong thư mục data/processed/
+                    let fileList = [];
+                    try {
+                        const res = await fetch('/data/processed/');
+                        if (res.ok) {
+                            const html = await res.text();
+                            fileList = Array.from(html.matchAll(/href=\"([^"]+\.json)\"/g)).map(m => m[1]);
+                        }
+                    } catch {}
+                    if (!fileList.length) {
+                        // fallback hardcode nếu không liệt kê được
+                        fileList = [
+                            'full_data.json',
+                            'baohungyen.vn_20251114_055320.json',
+                            'baohungyen.vn_20251114_050712.json',
+                            'baohungyen.vn_20251114_050636.json',
+                            'baohungyen.vn_20251113_152756.json',
+                            'baohungyen.vn_20251113_145252.json',
+                            'baohungyen.vn_20251113_145251.json',
+                            'baohungyen.vn_20251113_145006.json',
+                            'baohungyen.vn_20251113_144902.json',
+                            'baohungyen.vn_20251113_144820.json',
+                            'seoulcenter.vn_20251113_165318.json',
+                            'sohcn.hungyen.gov.vn_20251113_162453.json',
+                            'su-kien_20251114_011444.json',
+                            'vnexpress.net_20251113_145225.json',
+                            'vnexpress.net_20251113_164838.json'
+                        ];
+                    }
+                    // Ưu tiên full_data.json, nếu không thì lấy file có tên lớn nhất (theo timestamp)
+                    let fileUrl = '/data/processed/full_data.json';
+                    if (!fileList.includes('full_data.json')) {
+                        const jsonFiles = fileList.filter(f => f.endsWith('.json'));
+                        if (jsonFiles.length) {
+                            jsonFiles.sort();
+                            fileUrl = '/data/processed/' + jsonFiles[jsonFiles.length - 1];
+                        }
+                    }
+                    let res = await fetch(fileUrl);
+                    if (!res.ok) throw new Error('Không fetch được file crawl');
+                    const json = await res.json();
+                    if (Array.isArray(json)) {
+                        docs = json.map(d => d.cleaned_content || d.content || '').filter(Boolean);
+                    } else if (json.documents) {
+                        docs = json.documents.map(d => d.cleaned_content || d.content || '').filter(Boolean);
+                    }
+                } catch (e) {
+                    showAlert('topicsResult', 'Không thể tải dữ liệu crawl tự động. Vui lòng crawl dữ liệu trước!', 'error');
+                    document.getElementById('fitBtn').disabled = false;
+                    return;
+                }
+                docs = docs.map(s => String(s));
+                if (docs.length < 2) {
+                    // Thêm sample documents nếu không đủ
+                    docs.push('Đây là một bài viết mẫu về công nghệ và AI. Công nghệ trí tuệ nhân tạo đang phát triển nhanh chóng và có nhiều ứng dụng trong cuộc sống hàng ngày.');
+                    docs.push('Bài viết thứ hai về sức khỏe và thể thao. Việc duy trì sức khỏe tốt rất quan trọng, đặc biệt là thông qua việc tập thể dục đều đặn.');
+                    docs.push('Bài viết về kinh tế và tài chính. Thị trường chứng khoán đang có nhiều biến động và nhà đầu tư cần theo dõi sát sao.');
+                }
+                const response = await fetch(`${API_BASE}/topics/fit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        documents: docs,
+                        min_topic_size: parseInt(document.getElementById('minTopicSize').value),
+                        save_model: document.getElementById('saveModel').checked,
+                        model_name: document.getElementById('modelName').value,
+                        use_openai: document.getElementById('useOpenAI').checked
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showAlert('topicsResult', `✅ Fit thành công! Total topics: ${data.total_topics || 0}`, 'success');
+                    displayResultJson('topicsResult', data);
+                } else {
+                    showAlert('topicsResult', `Error: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('topicsResult', `Lỗi: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('fitBtn').disabled = false;
+            }
+        }
+
+        // Nút tự động lấy documents từ dữ liệu crawl mới nhất
+        async function loadCrawledDocuments() {
+            showLoading('topicsResult', 'Đang tải dữ liệu crawl...');
+            let docs = [];
+            try {
+                // Lấy danh sách file JSON trong thư mục data/processed/ qua API backend (nếu có), nếu không thì fetch từ endpoint tĩnh
+                let fileList = [];
+                try {
+                    const res = await fetch('/data/processed/');
+                    if (res.ok) {
+                        const html = await res.text();
+                        // Parse HTML directory listing để lấy danh sách file .json
+                        fileList = Array.from(html.matchAll(/href=\"([^"]+\.json)\"/g)).map(m => m[1]);
+                    }
+                } catch {}
+                if (!fileList.length) {
+                    // fallback hardcode nếu không liệt kê được
+                    fileList = [
+                        'full_data.json',
+                        'baohungyen.vn_20251114_055320.json',
+                        'baohungyen.vn_20251114_050712.json',
+                        'baohungyen.vn_20251114_050636.json',
+                        'baohungyen.vn_20251113_152756.json',
+                        'baohungyen.vn_20251113_145252.json',
+                        'baohungyen.vn_20251113_145251.json',
+                        'baohungyen.vn_20251113_145006.json',
+                        'baohungyen.vn_20251113_144902.json',
+                        'baohungyen.vn_20251113_144820.json',
+                        'seoulcenter.vn_20251113_165318.json',
+                        'sohcn.hungyen.gov.vn_20251113_162453.json',
+                        'su-kien_20251114_011444.json',
+                        'vnexpress.net_20251113_145225.json',
+                        'vnexpress.net_20251113_164838.json'
+                    ];
+                }
+                // Ưu tiên full_data.json, nếu không thì lấy file json có timestamp mới nhất
+                let fileUrl = '/data/processed/full_data.json';
+                if (!fileList.includes('full_data.json')) {
+                    // Lấy file có tên lớn nhất (theo timestamp)
+                    const jsonFiles = fileList.filter(f => f.endsWith('.json'));
+                    if (jsonFiles.length) {
+                        jsonFiles.sort();
+                        fileUrl = '/data/processed/' + jsonFiles[jsonFiles.length - 1];
+                    }
+                }
+                let res = await fetch(fileUrl);
+                if (!res.ok) throw new Error('Không fetch được file crawl');
+                const json = await res.json();
+                if (Array.isArray(json)) {
+                    docs = json.map(d => d.cleaned_content || d.content || '').filter(Boolean);
+                } else if (json.documents) {
+                    docs = json.documents.map(d => d.cleaned_content || d.content || '').filter(Boolean);
+                }
+                if (docs.length < 2) {
+                    showAlert('topicsResult', 'Không đủ documents trong dữ liệu crawl. Cần ít nhất 2!', 'error');
+                    return;
+                }
+                document.getElementById('topicDocsInput').value = docs.join('\n');
+                showAlert('topicsResult', `Đã tải ${docs.length} documents từ file ${fileUrl.split('/').pop()}. Bạn có thể fit topic ngay!`, 'success');
+            } catch (e) {
+                showAlert('topicsResult', 'Không thể tải dữ liệu crawl tự động. Vui lòng nhập documents thủ công!', 'error');
+            }
+        }
+        
+
+        async function loadTopics() {
+            showLoading('topicsResult', 'Đang tải danh sách topics...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/topics`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResultJson('topicsResult', data);
+                } else {
+                    showAlert('topicsResult', `Error: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('topicsResult', `Lỗi: ${error.message}`, 'error');
+            }
+        }
+
+        async function getTopicDetail() {
+            const topicId = document.getElementById('topicIdInput').value;
+            if (!topicId) {
+                showAlert('topicsResult', 'Vui lòng nhập Topic ID!', 'error');
+                return;
+            }
+            
+            showLoading('topicsResult', 'Đang lấy chi tiết topic...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/topics/${topicId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResultJson('topicsResult', data);
+                } else {
+                    showAlert('topicsResult', `Error: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('topicsResult', `Lỗi: ${error.message}`, 'error');
+            }
+        }
+
+        async function searchTopics() {
+            const query = document.getElementById('topicSearchInput').value.trim();
+            if (!query) {
+                showAlert('topicsResult', 'Vui lòng nhập search query!', 'error');
+                return;
+            }
+            
+            showLoading('topicsResult', 'Đang search...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/topics/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, k: 10 })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResultJson('topicsResult', data);
+                } else {
+                    showAlert('topicsResult', `Error: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('topicsResult', `Lỗi: ${error.message}`, 'error');
+            }
+        }
+        
+        // ==================== DASHBOARD FUNCTIONS ====================
+        async function loadDashboard() {
+            showLoading('dashboardStats', 'Đang tải dashboard...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/stats`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResultJson('dashboardStats', data);
+                } else {
+                    showAlert('dashboardStats', `Error: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('dashboardStats', `Lỗi: ${error.message}`, 'error');
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/topics`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResultJson('dashboardTopics', data);
+                } else {
+                    showAlert('dashboardTopics', `Error: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                showAlert('dashboardTopics', `Lỗi: ${error.message}`, 'error');
+            }
+        }
+        
+        // ==================== UTILITY FUNCTIONS ====================
+        function showLoading(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="loading"></div>
+                    <span style="margin-left: 10px;">${message}</span>
+                </div>
+            `;
+        }
+        
+        function showAlert(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        }
+        
+        function displayResultJson(elementId, data) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = `
+                <div class="result-box">
+                    <h3>📊 Results</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        }
+        
+        // ==================== INITIALIZATION ====================
+        window.addEventListener('load', async () => {
+            const backendUrl = API_BASE.replace('/api', '');
+            document.getElementById('apiBaseUrl').textContent = backendUrl;
+            document.getElementById('swaggerLink').href = `${backendUrl}/docs`;
+            document.getElementById('swaggerLink').textContent = `${backendUrl}/docs`;
+            
+            try {
+                const response = await fetch(`${API_BASE}/crawl/status`);
+                const data = await response.json();
+                console.log('✅ API Status:', data);
+                console.log(`✅ Kết nối thành công với backend: ${backendUrl}`);
+            } catch (error) {
+                console.error('❌ API Connection Error:', error);
+                alert(`⚠️ Không kết nối được backend tại ${backendUrl}\n\nVui lòng kiểm tra backend đang chạy ở PORT ${API_PORT}`);
+            }
+        });
+    </script>
+</body>
+</html>

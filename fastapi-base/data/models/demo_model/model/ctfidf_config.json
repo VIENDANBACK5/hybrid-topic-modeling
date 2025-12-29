@@ -1,0 +1,64 @@
+{
+  "ctfidf_model": {
+    "bm25_weighting": false,
+    "reduce_frequent_words": false
+  },
+  "vectorizer_model": {
+    "params": {
+      "analyzer": "word",
+      "binary": false,
+      "decode_error": "strict",
+      "encoding": "utf-8",
+      "input": "content",
+      "lowercase": true,
+      "max_df": 1.0,
+      "max_features": null,
+      "min_df": 1,
+      "ngram_range": [
+        1,
+        2
+      ],
+      "stop_words": null,
+      "strip_accents": null,
+      "token_pattern": "(?u)\\b\\w\\w+\\b",
+      "vocabulary": null
+    },
+    "vocab": {
+      "ai": 0,
+      "\u0111ang": 31,
+      "thay": 24,
+      "\u0111\u1ed5i": 33,
+      "th\u1ebf": 26,
+      "gi\u1edbi": 10,
+      "c\u00f4ng": 6,
+      "ngh\u1ec7": 18,
+      "machine": 16,
+      "learning": 14,
+      "r\u1ea5t": 22,
+      "h\u1eefu": 12,
+      "\u00edch": 29,
+      "big": 4,
+      "data": 8,
+      "analytics": 2,
+      "quan": 20,
+      "tr\u1ecdng": 28,
+      "ai \u0111ang": 1,
+      "\u0111ang thay": 32,
+      "thay \u0111\u1ed5i": 25,
+      "\u0111\u1ed5i th\u1ebf": 34,
+      "th\u1ebf gi\u1edbi": 27,
+      "gi\u1edbi c\u00f4ng": 11,
+      "c\u00f4ng ngh\u1ec7": 7,
+      "ngh\u1ec7 machine": 19,
+      "machine learning": 17,
+      "learning r\u1ea5t": 15,
+      "r\u1ea5t h\u1eefu": 23,
+      "h\u1eefu \u00edch": 13,
+      "\u00edch big": 30,
+      "big data": 5,
+      "data analytics": 9,
+      "analytics quan": 3,
+      "quan tr\u1ecdng": 21
+    }
+  }
+}

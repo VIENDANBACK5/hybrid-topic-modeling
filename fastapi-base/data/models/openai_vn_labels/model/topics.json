@@ -1,0 +1,71 @@
+{
+  "topic_representations": {
+    "0": [
+      [
+        "L\u00e0m \u0111\u1eb9p m\u00f4i v\u00e0 phun m\u00f4i",
+        1
+      ]
+    ],
+    "1": [
+      [
+        "D\u1ecbch v\u1ee5 th\u1ea9m m\u1ef9 ch\u1ea5t l\u01b0\u1ee3ng cao",
+        1
+      ]
+    ]
+  },
+  "topics": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "topic_sizes": {
+    "1": 10,
+    "0": 20
+  },
+  "topic_mapper": [
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      0
+    ]
+  ],
+  "topic_labels": {
+    "0": "0_L\u00e0m \u0111\u1eb9p m\u00f4i v\u00e0 phun m\u00f4i",
+    "1": "1_D\u1ecbch v\u1ee5 th\u1ea9m m\u1ef9 ch\u1ea5t l\u01b0\u1ee3ng cao"
+  },
+  "custom_labels": null,
+  "_outliers": 0,
+  "topic_aspects": {}
+}
