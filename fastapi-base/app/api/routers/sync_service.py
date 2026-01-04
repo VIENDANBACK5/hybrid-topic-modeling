@@ -914,7 +914,7 @@ async def get_database_stats(db: Session = Depends(get_db)):
     """
     📊 XEM SỐ LƯỢNG DATA TRONG CÁC BẢNG
     
-    Kiểm tra có bao nhiêu rows trong mỗi bảng trước khi xóa
+    Kiểm tra có bao nhiêu rows trong mỗi bảng - Bao gồm TẤT CẢ các bảng trong hệ thống
     """
     from app.models import (
         Article, 
@@ -931,36 +931,110 @@ async def get_database_stats(db: Session = Depends(get_db)):
         ViralContent,
         CategoryTrendStats
     )
+    from app.models.model_custom_topic import CustomTopic, ArticleCustomTopic
+    from app.models.model_bertopic_discovered import BertopicDiscoveredTopic, ArticleBertopicTopic, TopicTrainingSession
     
     stats = {}
     total = 0
     
-    tables = {
+    # Core tables
+    core_tables = {
         "articles": Article,
         "sentiment_analysis": SentimentAnalysis,
+    }
+    
+    # Custom topic tables
+    custom_topic_tables = {
+        "custom_topics": CustomTopic,
+        "article_custom_topics": ArticleCustomTopic,
+    }
+    
+    # BERTopic tables
+    bertopic_tables = {
+        "bertopic_discovered_topics": BertopicDiscoveredTopic,
+        "article_bertopic_topics": ArticleBertopicTopic,
+        "topic_training_sessions": TopicTrainingSession,
+    }
+    
+    # Statistics tables
+    statistics_tables = {
         "daily_snapshots": DailySnapshot,
         "trend_reports": TrendReport,
         "hot_topics": HotTopic,
         "keyword_stats": KeywordStats,
-        "topic_mentions": TopicMentionStats,
-        "website_stats": WebsiteActivityStats,
-        "social_stats": SocialActivityStats,
+        "topic_mention_stats": TopicMentionStats,
+        "website_activity_stats": WebsiteActivityStats,
+        "social_activity_stats": SocialActivityStats,
         "trend_alerts": TrendAlert,
         "hashtag_stats": HashtagStats,
         "viral_content": ViralContent,
-        "category_trends": CategoryTrendStats,
+        "category_trend_stats": CategoryTrendStats,
     }
     
-    for table_name, model in tables.items():
+    # Combine all tables
+    all_tables = {
+        **core_tables,
+        **custom_topic_tables,
+        **bertopic_tables,
+        **statistics_tables
+    }
+    
+    # Group results
+    grouped_stats = {
+        "core": {},
+        "custom_topics": {},
+        "bertopic": {},
+        "statistics": {},
+    }
+    
+    # Count core tables
+    for table_name, model in core_tables.items():
+        try:
+            count = db.query(model).count()
+            grouped_stats["core"][table_name] = count
+            total += count
+        except Exception as e:
+            grouped_stats["core"][table_name] = f"Error: {str(e)}"
+    
+    # Count custom topic tables
+    for table_name, model in custom_topic_tables.items():
+        try:
+            count = db.query(model).count()
+            grouped_stats["custom_topics"][table_name] = count
+            total += count
+        except Exception as e:
+            grouped_stats["custom_topics"][table_name] = f"Error: {str(e)}"
+    
+    # Count BERTopic tables
+    for table_name, model in bertopic_tables.items():
+        try:
+            count = db.query(model).count()
+            grouped_stats["bertopic"][table_name] = count
+            total += count
+        except Exception as e:
+            grouped_stats["bertopic"][table_name] = f"Error: {str(e)}"
+    
+    # Count statistics tables
+    for table_name, model in statistics_tables.items():
+        try:
+            count = db.query(model).count()
+            grouped_stats["statistics"][table_name] = count
+            total += count
+        except Exception as e:
+            grouped_stats["statistics"][table_name] = f"Error: {str(e)}"
+    
+    # Flat stats for backward compatibility
+    for table_name, model in all_tables.items():
         try:
             count = db.query(model).count()
             stats[table_name] = count
-            total += count
         except Exception as e:
             stats[table_name] = f"Error: {str(e)}"
     
     return {
         "status": "success",
-        "tables": stats,
-        "total_rows": total
+        "tables": stats,  # Flat list (backward compatible)
+        "grouped": grouped_stats,  # Grouped by category
+        "total_rows": total,
+        "table_count": len([v for v in stats.values() if isinstance(v, int)])
     }

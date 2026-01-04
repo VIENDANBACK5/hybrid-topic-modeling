@@ -11,6 +11,7 @@ from app.core.router import router
 from app.api import api_router
 from app.models import Base
 from app.api.routers import topic_service, sync_service, custom_topics
+from app.api import statistics, orchestrator, topic_training, topicgpt_api, data_pipeline_api
 from app.core.database import get_engine
 from app.core.config import settings
 from app.core.rate_limit import RateLimitMiddleware
@@ -73,6 +74,21 @@ def get_application() -> FastAPI:
     
     # Custom Topics API - Tự định nghĩa topics để phân loại
     application.include_router(custom_topics.router)
+    
+    # Statistics API - Thống kê và keywords
+    application.include_router(statistics.router)
+    
+    # Orchestrator API - Pipeline automation
+    application.include_router(orchestrator.router)
+    
+    # Topic Training API - BERTopic discovery
+    application.include_router(topic_training.router)
+    
+    # TopicGPT API - LLM enhancements
+    application.include_router(topicgpt_api.router)
+    
+    # Data Pipeline API - ETL management
+    application.include_router(data_pipeline_api.router)
     
     # Healthcheck
     application.include_router(router, prefix=settings.API_PREFIX)

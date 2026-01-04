@@ -172,7 +172,7 @@ class TopicModel:
             umap_model=umap_model,
             hdbscan_model=hdbscan_model,
             vectorizer_model=vectorizer_model,
-            top_n_words=10,
+            top_n_words=20,  # Increased for better topic quality
             nr_topics=None,
             calculate_probabilities=True,
             verbose=True
@@ -272,40 +272,11 @@ class TopicModel:
         import uuid
         from app.services.topic.bertopic_saver import BertopicTopicSaver
         
-        # Get topic info from BERTopic
-        topic_info_df = self.topic_model.get_topic_info()
+        # Get topic info using self.get_topic_info() which includes TopicGPT labels
+        topic_info = self.get_topic_info()
         
-        # Convert DataFrame to dict format
-        topics_data = []
-        for _, row in topic_info_df.iterrows():
-            topic_id = int(row['Topic'])
-            
-            # Get top words for this topic
-            if topic_id == -1:
-                words_data = []
-            else:
-                topic_words = self.topic_model.get_topic(topic_id)
-                words_data = [
-                    {'word': word, 'score': float(score)}
-                    for word, score in topic_words[:10]
-                ]
-            
-            # Get representative docs
-            repr_docs = []
-            if hasattr(self.topic_model, 'representative_docs_') and self.topic_model.representative_docs_:
-                if topic_id in self.topic_model.representative_docs_:
-                    repr_docs = self.topic_model.representative_docs_[topic_id][:3]
-            
-            topics_data.append({
-                'topic_id': topic_id,
-                'natural_label': row.get('Name', f'Topic {topic_id}'),
-                'description': row.get('Representation', ''),
-                'count': int(row.get('Count', 0)),
-                'words': words_data,
-                'representative_docs': repr_docs
-            })
-        
-        topic_model_result = {'topics': topics_data}
+        # topic_info already in correct format with TopicGPT labels
+        topic_model_result = topic_info
         
         # Prepare document-topic mappings với article_ids thực tế
         document_topics = []
@@ -381,6 +352,84 @@ class TopicModel:
         logger.info(f"Model loaded from {load_path}")
         
         return self.topic_model
-        logger.info(f"Model loaded from {load_path}")
+    
+    def get_topics_over_time(
+        self, 
+        documents: List[str], 
+        timestamps: List,
+        nr_bins: int = 10,
+        datetime_format: str = None
+    ) -> Dict:
+        """
+        Get topics over time - track how topics evolve
         
-        return self.topic_model
+        Args:
+            documents: List of documents (same used for training)
+            timestamps: List of datetime objects/strings corresponding to documents
+            nr_bins: Number of time bins (default: 10)
+            datetime_format: Format string if timestamps are strings
+            
+        Returns:
+            Dict with topics_over_time data for visualization
+        """
+        if not self.topic_model:
+            raise ValueError("Model not fitted. Call fit() first.")
+        
+        import pandas as pd
+        from datetime import datetime as dt
+        
+        # Convert timestamps if needed
+        if timestamps and isinstance(timestamps[0], str):
+            if datetime_format:
+                timestamps = [dt.strptime(t, datetime_format) for t in timestamps]
+            else:
+                timestamps = [pd.to_datetime(t) for t in timestamps]
+        
+        logger.info(f"📊 Calculating topics over time for {len(documents)} documents...")
+        
+        # Get topics over time from BERTopic
+        topics_over_time = self.topic_model.topics_over_time(
+            documents,
+            timestamps,
+            nr_bins=nr_bins
+        )
+        
+        # Format result for visualization
+        result = {
+            "status": "success",
+            "nr_bins": nr_bins,
+            "time_range": {
+                "start": str(min(timestamps)) if timestamps else None,
+                "end": str(max(timestamps)) if timestamps else None
+            },
+            "topics": []
+        }
+        
+        # Group by topic
+        if topics_over_time is not None and not topics_over_time.empty:
+            for topic_id in topics_over_time['Topic'].unique():
+                if topic_id == -1:
+                    continue
+                    
+                topic_data = topics_over_time[topics_over_time['Topic'] == topic_id]
+                
+                # Get topic name/label
+                topic_info = self.topic_model.get_topic(topic_id)
+                topic_keywords = [word for word, _ in topic_info[:5]] if topic_info else []
+                
+                timeline = []
+                for _, row in topic_data.iterrows():
+                    timeline.append({
+                        "timestamp": str(row['Timestamp']),
+                        "frequency": int(row['Frequency']),
+                        "words": row.get('Words', '').split(', ')[:5] if 'Words' in row else topic_keywords
+                    })
+                
+                result["topics"].append({
+                    "topic_id": int(topic_id),
+                    "keywords": topic_keywords,
+                    "timeline": timeline
+                })
+        
+        logger.info(f"✅ Found {len(result['topics'])} topics over time")
+        return result

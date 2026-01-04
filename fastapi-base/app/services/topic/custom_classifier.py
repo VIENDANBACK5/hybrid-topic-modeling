@@ -22,9 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 class CustomTopicClassifier:
-    """
-
-    
     def __init__(self):
         self.embedding_model = None
         self.topic_embeddings_cache: Dict[int, np.ndarray] = {}

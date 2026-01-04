@@ -1,12 +1,14 @@
 """
 Data Normalizer & Validator
 Chuẩn hóa và validate data từ nhiều nguồn khác nhau (web, Facebook, TikTok, YouTube, etc.)
+Xử lý timestamp, datetime, metadata phức tạp từ social media
 """
 import logging
 import re
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 from urllib.parse import urlparse
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,79 @@ class DataNormalizer:
         self.errors = []
         self.warnings = []
     
+    def _parse_timestamp(self, value) -> Optional[datetime]:
+        """Parse various timestamp formats to datetime"""
+        if not value:
+            return None
+        
+        try:
+            # Unix timestamp (int or float)
+            if isinstance(value, (int, float)):
+                return datetime.fromtimestamp(value)
+            
+            # ISO format string
+            if isinstance(value, str):
+                # Try ISO format
+                try:
+                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                except:
+                    pass
+                
+                # Try common formats
+                formats = [
+                    '%Y-%m-%d %H:%M:%S',
+                    '%Y-%m-%d',
+                    '%d/%m/%Y %H:%M:%S',
+                    '%d/%m/%Y'
+                ]
+                for fmt in formats:
+                    try:
+                        return datetime.strptime(value, fmt)
+                    except:
+                        continue
+            
+            # Already datetime
+            if isinstance(value, datetime):
+                return value
+            
+            return None
+        except Exception as e:
+            logger.debug(f"Failed to parse timestamp {value}: {e}")
+            return None
+    
+    def _extract_facebook_metadata(self, doc: Dict) -> Dict:
+        """Extract and normalize Facebook-specific metadata"""
+        meta_data = doc.get('meta_data', {})
+        
+        extracted = {
+            'post_id': meta_data.get('post_id'),
+            'post_type': meta_data.get('type'),
+            'post_url': meta_data.get('url'),
+            
+            # Parse timestamp
+            'published_at': self._parse_timestamp(meta_data.get('timestamp')),
+            
+            # Engagement metrics
+            'comments_count': meta_data.get('comments_count', 0),
+            'reactions_count': meta_data.get('reactions_count', 0),
+            'shares_count': meta_data.get('reshare_count', 0),
+            
+            # Reactions breakdown
+            'reactions': meta_data.get('reactions', {}),
+            
+            # Author info
+            'author_id': meta_data.get('author', {}).get('id'),
+            'author_name': meta_data.get('author', {}).get('name'),
+            'author_url': meta_data.get('author', {}).get('url'),
+            
+            # Media
+            'has_image': bool(meta_data.get('image') or meta_data.get('album_preview')),
+            'has_video': bool(meta_data.get('video') or meta_data.get('video_files')),
+            'media_count': len(meta_data.get('album_preview') or []),
+        }
+        
+        return {k: v for k, v in extracted.items() if v is not None}
+    
     def normalize_document(self, doc: Dict) -> Tuple[Dict, List[str], List[str]]:
         """
         Normalize document from any source to standard format
@@ -74,22 +149,35 @@ class DataNormalizer:
         self.errors = []
         self.warnings = []
         
+        # Extract basic fields
         normalized = {
-            'source_type': None,
-            'url': None,
+            'id': doc.get('id'),
+            'source_type': doc.get('data_type', 'unknown'),
+            'url': doc.get('url'),
             'domain': None,
             'platform': None,
             'content': None,
+            'title': doc.get('title', ''),
             'metadata': {}
         }
         
         try:
-            # 1. Detect source type & platform
-            source_type, platform = self._detect_source_and_platform(doc)
+            # 1. Parse datetime fields FIRST
+            normalized['published_at'] = (
+                self._parse_timestamp(doc.get('published_at')) or
+                self._parse_timestamp(doc.get('meta_data', {}).get('timestamp')) or
+                self._parse_timestamp(doc.get('created_at'))
+            )
+            normalized['created_at'] = self._parse_timestamp(doc.get('created_at'))
+            normalized['updated_at'] = self._parse_timestamp(doc.get('updated_at'))
+            
+            # 2. Detect source type & platform
+            source_type = doc.get('data_type', 'unknown')
+            platform = source_type if source_type in ['facebook', 'youtube', 'tiktok', 'twitter'] else None
             normalized['source_type'] = source_type
             normalized['platform'] = platform
             
-            # 2. Extract & validate URL
+            # 3. Extract & validate URL
             url = self._extract_url(doc)
             if not url:
                 self.errors.append("Missing or invalid URL")
@@ -98,7 +186,7 @@ class DataNormalizer:
             normalized['url'] = url
             normalized['domain'] = self._extract_domain(url)
             
-            # 3. Normalize content
+            # 4. Normalize content
             content = self._normalize_content(doc)
             if not content:
                 self.errors.append("Missing or empty content")
@@ -106,11 +194,31 @@ class DataNormalizer:
             
             normalized['content'] = content
             
-            # 4. Normalize metadata
-            metadata = self._normalize_metadata(doc, source_type, platform)
-            normalized['metadata'] = metadata
+            # 5. Extract engagement & metadata (Facebook-specific)
+            if source_type == 'facebook' and 'meta_data' in doc:
+                fb_metadata = self._extract_facebook_metadata(doc)
+                normalized['metadata'].update(fb_metadata)
+                
+                # Add engagement summary
+                normalized['engagement'] = {
+                    'comments': fb_metadata.get('comments_count', 0),
+                    'reactions': fb_metadata.get('reactions_count', 0),
+                    'shares': fb_metadata.get('shares_count', 0)
+                }
+                
+                # Add author info
+                if fb_metadata.get('author_name'):
+                    normalized['author'] = {
+                        'id': fb_metadata.get('author_id'),
+                        'name': fb_metadata.get('author_name'),
+                        'url': fb_metadata.get('author_url')
+                    }
             
-            # 5. Platform-specific normalization
+            # 6. Normalize general metadata
+            metadata = self._normalize_metadata(doc, source_type, platform)
+            normalized['metadata'].update(metadata)
+            
+            # 7. Platform-specific normalization
             if platform:
                 normalized = self._apply_platform_specific_rules(normalized, platform)
             
@@ -200,7 +308,14 @@ class DataNormalizer:
             doc.get('cleaned_content') or
             doc.get('content') or
             doc.get('text') or
-            doc.get('raw_content')
+            doc.get('raw_content') or
+            # Facebook-specific: Try message fields
+            (doc.get('meta_data') or {}).get('message') or
+            (doc.get('meta_data') or {}).get('message_rich') or
+            # Try body or description
+            doc.get('body') or
+            doc.get('description') or
+            (doc.get('metadata') or {}).get('description')
         )
         
         if not content:

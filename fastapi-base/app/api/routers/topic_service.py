@@ -493,6 +493,77 @@ async def get_topics(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/topics-over-time")
+async def get_topics_over_time(
+    nr_bins: int = 10,
+    limit: int = 1000,
+    db: Session = Depends(get_db)
+):
+    """
+    📊 XEM TOPICS THEO THỜI GIAN (Topics Over Time)
+    
+    Trả về sự phân bố topics qua các khoảng thời gian để vẽ biểu đồ xu hướng.
+    
+    Args:
+        nr_bins: Số khoảng thời gian (default: 10)
+        limit: Số documents tối đa (default: 1000)
+    
+    Returns:
+        Dict với timeline của mỗi topic
+    """
+    try:
+        # Get articles with timestamps
+        query = text("""
+            SELECT id, title, content, published_datetime
+            FROM articles
+            WHERE content IS NOT NULL 
+            AND LENGTH(content) > 100
+            AND published_datetime IS NOT NULL
+            ORDER BY published_datetime DESC
+            LIMIT :limit
+        """)
+        
+        rows = db.execute(query, {"limit": limit}).fetchall()
+        
+        if not rows:
+            return {
+                "status": "error",
+                "message": "No articles with timestamps found"
+            }
+        
+        # Prepare data
+        documents = []
+        timestamps = []
+        
+        for row in rows:
+            article_id, title, content, pub_datetime = row
+            doc = f"{title or ''}\n{content or ''}"
+            documents.append(doc)
+            timestamps.append(pub_datetime)
+        
+        # Get or train topic model
+        topic_model = get_topic_model()
+        
+        if topic_model.topic_model is None:
+            # Need to fit first
+            logger.info("🔧 Topic model not fitted, fitting now...")
+            topic_model.fit(documents, db=None, save_to_db=False)
+        
+        # Get topics over time
+        result = topic_model.get_topics_over_time(
+            documents=documents,
+            timestamps=timestamps,
+            nr_bins=nr_bins
+        )
+        
+        result["total_documents"] = len(documents)
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Error getting topics over time: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================
 # HELPERS
 # ============================================

@@ -178,19 +178,29 @@ class TopicGPTService:
         # Build prompt
         keywords_str = ", ".join(keywords[:10])
         
-        prompt = f"""Dựa vào các từ khóa sau, hãy tạo một tên chủ đề ngắn gọn, dễ hiểu bằng tiếng Việt:
+        prompt = f"""Phân tích các từ khóa từ bài viết mạng xã hội tiếng Việt và tạo tên chủ đề phù hợp:
 
 Từ khóa: {keywords_str}
 
+LƯU Ý QUAN TRỌNG:
+- Các từ khóa này được trích xuất tự động từ văn bản tiếng Việt
+- "ai" = đại từ nghi vấn (who/someone), KHÔNG phải tên người
+- "báo" = thông báo/báo cáo/tin tức, KHÔNG phải con báo
+- "ông" = đại từ xưng hô, KHÔNG phải tên riêng
+- Các từ có gạch dưới như "hưng_yên" = cụm từ ghép
+- Từ "translate" thường là artifact từ Facebook dịch tự động, bỏ qua
+
 Yêu cầu:
-- Tên chủ đề ngắn gọn (3-7 từ)
-- Dễ hiểu, phản ánh đúng nội dung
-- Bằng tiếng Việt
+- Tên chủ đề ngắn gọn (3-7 từ tiếng Việt)
+- Phản ánh đúng chủ đề thảo luận trên mạng xã hội
+- Nếu có địa danh (hưng_yên, hà_nội) thì đề cập
 - Chỉ trả về tên chủ đề, không giải thích
 
 Ví dụ:
-- Từ khóa: học sinh, trường, giáo dục → Giáo dục & Đào tạo
-- Từ khóa: kinh tế, thị trường, giá → Kinh tế & Thị trường
+- hưng_yên, tỉnh, hà_nội, phát_triển → Phát triển Hưng Yên
+- chụp, ảnh, hưng_yên, kỷ_yếu → Dịch vụ chụp ảnh Hưng Yên
+- xe_máy, giao_thông, đường, tai_nạn → An toàn giao thông
+- ma_túy, bắt_giữ, công_an, hình_sự → Đấu tranh phòng chống ma túy
 
 Tên chủ đề:"""
         
