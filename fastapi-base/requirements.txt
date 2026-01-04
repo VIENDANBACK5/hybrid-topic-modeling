@@ -18,6 +18,7 @@ click==8.1.8
 cryptography==44.0.3
 deprecation==2.1.0
 dnspython==2.7.0
+prometheus-client==0.20.0
 docstring_parser==0.16
 ecdsa==0.19.1
 email_validator==2.2.0
@@ -108,11 +109,11 @@ scrapy==2.11.2
 beautifulsoup4==4.12.3
 feedparser==6.0.11
 aiohttp==3.11.11
-bertopic==0.17.3
+bertopic==0.17.4
 sentence-transformers==3.4.1
-scikit-learn==1.5.2
-umap-learn==0.5.7
-hdbscan==0.8.40
+scikit-learn>=1.6.1,<2.0.0
+umap-learn>=0.5.9
+hdbscan>=0.8.41
 plotly==6.0.0
 faiss-cpu==1.9.0
 matplotlib==3.9.3

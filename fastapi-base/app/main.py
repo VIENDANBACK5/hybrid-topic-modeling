@@ -10,9 +10,11 @@ from starlette.middleware.cors import CORSMiddleware
 from app.core.router import router
 from app.api import api_router
 from app.models import Base
-from app.api.routers import dashboard, crawl, topics, sources, rag
+from app.api.routers import topic_service, sync_service, custom_topics
 from app.core.database import get_engine
 from app.core.config import settings
+from app.core.rate_limit import RateLimitMiddleware
+from app.core.metrics import setup_metrics
 from app.utils.exception_handler import (
     CustomException,
     fastapi_error_handler,
@@ -36,10 +38,10 @@ def get_application() -> FastAPI:
         redoc_url="/re-docs",
         openapi_url=f"{settings.API_PREFIX}/openapi.json",
         description="""
-        Pipeline MXH - Crawl → ETL → Topic Modeling API
-            - Web/RSS/File/API Crawler
+        Topic Modeling Service
+            - Nhận data từ BE khác (đã crawl & clean)
             - Topic Modeling với BERTopic Vietnamese
-            - Dashboard & Analytics
+            - Lưu vào PostgreSQL
         """,
         debug=settings.DEBUG,
         swagger_ui_init_oauth={
@@ -57,19 +59,22 @@ def get_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    # Rate limiting middleware - 10 requests per minute per IP
+    application.add_middleware(RateLimitMiddleware, calls=100, period=60)
+    
     application.add_middleware(DBSessionMiddleware, db_url=settings.DATABASE_URL)
     
-    # Primary routes - no /api prefix (for frontend compatibility)
-    application.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
-    application.include_router(crawl.router, prefix="/crawl", tags=["Crawl"])
-    application.include_router(topics.router, prefix="/topics", tags=["Topics"])
-    application.include_router(sources.router, prefix="/sources", tags=["Sources"])
-    application.include_router(rag.router, prefix="/rag", tags=["RAG"])
+    # Topic Service API - Nhận data + Topic modeling + Lưu DB
+    application.include_router(topic_service.router, prefix="/topic-service", tags=["Topic Service"])
     
-    # Secondary routes with /api prefix (includes all routers above + healthcheck)
-    application.include_router(api_router, prefix="/api", tags=["API"])
+    # Sync Service API - Đồng bộ data từ API nguồn
+    application.include_router(sync_service.router, prefix="/api/v1", tags=["🔄 Sync Service"])
     
-    # Healthcheck at /api/healthcheck
+    # Custom Topics API - Tự định nghĩa topics để phân loại
+    application.include_router(custom_topics.router)
+    
+    # Healthcheck
     application.include_router(router, prefix=settings.API_PREFIX)
     
     application.add_exception_handler(CustomException, custom_error_handler)
@@ -80,6 +85,9 @@ def get_application() -> FastAPI:
 
 
 app = get_application()
+
+# Setup Prometheus metrics
+setup_metrics(app)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001, reload=settings.DEBUG)

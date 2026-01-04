@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'topic-modeling-monitor'
+
+scrape_configs:
+  # FastAPI Application Metrics
+  - job_name: 'fastapi-app'
+    static_configs:
+      - targets: ['host.docker.internal:7777']
+        labels:
+          service: 'topic-modeling-api'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # PostgreSQL Database Metrics
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgres-db'
+    scrape_interval: 15s
+
+  # Prometheus Self Monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

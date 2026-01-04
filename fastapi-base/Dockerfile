@@ -13,6 +13,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN bash -c "source $HOME/.cargo/env && pip install --no-cache-dir maturin"
+RUN pip install --no-cache-dir cython numpy
 RUN bash -c "source $HOME/.cargo/env && pip install --no-cache-dir --no-build-isolation -r requirements.txt"
 
 COPY . .
