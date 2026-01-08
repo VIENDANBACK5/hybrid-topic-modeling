@@ -1,14 +1,10 @@
 """
-🔄 SYNC SERVICE - API Endpoints để đồng bộ data từ nguồn ngoài
+SYNC SERVICE - API Endpoints de dong bo data tu nguon ngoai
 
 Endpoints:
-- POST /sync/trigger - Chạy sync ngay lập tức (one-time)
-- POST /sync/schedule - Lên lịch sync tự động
-- GET /sync/status - Xem trạng thái sync
-- POST /sync/config - Cập nhật config source API
-- GET /sync/configs - Xem tất cả configs
-- DELETE /sync/config/{id} - Xóa config
-- DELETE /sync/clear-data - Xóa data test trong DB
+- POST /sync/trigger - Chay sync ngay lap tuc (one-time)
+- GET /sync/status - Xem trang thai sync
+- DELETE /sync/clear-data - Xoa data test trong DB
 """
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Security
@@ -18,6 +14,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import requests
 import logging
+import time
 from enum import Enum
 
 from app.core.database import get_db
@@ -25,7 +22,7 @@ from app.core.auth import verify_api_key
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/sync", tags=["🔄 Data Sync"])
+router = APIRouter(prefix="/sync", tags=["Sync Service"])
 
 
 # ============================================
@@ -39,80 +36,39 @@ class SyncStatus(str, Enum):
     FAILED = "failed"
 
 
-class SyncConfigCreate(BaseModel):
-    """Config để kết nối tới API nguồn"""
-    name: str = Field(..., description="Tên nguồn data (VD: Facebook API, News Portal)")
-    source_api_base: str = Field(..., description="Base URL (VD: http://192.168.30.28:8000)")
-    endpoint: str = Field(default="/api/articles", description="Endpoint để lấy data")
-    enabled: bool = Field(default=True, description="Bật/tắt sync từ nguồn này")
-    
-    # Sync options
-    batch_size: int = Field(default=20, ge=1, le=100)
-    skip_duplicates: bool = Field(default=True)
-    analyze_sentiment: bool = Field(default=True)
-    
-    # Auth (nếu cần)
-    auth_type: Optional[str] = Field(None, description="bearer, basic, api_key")
-    auth_token: Optional[str] = None
-    headers: Optional[Dict[str, str]] = None
-    
-    # Extra params
-    query_params: Optional[Dict[str, Any]] = None
-
-
-class SyncConfigResponse(SyncConfigCreate):
-    id: int
-    created_at: datetime
-    last_sync_at: Optional[datetime] = None
-    total_synced: int = 0
-    
-    class Config:
-        from_attributes = True
-
-
 class SyncTriggerRequest(BaseModel):
-    """Request để trigger sync thủ công"""
-    config_id: Optional[int] = Field(None, description="ID của config (None = dùng config mặc định)")
-    source_api_base: Optional[str] = Field(None, description="Override source API base URL")
-    endpoint: Optional[str] = Field(None, description="Override endpoint")
-    limit: Optional[int] = Field(None, description="Giới hạn số docs (None = all)")
-    batch_size: Optional[int] = Field(default=20)
+    """Request de trigger sync thu cong"""
+    source_api_base: str = Field(..., description="Base URL (VD: http://192.168.30.28:8000)")
+    endpoint: str = Field(default="/api/articles", description="Endpoint de lay data")
+    limit: Optional[int] = Field(None, description="Gioi han so docs (None = all)")
+    batch_size: int = Field(default=20, ge=1, le=100)
     skip_duplicates: bool = True
     analyze_sentiment: bool = True
+    headers: Optional[Dict[str, str]] = None
+    auth_token: Optional[str] = None
+    auth_type: Optional[str] = Field(None, description="bearer, basic, api_key")
+    query_params: Optional[Dict[str, Any]] = None
 
 
 class SyncStatusResponse(BaseModel):
     status: SyncStatus
-    config_id: Optional[int] = None
-    config_name: Optional[str] = None
     source_api: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    
-    # Progress
     total_fetched: int = 0
     total_saved: int = 0
     total_skipped: int = 0
     total_sentiment: int = 0
-    
-    # Error info
     error: Optional[str] = None
-    
-    # Timing
     elapsed_seconds: Optional[float] = None
     rate_per_second: Optional[float] = None
 
 
 # ============================================
-# IN-MEMORY STATE (có thể chuyển sang Redis)
+# IN-MEMORY STATE
 # ============================================
 
-_sync_state: SyncStatusResponse = SyncStatusResponse(
-    status=SyncStatus.IDLE
-)
-
-_sync_configs: Dict[int, SyncConfigResponse] = {}
-_next_config_id = 1
+_sync_state: SyncStatusResponse = SyncStatusResponse(status=SyncStatus.IDLE)
 
 
 # ============================================
@@ -129,17 +85,15 @@ def fetch_from_source_api(
     auth_token: Optional[str] = None,
     auth_type: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Lấy data từ API nguồn"""
+    """Lay data tu API nguon"""
     url = f"{source_api_base}{endpoint}"
     
-    # Build query params
     query_params = params or {}
     if limit:
         query_params['limit'] = limit
     if offset:
         query_params['offset'] = offset
     
-    # Build headers
     req_headers = headers or {}
     if auth_token:
         if auth_type == "bearer":
@@ -147,9 +101,8 @@ def fetch_from_source_api(
         elif auth_type == "api_key":
             req_headers['X-API-Key'] = auth_token
     
-    logger.info(f"📡 Fetching from {url}")
+    logger.info(f"Fetching from {url}")
     
-    # Retry logic
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -159,14 +112,14 @@ def fetch_from_source_api(
         except requests.exceptions.RequestException as e:
             if attempt < max_retries - 1:
                 logger.warning(f"Fetch attempt {attempt + 1} failed: {e}, retrying...")
-                time.sleep(2 ** attempt)  # Exponential backoff
+                time.sleep(2 ** attempt)
             else:
                 logger.error(f"All fetch attempts failed: {e}")
                 raise
 
 
 def transform_document(raw_doc: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform document từ API nguồn sang format chuẩn"""
+    """Transform document tu API nguon sang format chuan"""
     content = (
         raw_doc.get('content') or 
         raw_doc.get('body') or 
@@ -190,21 +143,18 @@ def transform_document(raw_doc: Dict[str, Any]) -> Dict[str, Any]:
     
     published = raw_doc.get('published_date') or raw_doc.get('created_at') or raw_doc.get('date')
     
-    # Extract engagement
     engagement = {}
     for field in ['likes', 'shares', 'comments', 'views', 'reactions']:
         value = raw_doc.get(field) or raw_doc.get(f"{field}_count")
         if value is not None:
             engagement[field] = value
     
-    # Extract social account
     social_account = {}
     for field in ['platform', 'social_platform', 'account_name', 'account_id']:
         if field in raw_doc:
             key = field.replace('social_', '')
             social_account[key] = raw_doc[field]
     
-    # Extract location
     location = {}
     if isinstance(raw_doc.get('location'), dict):
         location = raw_doc['location']
@@ -213,7 +163,6 @@ def transform_document(raw_doc: Dict[str, Any]) -> Dict[str, Any]:
             if field in raw_doc:
                 location[field] = raw_doc[field]
     
-    # Build metadata
     metadata = {
         "title": title,
         "published": published,
@@ -232,7 +181,6 @@ def transform_document(raw_doc: Dict[str, Any]) -> Dict[str, Any]:
     if location:
         metadata['location'] = location
     
-    # Detect source type
     source_type = "web"
     if 'facebook.com' in url or social_account.get('platform') == 'facebook':
         source_type = "facebook"
@@ -256,15 +204,13 @@ def send_to_ingest_api(
     skip_duplicates: bool = True,
     analyze_sentiment: bool = True
 ) -> Dict[str, Any]:
-    """Gửi documents tới API /ingest"""
-    from app.api.routers.topic_service import IngestRequest
+    """Gui documents toi API /ingest"""
     from app.models import Article, SentimentAnalysis
     from app.services.sentiment import get_sentiment_analyzer
     from app.services.classification import get_category_classifier
     from app.services.etl.data_normalizer import normalize_and_validate
+    from app.core.database import SessionLocal
     
-    # Giả lập logic từ ingest endpoint (hoặc gọi trực tiếp)
-    # Ở đây tôi sẽ import và gọi trực tiếp thay vì HTTP call
     saved = 0
     skipped = 0
     sentiment_saved = 0
@@ -272,26 +218,22 @@ def send_to_ingest_api(
     analyzer = get_sentiment_analyzer() if analyze_sentiment else None
     classifier = get_category_classifier()
     
-    from app.core.database import SessionLocal
     db = SessionLocal()
     
     try:
         for doc in documents:
             try:
-                # Normalize
                 normalized, is_valid, errors, warnings = normalize_and_validate(doc)
                 if not is_valid:
                     skipped += 1
                     continue
                 
-                # Check duplicate
                 if skip_duplicates:
                     existing = db.query(Article).filter(Article.url == normalized['url']).first()
                     if existing:
                         skipped += 1
                         continue
                 
-                # Extract metadata
                 metadata = normalized['metadata']
                 published_date = None
                 published_datetime = None
@@ -307,11 +249,9 @@ def send_to_ingest_api(
                     except:
                         pass
                 
-                # Classification
                 classification = classifier.classify(normalized['content'], metadata.get("title"))
                 final_category = metadata.get("category") or classification.category
                 
-                # Extract engagement
                 engagement = metadata.get("engagement", {})
                 likes = engagement.get("likes", 0)
                 shares = engagement.get("shares", 0)
@@ -325,7 +265,6 @@ def send_to_ingest_api(
                 social = metadata.get("social_account", {})
                 location = metadata.get("location", {})
                 
-                # Create article
                 article = Article(
                     url=normalized['url'],
                     source_type=normalized['source_type'],
@@ -355,7 +294,6 @@ def send_to_ingest_api(
                 db.flush()
                 saved += 1
                 
-                # Sentiment analysis
                 if analyzer:
                     result = analyzer.analyze(normalized['content'])
                     sentiment_record = SentimentAnalysis(
@@ -400,7 +338,6 @@ def send_to_ingest_api(
 
 
 def run_sync_task(
-    config: Optional[SyncConfigResponse],
     source_api_base: str,
     endpoint: str,
     limit: Optional[int],
@@ -412,14 +349,11 @@ def run_sync_task(
     auth_type: Optional[str] = None,
     query_params: Optional[Dict] = None
 ):
-    """Background task để chạy sync"""
+    """Background task de chay sync"""
     global _sync_state
     
-    # Update state
     _sync_state = SyncStatusResponse(
         status=SyncStatus.RUNNING,
-        config_id=config.id if config else None,
-        config_name=config.name if config else None,
         source_api=source_api_base,
         started_at=datetime.now()
     )
@@ -431,11 +365,9 @@ def run_sync_task(
         total_sentiment = 0
         offset = 0
         
-        import time
         start_time = time.time()
         
         while True:
-            # Calculate fetch limit
             fetch_limit = batch_size
             if limit:
                 remaining = limit - total_fetched
@@ -443,7 +375,6 @@ def run_sync_task(
                     break
                 fetch_limit = min(batch_size, remaining)
             
-            # Fetch from source API
             try:
                 data = fetch_from_source_api(
                     source_api_base=source_api_base,
@@ -459,7 +390,6 @@ def run_sync_task(
                 logger.error(f"Failed to fetch: {e}")
                 raise
             
-            # Extract documents
             if isinstance(data, dict):
                 raw_docs = data.get('data', data.get('items', data.get('results', [])))
                 has_more = data.get('has_more', False)
@@ -472,7 +402,6 @@ def run_sync_task(
             if not raw_docs:
                 break
             
-            # Transform
             transformed_docs = []
             for raw_doc in raw_docs:
                 try:
@@ -484,21 +413,18 @@ def run_sync_task(
             if not transformed_docs:
                 break
             
-            # Send to ingest
             result = send_to_ingest_api(
                 documents=transformed_docs,
                 skip_duplicates=skip_duplicates,
                 analyze_sentiment=analyze_sentiment
             )
             
-            # Update counters
             total_saved += result.get('saved', 0)
             total_skipped += result.get('skipped', 0)
             total_sentiment += result.get('sentiment_analyzed', 0)
             total_fetched += len(raw_docs)
             offset += len(raw_docs)
             
-            # Update state
             elapsed = time.time() - start_time
             _sync_state.total_fetched = total_fetched
             _sync_state.total_saved = total_saved
@@ -507,30 +433,23 @@ def run_sync_task(
             _sync_state.elapsed_seconds = elapsed
             _sync_state.rate_per_second = total_fetched / elapsed if elapsed > 0 else 0
             
-            # Check if done
             if not has_more or (limit and total_fetched >= limit):
                 break
         
-        # Completed
         _sync_state.status = SyncStatus.COMPLETED
         _sync_state.completed_at = datetime.now()
         
-        # Update config last sync
-        if config:
-            config.last_sync_at = datetime.now()
-            config.total_synced += total_saved
-        
-        logger.info(f"✅ Sync completed: fetched={total_fetched}, saved={total_saved}")
+        logger.info(f"Sync completed: fetched={total_fetched}, saved={total_saved}")
         
     except Exception as e:
-        logger.error(f"❌ Sync failed: {e}", exc_info=True)
+        logger.error(f"Sync failed: {e}", exc_info=True)
         _sync_state.status = SyncStatus.FAILED
         _sync_state.error = str(e)
         _sync_state.completed_at = datetime.now()
 
 
 # ============================================
-# API ENDPOINTS
+# API ENDPOINTS (3 endpoints)
 # ============================================
 
 @router.post("/trigger", response_model=SyncStatusResponse)
@@ -540,13 +459,10 @@ async def trigger_sync(
     api_key: str = Security(verify_api_key)
 ):
     """
-    🚀 TRIGGER SYNC NGAY LẬP TỨC
+    TRIGGER SYNC NGAY LAP TUC
     
-    Chạy sync data từ API nguồn (one-time)
-    
-    - Có thể dùng config đã lưu (config_id)
-    - Hoặc override config trực tiếp
-    - Chạy background, không block
+    Chay sync data tu API nguon (one-time)
+    - Chay background, khong block
     
     Example:
     ```json
@@ -560,55 +476,29 @@ async def trigger_sync(
     """
     global _sync_state
     
-    # Check if already running
     if _sync_state.status == SyncStatus.RUNNING:
-        raise HTTPException(400, "Sync đang chạy, vui lòng đợi hoàn thành")
+        raise HTTPException(400, "Sync dang chay, vui long doi hoan thanh")
     
-    # Get config
-    config = None
-    if request.config_id:
-        config = _sync_configs.get(request.config_id)
-        if not config:
-            raise HTTPException(404, f"Config ID {request.config_id} không tồn tại")
-        
-        if not config.enabled:
-            raise HTTPException(400, f"Config '{config.name}' đã bị tắt")
-    
-    # Determine source API
-    source_api_base = request.source_api_base or (config.source_api_base if config else None)
-    endpoint = request.endpoint or (config.endpoint if config else "/api/articles")
-    
-    if not source_api_base:
+    if not request.source_api_base:
         raise HTTPException(400, "source_api_base is required")
     
-    # Get other configs
-    batch_size = request.batch_size or (config.batch_size if config else 20)
-    headers = config.headers if config else None
-    auth_token = config.auth_token if config else None
-    auth_type = config.auth_type if config else None
-    query_params = config.query_params if config else None
-    
-    # Start background task
     background_tasks.add_task(
         run_sync_task,
-        config=config,
-        source_api_base=source_api_base,
-        endpoint=endpoint,
+        source_api_base=request.source_api_base,
+        endpoint=request.endpoint,
         limit=request.limit,
-        batch_size=batch_size,
+        batch_size=request.batch_size,
         skip_duplicates=request.skip_duplicates,
         analyze_sentiment=request.analyze_sentiment,
-        headers=headers,
-        auth_token=auth_token,
-        auth_type=auth_type,
-        query_params=query_params
+        headers=request.headers,
+        auth_token=request.auth_token,
+        auth_type=request.auth_type,
+        query_params=request.query_params
     )
     
     return SyncStatusResponse(
         status=SyncStatus.RUNNING,
-        config_id=config.id if config else None,
-        config_name=config.name if config else None,
-        source_api=source_api_base,
+        source_api=request.source_api_base,
         started_at=datetime.now()
     )
 
@@ -616,99 +506,13 @@ async def trigger_sync(
 @router.get("/status", response_model=SyncStatusResponse)
 async def get_sync_status():
     """
-    📊 XEM TRẠNG THÁI SYNC HIỆN TẠI
+    XEM TRANG THAI SYNC HIEN TAI
     
-    - Đang chạy hay idle?
-    - Progress bao nhiêu?
-    - Tốc độ xử lý?
+    - Dang chay hay idle?
+    - Progress bao nhieu?
+    - Toc do xu ly?
     """
     return _sync_state
-
-
-@router.post("/config", response_model=SyncConfigResponse)
-async def create_sync_config(
-    config: SyncConfigCreate,
-    api_key: str = Security(verify_api_key)
-):
-    """
-    💾 LƯU CONFIG CHO API NGUỒN
-    
-    Lưu config để tái sử dụng, không cần nhập lại mỗi lần
-    
-    Example:
-    ```json
-    {
-      "name": "Facebook API",
-      "source_api_base": "http://192.168.30.28:8000",
-      "endpoint": "/api/posts",
-      "enabled": true,
-      "batch_size": 50,
-      "auth_type": "bearer",
-      "auth_token": "your-token-here"
-    }
-    ```
-    """
-    global _next_config_id
-    
-    config_response = SyncConfigResponse(
-        id=_next_config_id,
-        created_at=datetime.now(),
-        **config.dict()
-    )
-    
-    _sync_configs[_next_config_id] = config_response
-    _next_config_id += 1
-    
-    return config_response
-
-
-@router.get("/configs", response_model=List[SyncConfigResponse])
-async def list_sync_configs():
-    """
-    📋 XEM TẤT CẢ CONFIGS ĐÃ LƯU
-    """
-    return list(_sync_configs.values())
-
-
-@router.patch("/config/{config_id}/toggle")
-async def toggle_sync_config(config_id: int, enabled: bool):
-    """
-    🔄 BẬT/TẮT CONFIG
-    
-    - enabled=true: Bật sync từ nguồn này
-    - enabled=false: Tắt (không sync nữa)
-    """
-    config = _sync_configs.get(config_id)
-    if not config:
-        raise HTTPException(404, f"Config ID {config_id} không tồn tại")
-    
-    config.enabled = enabled
-    
-    return {
-        "status": "success",
-        "config_id": config_id,
-        "enabled": enabled,
-        "message": f"Config '{config.name}' đã {'bật' if enabled else 'tắt'}"
-    }
-
-
-@router.delete("/config/{config_id}")
-async def delete_sync_config(
-    config_id: int,
-    api_key: str = Security(verify_api_key)
-):
-    """
-    🗑️ XÓA CONFIG
-    """
-    if config_id not in _sync_configs:
-        raise HTTPException(404, f"Config ID {config_id} không tồn tại")
-    
-    config = _sync_configs.pop(config_id)
-    
-    return {
-        "status": "success",
-        "message": f"Đã xóa config '{config.name}'"
-    }
 
 
 @router.delete("/clear-data")
@@ -719,39 +523,30 @@ async def clear_test_data(
     api_key: str = Security(verify_api_key)
 ):
     """
-    🗑️ XÓA DATA TEST TRONG DATABASE
+    XOA DATA TEST TRONG DATABASE
     
-    ⚠️ CẢNH BÁO: Xóa vĩnh viễn, không thể khôi phục!
+    CANH BAO: Xoa vinh vien, khong the khoi phuc!
     
     Parameters:
-    - table: Tên bảng cụ thể (articles, sentiment_analysis, statistics, etc.)
-             Nếu None = xóa TẤT CẢ
-    - confirm: PHẢI set = true để xác nhận xóa
+    - table: Ten bang cu the (articles, sentiment_analysis, etc.)
+             Neu None = xoa TAT CA
+    - confirm: PHAI set = true de xac nhan xoa
     
-    Các bảng có thể xóa:
-    - articles: Bảng bài viết gốc
-    - sentiment_analysis: Bảng phân tích cảm xúc
-    - daily_snapshots: Thống kê theo ngày
-    - trend_reports: Báo cáo xu hướng
-    - hot_topics: Chủ đề nóng
-    - keyword_stats: Thống kê từ khóa
-    - topic_mentions: Thống kê topic mentions
-    - website_stats: Thống kê theo website
-    - social_stats: Thống kê social media
-    - trend_alerts: Cảnh báo xu hướng
-    - hashtag_stats: Thống kê hashtag
-    - viral_content: Nội dung viral
-    - category_trends: Xu hướng theo danh mục
-    - all: XÓA TẤT CẢ
-    
-    Example:
-    ```bash
-    # Xóa chỉ bảng articles
-    DELETE /sync/clear-data?table=articles&confirm=true
-    
-    # Xóa tất cả
-    DELETE /sync/clear-data?table=all&confirm=true
-    ```
+    Cac bang co the xoa:
+    - articles: Bang bai viet goc
+    - sentiment_analysis: Bang phan tich cam xuc
+    - daily_snapshots: Thong ke theo ngay
+    - trend_reports: Bao cao xu huong
+    - hot_topics: Chu de nong
+    - keyword_stats: Thong ke tu khoa
+    - topic_mentions: Thong ke topic mentions
+    - website_stats: Thong ke theo website
+    - social_stats: Thong ke social media
+    - trend_alerts: Canh bao xu huong
+    - hashtag_stats: Thong ke hashtag
+    - viral_content: Noi dung viral
+    - category_trends: Xu huong theo danh muc
+    - all: XOA TAT CA
     """
     from app.models import (
         Article, 
@@ -772,11 +567,10 @@ async def clear_test_data(
     if not confirm:
         raise HTTPException(
             400, 
-            "⚠️ Phải set confirm=true để xác nhận xóa data. "
-            "Data sẽ bị xóa vĩnh viễn và không thể khôi phục!"
+            "Phai set confirm=true de xac nhan xoa data. "
+            "Data se bi xoa vinh vien va khong the khoi phuc!"
         )
     
-    # Map table names
     table_map = {
         "articles": Article,
         "sentiment_analysis": SentimentAnalysis,
@@ -797,12 +591,11 @@ async def clear_test_data(
     
     try:
         if table and table != "all":
-            # Xóa bảng cụ thể
             if table not in table_map:
                 raise HTTPException(
                     400, 
-                    f"Bảng '{table}' không hợp lệ. "
-                    f"Các bảng có thể xóa: {', '.join(table_map.keys())}, all"
+                    f"Bang '{table}' khong hop le. "
+                    f"Cac bang co the xoa: {', '.join(table_map.keys())}, all"
                 )
             
             model = table_map[table]
@@ -811,20 +604,16 @@ async def clear_test_data(
             db.commit()
             
             deleted[table] = count
-            logger.warning(f"🗑️ Deleted {count} rows from {table}")
+            logger.warning(f"Deleted {count} rows from {table}")
             
             return {
                 "status": "success",
-                "message": f"Đã xóa {count} rows từ bảng '{table}'",
+                "message": f"Da xoa {count} rows tu bang '{table}'",
                 "deleted": deleted
             }
         
         else:
-            # Xóa TẤT CẢ (theo thứ tự để tránh foreign key error)
-            # Xóa theo thứ tự: statistics tables trước, sau đó sentiment, cuối cùng articles
-            
             order = [
-                # Statistics tables (không có foreign key)
                 "trend_alerts",
                 "hashtag_stats",
                 "viral_content",
@@ -836,9 +625,8 @@ async def clear_test_data(
                 "topic_mentions",
                 "website_stats",
                 "social_stats",
-                # Main tables (có foreign key)
-                "sentiment_analysis",  # Foreign key to articles
-                "articles",  # Base table
+                "sentiment_analysis",
+                "articles",
             ]
             
             for table_name in order:
@@ -849,10 +637,9 @@ async def clear_test_data(
                         if count > 0:
                             db.query(model).delete()
                             deleted[table_name] = count
-                            logger.warning(f"🗑️ Deleted {count} rows from {table_name}")
+                            logger.warning(f"Deleted {count} rows from {table_name}")
                     except Exception as e:
                         logger.error(f"Error deleting {table_name}: {e}")
-                        # Continue với bảng khác
             
             db.commit()
             
@@ -860,7 +647,7 @@ async def clear_test_data(
             
             return {
                 "status": "success",
-                "message": f"Đã xóa TOÀN BỘ data test ({total_deleted} rows)",
+                "message": f"Da xoa TOAN BO data test ({total_deleted} rows)",
                 "deleted": deleted,
                 "total_rows_deleted": total_deleted
             }
@@ -868,173 +655,4 @@ async def clear_test_data(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to clear data: {e}", exc_info=True)
-        raise HTTPException(500, f"Lỗi khi xóa data: {str(e)}")
-
-
-@router.get("/health")
-async def health_check():
-    """
-    🏥 HEALTH CHECK - Kiểm tra trạng thái hệ thống
-    """
-    from sqlalchemy import text
-    
-    health_status = {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "checks": {}
-    }
-    
-    # Check database
-    try:
-        from app.core.database import SessionLocal
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        db.close()
-        health_status["checks"]["database"] = "ok"
-    except Exception as e:
-        health_status["status"] = "unhealthy"
-        health_status["checks"]["database"] = f"error: {str(e)}"
-    
-    # Check sentiment analyzer
-    try:
-        from app.services.sentiment import get_sentiment_analyzer
-        analyzer = get_sentiment_analyzer()
-        health_status["checks"]["sentiment_analyzer"] = "ok"
-    except Exception as e:
-        health_status["checks"]["sentiment_analyzer"] = f"error: {str(e)}"
-    
-    # Check sync status
-    health_status["checks"]["sync_service"] = _sync_state.status.value
-    
-    return health_status
-
-
-@router.get("/db-stats")
-async def get_database_stats(db: Session = Depends(get_db)):
-    """
-    📊 XEM SỐ LƯỢNG DATA TRONG CÁC BẢNG
-    
-    Kiểm tra có bao nhiêu rows trong mỗi bảng - Bao gồm TẤT CẢ các bảng trong hệ thống
-    """
-    from app.models import (
-        Article, 
-        SentimentAnalysis,
-        DailySnapshot,
-        TrendReport,
-        HotTopic,
-        KeywordStats,
-        TopicMentionStats,
-        WebsiteActivityStats,
-        SocialActivityStats,
-        TrendAlert,
-        HashtagStats,
-        ViralContent,
-        CategoryTrendStats
-    )
-    from app.models.model_custom_topic import CustomTopic, ArticleCustomTopic
-    from app.models.model_bertopic_discovered import BertopicDiscoveredTopic, ArticleBertopicTopic, TopicTrainingSession
-    
-    stats = {}
-    total = 0
-    
-    # Core tables
-    core_tables = {
-        "articles": Article,
-        "sentiment_analysis": SentimentAnalysis,
-    }
-    
-    # Custom topic tables
-    custom_topic_tables = {
-        "custom_topics": CustomTopic,
-        "article_custom_topics": ArticleCustomTopic,
-    }
-    
-    # BERTopic tables
-    bertopic_tables = {
-        "bertopic_discovered_topics": BertopicDiscoveredTopic,
-        "article_bertopic_topics": ArticleBertopicTopic,
-        "topic_training_sessions": TopicTrainingSession,
-    }
-    
-    # Statistics tables
-    statistics_tables = {
-        "daily_snapshots": DailySnapshot,
-        "trend_reports": TrendReport,
-        "hot_topics": HotTopic,
-        "keyword_stats": KeywordStats,
-        "topic_mention_stats": TopicMentionStats,
-        "website_activity_stats": WebsiteActivityStats,
-        "social_activity_stats": SocialActivityStats,
-        "trend_alerts": TrendAlert,
-        "hashtag_stats": HashtagStats,
-        "viral_content": ViralContent,
-        "category_trend_stats": CategoryTrendStats,
-    }
-    
-    # Combine all tables
-    all_tables = {
-        **core_tables,
-        **custom_topic_tables,
-        **bertopic_tables,
-        **statistics_tables
-    }
-    
-    # Group results
-    grouped_stats = {
-        "core": {},
-        "custom_topics": {},
-        "bertopic": {},
-        "statistics": {},
-    }
-    
-    # Count core tables
-    for table_name, model in core_tables.items():
-        try:
-            count = db.query(model).count()
-            grouped_stats["core"][table_name] = count
-            total += count
-        except Exception as e:
-            grouped_stats["core"][table_name] = f"Error: {str(e)}"
-    
-    # Count custom topic tables
-    for table_name, model in custom_topic_tables.items():
-        try:
-            count = db.query(model).count()
-            grouped_stats["custom_topics"][table_name] = count
-            total += count
-        except Exception as e:
-            grouped_stats["custom_topics"][table_name] = f"Error: {str(e)}"
-    
-    # Count BERTopic tables
-    for table_name, model in bertopic_tables.items():
-        try:
-            count = db.query(model).count()
-            grouped_stats["bertopic"][table_name] = count
-            total += count
-        except Exception as e:
-            grouped_stats["bertopic"][table_name] = f"Error: {str(e)}"
-    
-    # Count statistics tables
-    for table_name, model in statistics_tables.items():
-        try:
-            count = db.query(model).count()
-            grouped_stats["statistics"][table_name] = count
-            total += count
-        except Exception as e:
-            grouped_stats["statistics"][table_name] = f"Error: {str(e)}"
-    
-    # Flat stats for backward compatibility
-    for table_name, model in all_tables.items():
-        try:
-            count = db.query(model).count()
-            stats[table_name] = count
-        except Exception as e:
-            stats[table_name] = f"Error: {str(e)}"
-    
-    return {
-        "status": "success",
-        "tables": stats,  # Flat list (backward compatible)
-        "grouped": grouped_stats,  # Grouped by category
-        "total_rows": total,
-        "table_count": len([v for v in stats.values() if isinstance(v, int)])
-    }
+        raise HTTPException(500, f"Loi khi xoa data: {str(e)}")

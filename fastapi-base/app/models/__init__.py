@@ -27,5 +27,12 @@ from app.models.model_trends import (
     ViralContent,
     CategoryTrendStats
 )
+from app.models.model_field_classification import (
+    Field,
+    ArticleFieldClassification,
+    FieldStatistics
+)
+from app.models.model_field_summary import FieldSummary
+from app.models.model_field_sentiment import FieldSentiment
 
 # Archived: model_user, model_crawl_history, model_source

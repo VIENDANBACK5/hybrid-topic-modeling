@@ -10,8 +10,8 @@ from starlette.middleware.cors import CORSMiddleware
 from app.core.router import router
 from app.api import api_router
 from app.models import Base
-from app.api.routers import topic_service, sync_service, custom_topics
-from app.api import statistics, orchestrator, topic_training, topicgpt_api, data_pipeline_api
+from app.api.routers import topic_service, sync_service, custom_topics, field_classification, superset_sync
+from app.api import orchestrator, topicgpt_api, data_pipeline_api, data_fetch_api, data_process_api
 from app.core.database import get_engine
 from app.core.config import settings
 from app.core.rate_limit import RateLimitMiddleware
@@ -66,32 +66,35 @@ def get_application() -> FastAPI:
     
     application.add_middleware(DBSessionMiddleware, db_url=settings.DATABASE_URL)
     
-    # Topic Service API - Nhận data + Topic modeling + Lưu DB
+    # Topic Service API
     application.include_router(topic_service.router, prefix="/topic-service", tags=["Topic Service"])
     
-    # Sync Service API - Đồng bộ data từ API nguồn
-    application.include_router(sync_service.router, prefix="/api/v1", tags=["🔄 Sync Service"])
+    # Sync Service API
+    application.include_router(sync_service.router, prefix="/api/v1", tags=["Sync Service"])
     
-    # Custom Topics API - Tự định nghĩa topics để phân loại
+    # Custom Topics
     application.include_router(custom_topics.router)
     
-    # Statistics API - Thống kê và keywords
-    application.include_router(statistics.router)
+    # Field Classification
+    application.include_router(field_classification.router, prefix="/api/v1", tags=["Field Classification"])
     
-    # Orchestrator API - Pipeline automation
+    # Superset Sync (Update all tables for Superset dashboards)
+    application.include_router(superset_sync.router, tags=["Superset Sync"])
+    
+    # Orchestrator
     application.include_router(orchestrator.router)
     
-    # Topic Training API - BERTopic discovery
-    application.include_router(topic_training.router)
-    
-    # TopicGPT API - LLM enhancements
+    # TopicGPT
     application.include_router(topicgpt_api.router)
     
-    # Data Pipeline API - ETL management
+    # Data Pipeline
     application.include_router(data_pipeline_api.router)
     
-    # Healthcheck
-    application.include_router(router, prefix=settings.API_PREFIX)
+    # Data Fetch (per data type)
+    application.include_router(data_fetch_api.router)
+    
+    # Data Process (per data type)
+    application.include_router(data_process_api.router)
     
     application.add_exception_handler(CustomException, custom_error_handler)
     application.add_exception_handler(ValidationException, validation_exception_handler)

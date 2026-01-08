@@ -1,5 +1,9 @@
 """
 Data Pipeline Service - Xử lý data từ external API → processed files → training
+
+UPDATED: Sử dụng processors mới thay vì DataNormalizer
+- Mỗi data_type có processor riêng (facebook, tiktok, threads, newspaper)
+- Import get_processor để lấy processor phù hợp
 """
 import logging
 import json
@@ -11,7 +15,8 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.services.etl.data_normalizer import DataNormalizer
+# Import processors mới thay vì DataNormalizer
+from app.services.etl.processors import get_processor, get_supported_types
 from app.services.etl.text_cleaner import TextCleaner
 
 logger = logging.getLogger(__name__)
@@ -22,10 +27,9 @@ class DataPipelineService:
     
     def __init__(self, db: Session):
         self.db = db
-        self.normalizer = DataNormalizer()
         self.cleaner = TextCleaner()
         
-        # Data directories
+        # Data directories - organized by data_type
         self.base_dir = Path("data")
         self.raw_dir = self.base_dir / "raw"
         self.processed_dir = self.base_dir / "processed"
@@ -190,6 +194,7 @@ class DataPipelineService:
         Args:
             raw_file: Path to raw data file
             save_filename: Tên file processed (default: processed_YYYYMMDD_HHMMSS.json)
+            data_type: Loại data (facebook, tiktok, threads, newspaper) - auto detect if not provided
         
         Returns:
             Dict với processed file path và statistics
@@ -211,55 +216,30 @@ class DataPipelineService:
             
             logger.info(f"   Processing {len(records)} records...")
             
-            # Process each record
-            processed_records = []
-            stats = {
-                "total": len(records),
-                "processed": 0,
-                "skipped": 0,
-                "errors": 0
-            }
+            # Auto-detect data_type from first record if not provided
+            data_type = None
+            if records:
+                data_type = records[0].get('data_type', 'facebook')
             
-            for i, record in enumerate(records):
-                try:
-                    # Normalize structure
-                    normalized, errors, warnings = self.normalizer.normalize_document(record)
-                    
-                    if errors:
-                        stats["errors"] += 1
-                        logger.debug(f"   Record {i}: {len(errors)} errors")
-                        continue
-                    
-                    # Clean text
-                    if normalized.get('content'):
-                        cleaned_content = self.cleaner.clean(normalized['content'])
-                        normalized['content_cleaned'] = cleaned_content
-                        normalized['content_length'] = len(cleaned_content)
-                    
-                    if normalized.get('title'):
-                        cleaned_title = self.cleaner.clean(normalized['title'])
-                        normalized['title_cleaned'] = cleaned_title
-                    
-                    # Add processing metadata
-                    normalized['processed_at'] = datetime.now().isoformat()
-                    normalized['processing_warnings'] = warnings
-                    
-                    # Validate minimum requirements (giảm từ 50 xuống 20 chars để lấy nhiều posts hơn)
-                    if not normalized.get('content_cleaned') or len(normalized['content_cleaned']) < 20:
-                        stats["skipped"] += 1
-                        continue
-                    
-                    processed_records.append(normalized)
-                    stats["processed"] += 1
-                    
-                except Exception as e:
-                    logger.debug(f"   Failed to process record {i}: {e}")
-                    stats["errors"] += 1
+            # Get appropriate processor
+            processor = get_processor(data_type)
+            logger.info(f"   Using {processor.data_type} processor")
+            
+            # Process batch using new processor
+            processed_records, stats = processor.process_batch(records)
+            
+            # Additional text cleaning
+            for record in processed_records:
+                if record.get('content'):
+                    record['content_cleaned'] = self.cleaner.clean(record['content'])
+                if record.get('title'):
+                    record['title_cleaned'] = self.cleaner.clean(record['title'])
+                record['processed_at'] = datetime.now().isoformat()
             
             # Generate filename
             if not save_filename:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                save_filename = f"processed_{timestamp}.json"
+                save_filename = f"processed_{data_type}_{timestamp}.json"
             
             # Save processed data
             processed_file = self.processed_dir / save_filename
@@ -280,13 +260,18 @@ class DataPipelineService:
             with open(processed_file, 'w', encoding='utf-8') as f:
                 json.dump(processed_records_serializable, f, ensure_ascii=False, indent=2)
             
-            logger.info(f"   ✅ Processed {stats['processed']}/{stats['total']} records")
+            logger.info(f"   ✅ Processed {stats['success']}/{stats['total']} records")
             logger.info(f"   💾 Saved to {processed_file}")
             
             return {
                 "status": "success",
                 "processed_file": str(processed_file),
-                "statistics": stats
+                "statistics": {
+                    "total": stats['total'],
+                    "processed": stats['success'],
+                    "skipped": 0,
+                    "errors": stats['failed']
+                }
             }
             
         except Exception as e:
