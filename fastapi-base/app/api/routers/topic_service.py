@@ -13,6 +13,7 @@ from app.models.model_sentiment import SentimentAnalysis
 from app.services.topic.model import TopicModel
 from app.services.sentiment.sentiment_service import get_sentiment_analyzer
 from app.services.classification import get_category_classifier
+from app.utils.domain_utils import ensure_domain
 import logging
 import threading
 
@@ -116,11 +117,20 @@ async def ingest_documents(request: IngestRequest, db: Session = Depends(get_db)
                 social = metadata.get("social_account", {})
                 location = metadata.get("location", {})
                 
+                # Ensure domain is filled
+                article_data = ensure_domain({
+                    'url': normalized['url'],
+                    'source': normalized['url'],
+                    'domain': normalized['domain'],
+                    'social_platform': normalized['platform'],
+                    'account_name': social.get("account_name")
+                })
+                
                 article = Article(
-                    url=normalized['url'],
+                    url=article_data['url'],
                     source_type=normalized['source_type'],
-                    source=normalized['url'],
-                    domain=normalized['domain'],
+                    source=article_data['source'],
+                    domain=article_data['domain'],
                     title=metadata.get("title"),
                     content=normalized['content'],
                     summary=metadata.get("description"),

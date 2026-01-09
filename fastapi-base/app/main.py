@@ -10,7 +10,7 @@ from starlette.middleware.cors import CORSMiddleware
 from app.core.router import router
 from app.api import api_router
 from app.models import Base
-from app.api.routers import topic_service, sync_service, custom_topics, field_classification, superset_sync
+from app.api.routers import topic_service, sync_service, custom_topics, field_classification, superset_sync, economic_indicators
 from app.api import orchestrator, topicgpt_api, data_pipeline_api, data_fetch_api, data_process_api
 from app.core.database import get_engine
 from app.core.config import settings
@@ -80,6 +80,9 @@ def get_application() -> FastAPI:
     
     # Superset Sync (Update all tables for Superset dashboards)
     application.include_router(superset_sync.router, tags=["Superset Sync"])
+    
+    # Economic Indicators
+    application.include_router(economic_indicators.router)
     
     # Orchestrator
     application.include_router(orchestrator.router)

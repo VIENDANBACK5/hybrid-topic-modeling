@@ -210,6 +210,7 @@ def send_to_ingest_api(
     from app.services.classification import get_category_classifier
     from app.services.etl.data_normalizer import normalize_and_validate
     from app.core.database import SessionLocal
+    from app.utils.domain_utils import ensure_domain
     
     saved = 0
     skipped = 0
@@ -265,11 +266,21 @@ def send_to_ingest_api(
                 social = metadata.get("social_account", {})
                 location = metadata.get("location", {})
                 
+                # Ensure domain is filled
+                article_data = {
+                    'url': normalized['url'],
+                    'source': normalized['url'],
+                    'domain': normalized['domain'],
+                    'social_platform': normalized['platform'],
+                    'account_name': social.get("account_name")
+                }
+                article_data = ensure_domain(article_data)
+                
                 article = Article(
-                    url=normalized['url'],
+                    url=article_data['url'],
                     source_type=normalized['source_type'],
-                    source=normalized['url'],
-                    domain=normalized['domain'],
+                    source=article_data['source'],
+                    domain=article_data['domain'],
                     title=metadata.get("title"),
                     content=normalized['content'],
                     summary=metadata.get("description"),

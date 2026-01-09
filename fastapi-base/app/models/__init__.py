@@ -34,5 +34,9 @@ from app.models.model_field_classification import (
 )
 from app.models.model_field_summary import FieldSummary
 from app.models.model_field_sentiment import FieldSentiment
+from app.models.model_economic_indicators import (
+    EconomicIndicator,
+    EconomicIndicatorGPT
+)
 
 # Archived: model_user, model_crawl_history, model_source
