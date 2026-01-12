@@ -38,5 +38,6 @@ from app.models.model_economic_indicators import (
     EconomicIndicator,
     EconomicIndicatorGPT
 )
+from app.models.model_grdp_detail import GRDPDetail
 
 # Archived: model_user, model_crawl_history, model_source
