@@ -39,7 +39,7 @@ class VietnameseNERExtractor:
                 for model_name in ['vi_core_news_lg', 'vi_core_news_md', 'xx_ent_wiki_sm']:
                     try:
                         self.spacy_nlp = spacy.load(model_name)
-                        logger.info(f"✅ Loaded spaCy model: {model_name}")
+                        logger.info(f" Loaded spaCy model: {model_name}")
                         break
                     except:
                         continue

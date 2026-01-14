@@ -66,7 +66,7 @@ class TopicGPTService:
                     logger.warning("OPENAI_API_KEY not found - TopicGPT features disabled")
                     return
                 self.client = OpenAI(api_key=api_key)
-                logger.info("✅ OpenAI client initialized")
+                logger.info(" OpenAI client initialized")
             
             elif self.api == "gemini":
                 import google.generativeai as genai
@@ -76,7 +76,7 @@ class TopicGPTService:
                     return
                 genai.configure(api_key=api_key)
                 self.client = genai.GenerativeModel(self.model)
-                logger.info("✅ Gemini client initialized")
+                logger.info(" Gemini client initialized")
             
             else:
                 logger.warning(f"API {self.api} not yet implemented")

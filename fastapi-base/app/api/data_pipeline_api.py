@@ -1,128 +1,244 @@
 """
-Data Pipeline API - Endpoints để quản lý data flow
+Data Pipeline API - Endpoints de quan ly data flow
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.etl.data_pipeline import get_data_pipeline
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 import logging
+import requests
+import json
+from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/data", tags=["📊 Data Pipeline"])
+router = APIRouter(prefix="/api/data", tags=["Data Pipeline"])
 
 
-class ExternalAPIConfig(BaseModel):
-    """Config for fetching from external API"""
-    api_url: str
-    params: Optional[Dict] = None
-    save_filename: Optional[str] = None
+class FetchConfig(BaseModel):
+    """Config for fetching data"""
+    base_api_url: str
+    data_type: str = "newspaper"  # newspaper, facebook, tiktok, etc.
+    page_size: int = 100
+    max_pages: Optional[int] = None
+    sort_by: str = "id"
+    order: str = "desc"
+    fetch_all_raw: bool = False  # True = fetch all without dedup, False = dedup
 
 
-@router.post("/fetch-external")
-def fetch_from_external_api(
-    config: ExternalAPIConfig,
-    db: Session = Depends(get_db)
-) -> Dict:
-    """
-    📥 Fetch data từ external API và lưu vào data/raw/
-    
-    **Example:**
-    ```bash
-    curl -X POST http://localhost:7777/api/data/fetch-external \\
-      -H "Content-Type: application/json" \\
-      -d '{
-        "api_url": "http://192.168.30.28:8000/api/articles",
-        "params": {"limit": 500}
-      }'
-    ```
-    """
-    try:
-        pipeline = get_data_pipeline(db)
-        result = pipeline.fetch_and_save_raw_data(
-            external_api_url=config.api_url,
-            params=config.params,
-            save_filename=config.save_filename
-        )
-        
-        if result["status"] == "success":
-            return {
-                "status": "success",
-                "message": f"Fetched {result['record_count']} records",
-                "result": result
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result.get("error"))
-            
-    except Exception as e:
-        logger.error(f"Failed to fetch external data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/export-db-to-raw")
-def export_database_to_raw(
-    limit: Optional[int] = None,
-    save_filename: Optional[str] = None,
-    db: Session = Depends(get_db)
-) -> Dict:
-    """
-    📦 Export data từ database ra data/raw/
-    
-    **Example:**
-    ```bash
-    curl -X POST "http://localhost:7777/api/data/export-db-to-raw?limit=500"
-    ```
-    """
-    try:
-        pipeline = get_data_pipeline(db)
-        result = pipeline.sync_from_database_to_raw(
-            limit=limit,
-            save_filename=save_filename
-        )
-        
-        if result["status"] == "success":
-            return {
-                "status": "success",
-                "message": f"Exported {result['record_count']} records",
-                "result": result
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result.get("error", result.get("message")))
-            
-    except Exception as e:
-        logger.error(f"Failed to export data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-class ProcessDataConfig(BaseModel):
+class ProcessConfig(BaseModel):
     """Config for processing data"""
     raw_file: str
     save_filename: Optional[str] = None
 
 
-@router.post("/process")
-def process_raw_data(
-    config: ProcessDataConfig,
+class LoadConfig(BaseModel):
+    """Config for loading data to DB"""
+    processed_file: str
+    update_existing: bool = False
+
+
+@router.post("/fetch-and-load")
+def fetch_and_load(
+    config: FetchConfig,
+    skip_process: bool = False,
     db: Session = Depends(get_db)
 ) -> Dict:
     """
-    🔧 Xử lý raw data → processed data
+    Fetch data tu external API va load vao database (Full ETL)
     
-    **Actions:**
-    - Normalize data structure
-    - Clean text (remove HTML, special chars)
-    - Validate và filter
-    - Save to data/processed/
+    Features:
+    - Tu dong phan trang de lay tat ca du lieu
+    - Kiem tra trung lap voi database (theo URL)
+    - Chi luu data moi
+    - Ho tro nhieu data types
     
-    **Example:**
+    Args:
+    - base_api_url: URL cua external API
+    - data_type: Loai data (newspaper, facebook, tiktok, etc.)
+    - page_size: So records moi page (default: 100)
+    - max_pages: Gioi han so pages (None = all)
+    - fetch_all_raw: True = lay het ca duplicate, False = dedup
+    - skip_process: True = chi fetch, khong process va load
+    
+    Example:
     ```bash
-    curl -X POST http://localhost:7777/api/data/process \\
+    curl -X POST http://localhost:7777/api/data/fetch-and-load \\
       -H "Content-Type: application/json" \\
       -d '{
-        "raw_file": "data/raw/raw_20260104_120000.json"
+        "base_api_url": "http://192.168.30.28:8000/api/v1/posts/by-type/newspaper",
+        "data_type": "newspaper",
+        "page_size": 100,
+        "max_pages": null
       }'
     ```
+    """
+    try:
+        logger.info(f"Starting ETL for {config.data_type}...")
+        results = {"steps": [], "status": "success"}
+        
+        # Step 1: Fetch
+        from app.models.model_article import Article
+        
+        if not config.fetch_all_raw:
+            existing_urls = {article.url for article in db.query(Article.url).all()}
+        else:
+            existing_urls = set()
+        
+        all_articles = []
+        page = 1
+        total_fetched = 0
+        duplicates = 0
+        seen_urls = set()
+        
+        while True:
+            if config.max_pages and page > config.max_pages:
+                break
+            
+            params = {
+                "page": page,
+                "page_size": config.page_size,
+                "sort_by": config.sort_by,
+                "order": config.order
+            }
+            
+            logger.info(f"Fetching page {page}...")
+            
+            try:
+                response = requests.get(config.base_api_url, params=params, timeout=60)
+                response.raise_for_status()
+                data = response.json()
+                
+                if isinstance(data, dict):
+                    articles = data.get('data', data.get('items', []))
+                elif isinstance(data, list):
+                    articles = data
+                else:
+                    break
+                
+                if not articles:
+                    break
+                
+                for article in articles:
+                    url = article.get('url')
+                    if url:
+                        if url in existing_urls or url in seen_urls:
+                            duplicates += 1
+                            if not config.fetch_all_raw:
+                                continue
+                        seen_urls.add(url)
+                    all_articles.append(article)
+                
+                total_fetched += len(articles)
+                
+                if len(articles) < config.page_size:
+                    break
+                
+                page += 1
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Failed to fetch page {page}: {e}")
+                break
+        
+        # Save raw file
+        if all_articles:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            save_filename = f"raw_{config.data_type}_{timestamp}.json"
+            
+            pipeline = get_data_pipeline(db)
+            raw_file = pipeline.raw_dir / save_filename
+            
+            with open(raw_file, 'w', encoding='utf-8') as f:
+                json.dump(all_articles, f, ensure_ascii=False, indent=2)
+            
+            results["steps"].append({
+                "name": "fetch",
+                "status": "success",
+                "statistics": {
+                    "total_fetched": total_fetched,
+                    "saved_to_raw": len(all_articles),
+                    "duplicates": duplicates,
+                    "pages_processed": page - 1
+                },
+                "raw_file": str(raw_file)
+            })
+        else:
+            return {
+                "status": "success",
+                "message": "No new data found",
+                "statistics": {"total_fetched": total_fetched, "duplicates": duplicates}
+            }
+        
+        if skip_process:
+            return {
+                "status": "success",
+                "message": f"Fetched {len(all_articles)} records to raw file",
+                "results": results
+            }
+        
+        # Step 2: Process
+        process_result = pipeline.process_raw_data(str(raw_file))
+        
+        if process_result["status"] != "success":
+            return {
+                "status": "error",
+                "step": "process",
+                "error": process_result.get("error")
+            }
+        
+        results["steps"].append({
+            "name": "process",
+            "status": "success",
+            "file": process_result["processed_file"],
+            "statistics": process_result["statistics"]
+        })
+        
+        # Step 3: Load to database
+        load_result = pipeline.load_processed_data_to_db(
+            process_result["processed_file"],
+            update_existing=False
+        )
+        
+        if load_result["status"] != "success":
+            return {
+                "status": "error",
+                "step": "load",
+                "error": load_result.get("error")
+            }
+        
+        results["steps"].append({
+            "name": "load",
+            "status": "success",
+            "statistics": load_result["statistics"]
+        })
+        
+        return {
+            "status": "success",
+            "message": f"ETL completed: {load_result['statistics']['inserted']} new records loaded",
+            "data_type": config.data_type,
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to run ETL: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/process")
+def process_raw_data(
+    config: ProcessConfig,
+    db: Session = Depends(get_db)
+) -> Dict:
+    """
+    Xu ly raw data -> processed data
+    
+    Actions:
+    - Normalize data structure
+    - Clean text (remove HTML, special chars)
+    - Validate va filter
+    - Save to data/processed/
     """
     try:
         pipeline = get_data_pipeline(db)
@@ -146,29 +262,13 @@ def process_raw_data(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-class LoadDataConfig(BaseModel):
-    """Config for loading data to DB"""
-    processed_file: str
-    update_existing: bool = False
-
-
 @router.post("/load-to-db")
-def load_processed_to_database(
-    config: LoadDataConfig,
+def load_to_database(
+    config: LoadConfig,
     db: Session = Depends(get_db)
 ) -> Dict:
     """
-    💾 Load processed data vào database
-    
-    **Example:**
-    ```bash
-    curl -X POST http://localhost:7777/api/data/load-to-db \\
-      -H "Content-Type: application/json" \\
-      -d '{
-        "processed_file": "data/processed/processed_20260104_120000.json",
-        "update_existing": false
-      }'
-    ```
+    Load processed data vao database
     """
     try:
         pipeline = get_data_pipeline(db)
@@ -192,130 +292,12 @@ def load_processed_to_database(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/full-etl")
-def run_full_etl(
-    external_api_url: Optional[str] = None,
-    use_database: bool = True,
-    limit: Optional[int] = None,
-    db: Session = Depends(get_db)
-) -> Dict:
-    """
-    🔄 Chạy FULL ETL pipeline
-    
-    **Workflow:**
-    1. Fetch from external API hoặc export từ DB → data/raw/
-    2. Process raw data → data/processed/
-    3. Load processed data → database
-    
-    **Args:**
-    - `external_api_url`: URL của external API (None = use database)
-    - `use_database`: Export từ database (default: True)
-    - `limit`: Giới hạn records
-    
-    **Example:**
-    ```bash
-    # ETL từ database
-    curl -X POST "http://localhost:7777/api/data/full-etl?use_database=true&limit=500"
-    
-    # ETL từ external API
-    curl -X POST "http://localhost:7777/api/data/full-etl?external_api_url=http://192.168.30.28:8000/api/articles"
-    ```
-    """
-    try:
-        pipeline = get_data_pipeline(db)
-        results = {
-            "steps": [],
-            "status": "success"
-        }
-        
-        # Step 1: Fetch/Export
-        if external_api_url:
-            logger.info("Running ETL with external API source...")
-            fetch_result = pipeline.fetch_and_save_raw_data(external_api_url)
-        elif use_database:
-            logger.info("Running ETL with database source...")
-            fetch_result = pipeline.sync_from_database_to_raw(limit=limit)
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Must provide external_api_url or set use_database=true"
-            )
-        
-        if fetch_result["status"] != "success":
-            return {
-                "status": "error",
-                "step": "fetch",
-                "error": fetch_result.get("error")
-            }
-        
-        results["steps"].append({
-            "name": "fetch",
-            "status": "success",
-            "file": fetch_result["raw_file"],
-            "records": fetch_result["record_count"]
-        })
-        
-        # Step 2: Process
-        process_result = pipeline.process_raw_data(fetch_result["raw_file"])
-        
-        if process_result["status"] != "success":
-            return {
-                "status": "error",
-                "step": "process",
-                "error": process_result.get("error")
-            }
-        
-        results["steps"].append({
-            "name": "process",
-            "status": "success",
-            "file": process_result["processed_file"],
-            "statistics": process_result["statistics"]
-        })
-        
-        # Step 3: Load to DB
-        load_result = pipeline.load_processed_data_to_db(
-            process_result["processed_file"],
-            update_existing=False
-        )
-        
-        if load_result["status"] != "success":
-            return {
-                "status": "error",
-                "step": "load",
-                "error": load_result.get("error")
-            }
-        
-        results["steps"].append({
-            "name": "load",
-            "status": "success",
-            "statistics": load_result["statistics"]
-        })
-        
-        return {
-            "status": "success",
-            "message": "Full ETL completed",
-            "results": results
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to run full ETL: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/files/raw")
 def list_raw_files() -> Dict:
     """
-    📋 List raw data files
-    
-    **Example:**
-    ```bash
-    curl http://localhost:7777/api/data/files/raw
-    ```
+    List raw data files
     """
     try:
-        from pathlib import Path
-        import os
-        
         raw_dir = Path("data/raw")
         files = []
         
@@ -331,7 +313,7 @@ def list_raw_files() -> Dict:
         return {
             "status": "success",
             "count": len(files),
-            "files": files[:20]  # Latest 20
+            "files": files[:20]
         }
         
     except Exception as e:
@@ -342,18 +324,9 @@ def list_raw_files() -> Dict:
 @router.get("/files/processed")
 def list_processed_files() -> Dict:
     """
-    📋 List processed data files
-    
-    **Example:**
-    ```bash
-    curl http://localhost:7777/api/data/files/processed
-    ```
+    List processed data files
     """
     try:
-        from pathlib import Path
-        from datetime import datetime
-        import os
-        
         processed_dir = Path("data/processed")
         files = []
         
@@ -369,9 +342,72 @@ def list_processed_files() -> Dict:
         return {
             "status": "success",
             "count": len(files),
-            "files": files[:20]  # Latest 20
+            "files": files[:20]
         }
         
     except Exception as e:
         logger.error(f"Failed to list files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/db-stats")
+def get_database_stats(db: Session = Depends(get_db)) -> Dict:
+    """
+    Xem so luong data trong cac bang
+    """
+    from app.models import (
+        Article, 
+        SentimentAnalysis,
+        DailySnapshot,
+        TrendReport,
+        HotTopic,
+        KeywordStats,
+        TopicMentionStats,
+        WebsiteActivityStats,
+        SocialActivityStats,
+        TrendAlert,
+        HashtagStats,
+        ViralContent,
+        CategoryTrendStats
+    )
+    from app.models.model_custom_topic import CustomTopic, ArticleCustomTopic
+    from app.models.model_bertopic_discovered import BertopicDiscoveredTopic, ArticleBertopicTopic, TopicTrainingSession
+    
+    stats = {}
+    total = 0
+    
+    all_tables = {
+        "articles": Article,
+        "sentiment_analysis": SentimentAnalysis,
+        "custom_topics": CustomTopic,
+        "article_custom_topics": ArticleCustomTopic,
+        "bertopic_discovered_topics": BertopicDiscoveredTopic,
+        "article_bertopic_topics": ArticleBertopicTopic,
+        "topic_training_sessions": TopicTrainingSession,
+        "daily_snapshots": DailySnapshot,
+        "trend_reports": TrendReport,
+        "hot_topics": HotTopic,
+        "keyword_stats": KeywordStats,
+        "topic_mention_stats": TopicMentionStats,
+        "website_activity_stats": WebsiteActivityStats,
+        "social_activity_stats": SocialActivityStats,
+        "trend_alerts": TrendAlert,
+        "hashtag_stats": HashtagStats,
+        "viral_content": ViralContent,
+        "category_trend_stats": CategoryTrendStats,
+    }
+    
+    for table_name, model in all_tables.items():
+        try:
+            count = db.query(model).count()
+            stats[table_name] = count
+            total += count
+        except Exception as e:
+            stats[table_name] = f"Error: {str(e)}"
+    
+    return {
+        "status": "success",
+        "tables": stats,
+        "total_rows": total,
+        "table_count": len([v for v in stats.values() if isinstance(v, int)])
+    }

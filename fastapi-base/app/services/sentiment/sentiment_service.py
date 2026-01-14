@@ -17,25 +17,25 @@ logger = logging.getLogger(__name__)
 # Định nghĩa các sắc thái cảm xúc
 EMOTION_CATEGORIES = {
     # Tích cực
-    "vui_mừng": {"vi": "Vui mừng", "group": "positive", "icon": "😊"},
-    "ủng_hộ": {"vi": "Ủng hộ", "group": "positive", "icon": "👍"},
-    "tin_tưởng": {"vi": "Tin tưởng", "group": "positive", "icon": "🤝"},
-    "hài_lòng": {"vi": "Hài lòng", "group": "positive", "icon": "😌"},
-    "tự_hào": {"vi": "Tự hào", "group": "positive", "icon": "🏆"},
-    "hy_vọng": {"vi": "Hy vọng", "group": "positive", "icon": "🌟"},
+    "vui_mừng": {"vi": "Vui mừng", "group": "positive", "icon": ""},
+    "ủng_hộ": {"vi": "Ủng hộ", "group": "positive", "icon": ""},
+    "tin_tưởng": {"vi": "Tin tưởng", "group": "positive", "icon": ""},
+    "hài_lòng": {"vi": "Hài lòng", "group": "positive", "icon": ""},
+    "tự_hào": {"vi": "Tự hào", "group": "positive", "icon": ""},
+    "hy_vọng": {"vi": "Hy vọng", "group": "positive", "icon": ""},
     
     # Tiêu cực  
-    "phẫn_nộ": {"vi": "Phẫn nộ", "group": "negative", "icon": "😠"},
-    "lo_ngại": {"vi": "Lo ngại", "group": "negative", "icon": "😟"},
-    "thất_vọng": {"vi": "Thất vọng", "group": "negative", "icon": "😞"},
-    "chỉ_trích": {"vi": "Chỉ trích", "group": "negative", "icon": "👎"},
-    "buồn_bã": {"vi": "Buồn bã", "group": "negative", "icon": "😢"},
-    "sợ_hãi": {"vi": "Sợ hãi", "group": "negative", "icon": "😨"},
+    "phẫn_nộ": {"vi": "Phẫn nộ", "group": "negative", "icon": ""},
+    "lo_ngại": {"vi": "Lo ngại", "group": "negative", "icon": ""},
+    "thất_vọng": {"vi": "Thất vọng", "group": "negative", "icon": ""},
+    "chỉ_trích": {"vi": "Chỉ trích", "group": "negative", "icon": ""},
+    "buồn_bã": {"vi": "Buồn bã", "group": "negative", "icon": ""},
+    "sợ_hãi": {"vi": "Sợ hãi", "group": "negative", "icon": ""},
     
     # Trung tính
-    "trung_lập": {"vi": "Trung lập", "group": "neutral", "icon": "😐"},
-    "hoài_nghi": {"vi": "Hoài nghi", "group": "neutral", "icon": "🤔"},
-    "ngạc_nhiên": {"vi": "Ngạc nhiên", "group": "neutral", "icon": "😲"},
+    "trung_lập": {"vi": "Trung lập", "group": "neutral", "icon": ""},
+    "hoài_nghi": {"vi": "Hoài nghi", "group": "neutral", "icon": ""},
+    "ngạc_nhiên": {"vi": "Ngạc nhiên", "group": "neutral", "icon": ""},
 }
 
 
@@ -302,7 +302,7 @@ class SentimentAnalyzer:
             group="neutral",
             group_vi="Trung lập",
             confidence=0.6,
-            icon="😐",
+            icon="",
             all_scores={k: 0.0 for k in EMOTION_CATEGORIES.keys()}
         )
     

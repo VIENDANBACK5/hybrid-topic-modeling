@@ -27,5 +27,17 @@ from app.models.model_trends import (
     ViralContent,
     CategoryTrendStats
 )
+from app.models.model_field_classification import (
+    Field,
+    ArticleFieldClassification,
+    FieldStatistics
+)
+from app.models.model_field_summary import FieldSummary
+from app.models.model_field_sentiment import FieldSentiment
+from app.models.model_economic_indicators import (
+    EconomicIndicator,
+    EconomicIndicatorGPT
+)
+from app.models.model_grdp_detail import GRDPDetail
 
 # Archived: model_user, model_crawl_history, model_source

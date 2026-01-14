@@ -33,7 +33,7 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         
         # Log slow requests
         if duration > 1.0:  # > 1 second
-            logger.warning(f"⚠️  Slow request: {endpoint} took {duration:.3f}s")
+            logger.warning(f"  Slow request: {endpoint} took {duration:.3f}s")
         
         return response
 
@@ -76,5 +76,5 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             logger.info(f"← {request.method} {request.url.path} - {response.status_code}")
             return response
         except Exception as e:
-            logger.error(f"✗ {request.method} {request.url.path} - Error: {e}")
+            logger.error(f" {request.method} {request.url.path} - Error: {e}")
             raise

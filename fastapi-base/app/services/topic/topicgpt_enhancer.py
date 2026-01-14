@@ -26,7 +26,7 @@ class TopicGPTEnhancer:
         - Suggest better names
         - Extract additional keywords
         """
-        logger.info("🎨 Enhancing custom topics with TopicGPT...")
+        logger.info(" Enhancing custom topics with TopicGPT...")
         
         if not self.topicgpt.is_available():
             logger.warning("TopicGPT not available (no API key)")
@@ -81,7 +81,7 @@ class TopicGPTEnhancer:
                             "topic_id": topic_id
                         })
                         enhanced_count += 1
-                        logger.info(f"   ✅ Enhanced: {name}")
+                        logger.info(f"    Enhanced: {name}")
             
             self.db.commit()
             
@@ -109,7 +109,7 @@ class TopicGPTEnhancer:
         - Generate better labels
         - Categorize topics
         """
-        logger.info("🔧 Refining discovered topics with TopicGPT...")
+        logger.info(" Refining discovered topics with TopicGPT...")
         
         if not self.topicgpt.is_available():
             return {
@@ -178,7 +178,7 @@ class TopicGPTEnhancer:
                 
                 if merge_result.get("merges"):
                     results["merge_suggestions"] = merge_result["merges"]
-                    logger.info(f"   ✅ Found {len(merge_result['merges'])} merge suggestions")
+                    logger.info(f"    Found {len(merge_result['merges'])} merge suggestions")
             
             return results
             
@@ -197,7 +197,7 @@ class TopicGPTEnhancer:
         """
         Categorize articles using TopicGPT
         """
-        logger.info("📑 Categorizing articles with TopicGPT...")
+        logger.info(" Categorizing articles with TopicGPT...")
         
         if not self.topicgpt.is_available():
             return {
@@ -275,7 +275,7 @@ class TopicGPTEnhancer:
         """
         Generate summaries for articles using TopicGPT
         """
-        logger.info("📝 Generating summaries with TopicGPT...")
+        logger.info(" Generating summaries with TopicGPT...")
         
         if not self.topicgpt.is_available():
             return {

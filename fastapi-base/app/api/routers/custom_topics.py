@@ -35,7 +35,7 @@ from fastapi import Security
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/custom-topics", tags=["📌 Custom Topics"])
+router = APIRouter(prefix="/api/v1/custom-topics", tags=["Custom Topics"])
 
 
 # ============================================
@@ -49,7 +49,7 @@ async def create_topic(
     api_key: str = Security(verify_api_key)
 ):
     """
-    🆕 Tạo topic mới
+     Tạo topic mới
     
     **Yêu cầu:**
     - Tên topic phải unique
@@ -99,7 +99,7 @@ async def create_topic(
     db.commit()
     db.refresh(db_topic)
     
-    logger.info(f"✅ Created topic: {db_topic.name} (ID: {db_topic.id})")
+    logger.info(f" Created topic: {db_topic.name} (ID: {db_topic.id})")
     
     # Clear classifier cache
     get_classifier().clear_cache()
@@ -115,7 +115,7 @@ async def list_topics(
     db: Session = Depends(get_db)
 ):
     """
-    📋 Danh sách topics
+     Danh sách topics
     
     **Filters:**
     - `active_only`: Chỉ lấy topics active (default: true)
@@ -145,7 +145,7 @@ async def get_topic(
     db: Session = Depends(get_db)
 ):
     """
-    🔍 Chi tiết 1 topic (kèm children và parent)
+     Chi tiết 1 topic (kèm children và parent)
     """
     topic = db.query(CustomTopic).filter(CustomTopic.id == topic_id).first()
     if not topic:
@@ -162,7 +162,7 @@ async def update_topic(
     api_key: str = Security(verify_api_key)
 ):
     """
-    ✏️ Cập nhật topic
+     Cập nhật topic
     
     **Note:** Sau khi update, nên chạy lại classification để cập nhật kết quả
     """
@@ -186,7 +186,7 @@ async def update_topic(
     db.commit()
     db.refresh(topic)
     
-    logger.info(f"✅ Updated topic: {topic.name} (ID: {topic.id})")
+    logger.info(f" Updated topic: {topic.name} (ID: {topic.id})")
     
     # Clear cache
     get_classifier().clear_cache()
@@ -202,7 +202,7 @@ async def delete_topic(
     api_key: str = Security(verify_api_key)
 ):
     """
-    🗑️ Xóa topic
+     Xóa topic
     
     **Soft delete (default):** Set is_active = False  
     **Hard delete:** Xóa vĩnh viễn (mất tất cả mappings)
@@ -216,13 +216,13 @@ async def delete_topic(
         db.query(ArticleCustomTopic).filter(ArticleCustomTopic.topic_id == topic_id).delete()
         db.delete(topic)
         db.commit()
-        logger.warning(f"🗑️ Hard deleted topic: {topic.name} (ID: {topic_id})")
+        logger.warning(f" Hard deleted topic: {topic.name} (ID: {topic_id})")
         return {"message": "Topic đã được xóa vĩnh viễn"}
     else:
         # Soft delete
         topic.is_active = False
         db.commit()
-        logger.info(f"✅ Soft deleted topic: {topic.name} (ID: {topic_id})")
+        logger.info(f" Soft deleted topic: {topic.name} (ID: {topic_id})")
         return {"message": "Topic đã được vô hiệu hóa"}
 
 
@@ -238,7 +238,7 @@ async def classify_articles(
     api_key: str = Security(verify_api_key)
 ):
     """
-    🤖 Phân loại bài viết vào custom topics
+     Phân loại bài viết vào custom topics
     
     **Modes:**
     - `article_ids`: Phân loại specific articles
@@ -286,7 +286,7 @@ async def classify_articles(
     if not articles:
         raise HTTPException(400, "Không có articles nào để phân loại")
     
-    logger.info(f"🤖 Classifying {len(articles)} articles into {len(topics)} topics using {request.method}")
+    logger.info(f" Classifying {len(articles)} articles into {len(topics)} topics using {request.method}")
     
     # Classify
     classifier = get_classifier()
@@ -304,7 +304,7 @@ async def classify_articles(
     
     processing_time = int((time.time() - start_time) * 1000)
     
-    logger.info(f"✅ Classification completed in {processing_time}ms: {summary}")
+    logger.info(f" Classification completed in {processing_time}ms: {summary}")
     
     return BulkClassificationResponse(
         total_articles=len(articles),
@@ -322,7 +322,7 @@ async def get_article_topics(
     db: Session = Depends(get_db)
 ):
     """
-    📄 Lấy danh sách topics của 1 article
+     Lấy danh sách topics của 1 article
     """
     mappings = db.query(ArticleCustomTopic).join(CustomTopic).filter(
         ArticleCustomTopic.article_id == article_id,
@@ -353,7 +353,7 @@ async def get_topic_articles(
     db: Session = Depends(get_db)
 ):
     """
-    📌 Lấy danh sách articles thuộc 1 topic
+     Lấy danh sách articles thuộc 1 topic
     """
     topic = db.query(CustomTopic).filter(CustomTopic.id == topic_id).first()
     if not topic:
@@ -398,7 +398,7 @@ async def get_topic_articles(
 @router.get("/stats/overview", response_model=ClassificationOverview)
 async def get_classification_overview(db: Session = Depends(get_db)):
     """
-    📊 Tổng quan hệ thống phân loại
+     Tổng quan hệ thống phân loại
     """
     from sqlalchemy import func, distinct
     
@@ -468,7 +468,7 @@ async def create_template(
     api_key: str = Security(verify_api_key)
 ):
     """
-    📋 Tạo template topics (để tái sử dụng)
+     Tạo template topics (để tái sử dụng)
     
     **Ví dụ:** Template "News Categories" với Politics, Economy, Sports, ...
     """
@@ -477,7 +477,7 @@ async def create_template(
     db.commit()
     db.refresh(db_template)
     
-    logger.info(f"✅ Created template: {db_template.name}")
+    logger.info(f" Created template: {db_template.name}")
     
     return db_template
 
@@ -487,7 +487,7 @@ async def list_templates(
     category: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """📋 Danh sách templates"""
+    """ Danh sách templates"""
     query = db.query(TopicTemplate).filter(TopicTemplate.is_public == True)
     
     if category:
@@ -503,7 +503,7 @@ async def apply_template(
     api_key: str = Security(verify_api_key)
 ):
     """
-    🎨 Áp dụng template để tạo hàng loạt topics
+     Áp dụng template để tạo hàng loạt topics
     
     **Note:** Sẽ skip topics trùng tên (trừ khi override_existing=true)
     """
@@ -552,7 +552,7 @@ async def apply_template(
     template.usage_count += 1
     db.commit()
     
-    logger.info(f"✅ Applied template '{template.name}': created {len(created)}, skipped {len(skipped)}")
+    logger.info(f" Applied template '{template.name}': created {len(created)}, skipped {len(skipped)}")
     
     return {
         "message": f"Created {len(created)} topics, skipped {len(skipped)}",

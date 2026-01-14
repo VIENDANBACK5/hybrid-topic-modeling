@@ -46,12 +46,12 @@ class BertopicTrainer:
         started_at = datetime.now()
         
         logger.info("=" * 60)
-        logger.info(f"🤖 STARTING BERTOPIC TRAINING - Session: {session_id}")
+        logger.info(f" STARTING BERTOPIC TRAINING - Session: {session_id}")
         logger.info("=" * 60)
         
         try:
             # 1. Load articles from database or processed file
-            logger.info("\n📚 Step 1/4: Loading articles...")
+            logger.info("\n Step 1/4: Loading articles...")
             
             if from_processed_file:
                 logger.info(f"   Loading from processed file: {from_processed_file}")
@@ -74,7 +74,7 @@ class BertopicTrainer:
                 metadata = load_result["metadata"]
                 article_ids = [m.get("id") for m in metadata if m.get("id")]
                 
-                logger.info(f"   ✅ Loaded {len(documents)} documents from file")
+                logger.info(f"    Loaded {len(documents)} documents from file")
                 
             else:
                 logger.info("   Loading from database...")
@@ -90,7 +90,7 @@ class BertopicTrainer:
                 rows = self.db.execute(query, {"limit": limit or 999999}).fetchall()
                 
                 if not rows:
-                    logger.warning("❌ No articles found for training")
+                    logger.warning(" No articles found for training")
                     return {
                         "status": "error",
                         "message": "No articles found",
@@ -107,10 +107,10 @@ class BertopicTrainer:
                     doc = f"{title}\n{content}"
                     documents.append(doc)
                 
-                logger.info(f"   ✅ Loaded {len(documents)} articles from database")
+                logger.info(f"    Loaded {len(documents)} articles from database")
             
             # 2. Save training session
-            logger.info("\n💾 Step 2/4: Creating training session...")
+            logger.info("\n Step 2/4: Creating training session...")
             self.saver.save_training_session(
                 db=self.db,
                 session_id=session_id,
@@ -124,10 +124,10 @@ class BertopicTrainer:
                 notes=f"Training on {len(documents)} articles",
                 created_by="orchestrator"
             )
-            logger.info(f"   ✅ Session created: {session_id}")
+            logger.info(f"    Session created: {session_id}")
             
             # 3. Initialize and train BERTopic
-            logger.info("\n🧠 Step 3/4: Training BERTopic model...")
+            logger.info("\n Step 3/4: Training BERTopic model...")
             logger.info(f"   Configuration:")
             logger.info(f"   - Documents: {len(documents)}")
             logger.info(f"   - Min topic size: {min_topic_size}")
@@ -149,7 +149,7 @@ class BertopicTrainer:
             )
             
             # 4. Get results
-            logger.info("\n📊 Step 4/4: Analyzing results...")
+            logger.info("\n Step 4/4: Analyzing results...")
             num_topics = len(set(topics)) - 1  # Exclude outlier topic (-1)
             num_outliers = sum(1 for t in topics if t == -1)
             
@@ -168,7 +168,7 @@ class BertopicTrainer:
             )
             
             logger.info("\n" + "=" * 60)
-            logger.info(f"✅ TRAINING COMPLETED")
+            logger.info(f" TRAINING COMPLETED")
             logger.info(f"   - Topics discovered: {num_topics}")
             logger.info(f"   - Outliers: {num_outliers}")
             logger.info(f"   - Duration: {training_duration:.1f}s")
@@ -188,12 +188,12 @@ class BertopicTrainer:
             # 5. Auto-classify short content with GPT
             short_docs_classified = 0
             if enable_topicgpt:
-                logger.info("\n📋 Step 5/5: Classifying short content with GPT...")
+                logger.info("\n Step 5/5: Classifying short content with GPT...")
                 short_docs_classified = self._classify_short_content_with_gpt(
                     session_id=session_id,
                     discovered_topics=discovered_topics
                 )
-                logger.info(f"✅ Classified {short_docs_classified} short documents")
+                logger.info(f" Classified {short_docs_classified} short documents")
             
             return {
                 "status": "completed",
@@ -214,7 +214,7 @@ class BertopicTrainer:
             }
             
         except Exception as e:
-            logger.error(f"❌ Training failed: {e}", exc_info=True)
+            logger.error(f" Training failed: {e}", exc_info=True)
             
             # Update session as failed
             self.saver.update_training_session(

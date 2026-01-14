@@ -32,7 +32,7 @@ class SentimentAnalysis(BareBaseModel):
     # Emotion cụ thể: vui_mừng, phẫn_nộ, lo_ngại, etc.
     emotion = Column(String(30), nullable=False, index=True)
     emotion_vi = Column(String(30))  # Vui mừng, Phẫn nộ, Lo ngại, etc.
-    emotion_icon = Column(String(10))  # 😊, 😠, 😟, etc.
+    emotion_icon = Column(String(10))  # , , , etc.
     
     # Group tổng quát: positive, negative, neutral
     sentiment_group = Column(String(20), nullable=False, index=True)

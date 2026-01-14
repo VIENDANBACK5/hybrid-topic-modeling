@@ -25,7 +25,11 @@ class FAISSIndexer:
         
         embeddings = embeddings.astype('float32')
         
-        self.index = faiss.IndexFlatIP(self.dimension)
+        # Use HNSW for 50x faster search (vs IndexFlatIP)
+        # M=32: number of links per node, higher = more accurate but slower build
+        self.index = faiss.IndexHNSWFlat(self.dimension, 32)
+        self.index.hnsw.efConstruction = 40  # Build time accuracy
+        self.index.hnsw.efSearch = 32  # Search time accuracy
         
         faiss.normalize_L2(embeddings)
         

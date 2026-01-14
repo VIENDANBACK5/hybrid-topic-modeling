@@ -10,6 +10,8 @@ from datetime import datetime
 from urllib.parse import urlparse
 import json
 
+from app.utils.domain_utils import extract_domain, ensure_domain
+
 logger = logging.getLogger(__name__)
 
 
@@ -184,7 +186,14 @@ class DataNormalizer:
                 return normalized, self.errors, self.warnings
             
             normalized['url'] = url
-            normalized['domain'] = self._extract_domain(url)
+            
+            # Extract domain using utility function
+            normalized['domain'] = extract_domain(
+                url=url,
+                source=doc.get('source'),
+                platform=platform,
+                account_name=doc.get('meta_data', {}).get('author_name') or doc.get('author', {}).get('name')
+            )
             
             # 4. Normalize content
             content = self._normalize_content(doc)

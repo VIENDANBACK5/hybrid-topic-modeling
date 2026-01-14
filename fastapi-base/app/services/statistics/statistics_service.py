@@ -22,6 +22,10 @@ import openai
 import os
 import json
 
+# LangChain imports
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
+from langchain_community.callbacks import get_openai_callback
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +63,20 @@ class StatisticsService:
     def __init__(self, db: Session):
         self.db = db
         self.keyphrase_extractor = get_keyphrase_extractor()
+        
+        # Initialize LangChain LLM for GPT cleaning
+        self.llm = None
+        try:
+            if os.getenv('OPENAI_API_KEY'):
+                self.llm = ChatOpenAI(
+                    model="gpt-4o-mini",
+                    temperature=0.3,
+                    max_tokens=4000,
+                    max_retries=2
+                )
+                logger.info(" LangChain LLM initialized for statistics")
+        except Exception as e:
+            logger.warning(f"Could not init LLM: {e}")
     
     # ========== HELPER METHODS ==========
     
@@ -177,20 +195,22 @@ class StatisticsService:
         sorted_phrases = sorted(phrase_counts.items(), key=lambda x: x[1], reverse=True)[:80]
         logger.info(f"Extracted {len(sorted_phrases)} raw phrases")
         
-        # 4. GPT clean với entity preservation
-        if not os.getenv('OPENAI_API_KEY'):
-            logger.warning("No OpenAI API key")
+        # 4. GPT clean với entity preservation using LangChain
+        if not self.llm:
+            logger.warning("No LLM available, using raw keywords")
             return {"keywords": [p for p, c in sorted_phrases[:30]], "method": "raw"}
         
-        prompt = f"""Bạn là chuyên gia xử lý từ khóa tiếng Việt.
+        phrases_list = [p for p, c in sorted_phrases[:50]]
+        
+        template = """Bạn là chuyên gia xử lý từ khóa tiếng Việt.
 
 Danh sách cụm từ từ tin tức Hưng Yên:
-{json.dumps([p for p, c in sorted_phrases[:50]], ensure_ascii=False)}
+{phrases}
 
 **YÊU CẦU:**
-1. ✅ GIỮ địa danh HOÀN CHỈNH: "hưng yên", "phố hiến", "hà nội"
-2. ❌ LOẠI BỎ: "hình hưng", "truyền hình hưng" (metadata), "có ai", "yên có" (không hoàn chỉnh)
-3. ✅ GIỮ: "giải phóng mặt bằng", "dự án", "phát triển kinh tế", "doanh nghiệp"
+1.  GIỮ địa danh HOÀN CHỈNH: "hưng yên", "phố hiến", "hà nội"
+2.  LOẠI BỎ: "hình hưng", "truyền hình hưng" (metadata), "có ai", "yên có" (không hoàn chỉnh)
+3.  GIỮ: "giải phóng mặt bằng", "dự án", "phát triển kinh tế", "doanh nghiệp"
 
 Output JSON:
 {{
@@ -204,17 +224,18 @@ Output JSON:
 Giữ 25-35 cụm có nghĩa.
 """
         
+        prompt = PromptTemplate(
+            input_variables=["phrases"],
+            template=template
+        )
+        
         try:
-            response = openai.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=4000,
-                response_format={"type": "json_object"}
-            )
-            result = json.loads(response.choices[0].message.content)
-            kept = result.get('kept', [])
-            logger.info(f"GPT kept {len(kept)} clean phrases")
+            with get_openai_callback() as cb:
+                chain = prompt | self.llm
+                response = chain.invoke({"phrases": json.dumps(phrases_list, ensure_ascii=False)})
+                result = json.loads(response.content)
+                kept = result.get('kept', [])
+                logger.info(f"GPT kept {len(kept)} clean phrases (tokens: {cb.total_tokens}, cost: ${cb.total_cost:.4f})")
         except Exception as e:
             logger.error(f"GPT cleaning failed: {e}")
             return {"keywords": [p for p, c in sorted_phrases[:30]], "method": "raw"}

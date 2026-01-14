@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 CATEGORIES = {
     "giao_duc": {
         "vi": "Giáo dục",
-        "icon": "📚",
+        "icon": "",
         "keywords": {
             "giáo dục", "học sinh", "sinh viên", "trường học", "đại học", "cao đẳng",
             "tiểu học", "trung học", "mầm non", "giáo viên", "thầy cô", "hiệu trưởng",
@@ -26,7 +26,7 @@ CATEGORIES = {
     },
     "y_te": {
         "vi": "Y tế - Sức khỏe",
-        "icon": "🏥",
+        "icon": "",
         "keywords": {
             "y tế", "bệnh viện", "bác sĩ", "y bác sĩ", "điều dưỡng", "bệnh nhân",
             "khám bệnh", "chữa bệnh", "thuốc", "vaccine", "tiêm chủng", "dịch bệnh",
@@ -38,7 +38,7 @@ CATEGORIES = {
     },
     "giao_thong": {
         "vi": "Giao thông",
-        "icon": "🚗",
+        "icon": "",
         "keywords": {
             "giao thông", "đường bộ", "đường sắt", "đường thủy", "hàng không",
             "tai nạn", "va chạm", "xe máy", "ô tô", "xe buýt", "tàu điện", "metro",
@@ -51,7 +51,7 @@ CATEGORIES = {
     },
     "hanh_chinh_cong": {
         "vi": "Hành chính công",
-        "icon": "🏛️",
+        "icon": "",
         "keywords": {
             "hành chính", "thủ tục", "giấy tờ", "công chứng", "chứng thực",
             "căn cước", "cmnd", "hộ khẩu", "khai sinh", "kết hôn", "đăng ký",
@@ -63,7 +63,7 @@ CATEGORIES = {
     },
     "kinh_te": {
         "vi": "Kinh tế - Tài chính",
-        "icon": "💰",
+        "icon": "",
         "keywords": {
             "kinh tế", "tài chính", "ngân hàng", "chứng khoán", "cổ phiếu",
             "lãi suất", "tỷ giá", "đô la", "vàng", "bất động sản", "nhà đất",
@@ -75,7 +75,7 @@ CATEGORIES = {
     },
     "moi_truong": {
         "vi": "Môi trường",
-        "icon": "🌿",
+        "icon": "",
         "keywords": {
             "môi trường", "ô nhiễm", "khí thải", "nước thải", "rác thải",
             "biến đổi khí hậu", "hiệu ứng nhà kính", "nóng lên toàn cầu",
@@ -87,7 +87,7 @@ CATEGORIES = {
     },
     "an_ninh_phap_luat": {
         "vi": "An ninh - Pháp luật",
-        "icon": "⚖️",
+        "icon": "",
         "keywords": {
             "công an", "cảnh sát", "an ninh", "trật tự", "tội phạm", "phạm tội",
             "bắt giữ", "truy nã", "điều tra", "khởi tố", "xét xử", "tòa án",
@@ -99,7 +99,7 @@ CATEGORIES = {
     },
     "xa_hoi": {
         "vi": "Xã hội",
-        "icon": "👥",
+        "icon": "",
         "keywords": {
             "xã hội", "dân sinh", "đời sống", "cộng đồng", "từ thiện", "nhân đạo",
             "người nghèo", "hộ nghèo", "an sinh", "bảo trợ", "trợ cấp",
@@ -110,7 +110,7 @@ CATEGORIES = {
     },
     "van_hoa_giai_tri": {
         "vi": "Văn hóa - Giải trí",
-        "icon": "🎭",
+        "icon": "",
         "keywords": {
             "văn hóa", "nghệ thuật", "âm nhạc", "ca sĩ", "diễn viên", "nghệ sĩ",
             "phim", "điện ảnh", "gameshow", "truyền hình", "ca nhạc", "concert",
@@ -121,7 +121,7 @@ CATEGORIES = {
     },
     "cong_nghe": {
         "vi": "Công nghệ",
-        "icon": "💻",
+        "icon": "",
         "keywords": {
             "công nghệ", "internet", "mạng", "wifi", "4g", "5g", "smartphone",
             "iphone", "android", "laptop", "máy tính", "phần mềm", "ứng dụng",
@@ -132,7 +132,7 @@ CATEGORIES = {
     },
     "quoc_te": {
         "vi": "Quốc tế",
-        "icon": "🌍",
+        "icon": "",
         "keywords": {
             "quốc tế", "thế giới", "toàn cầu", "nước ngoài", "liên hợp quốc",
             "mỹ", "trung quốc", "nga", "nhật bản", "hàn quốc", "châu âu",
@@ -143,7 +143,7 @@ CATEGORIES = {
     },
     "khac": {
         "vi": "Khác",
-        "icon": "📌",
+        "icon": "",
         "keywords": set()
     }
 }
@@ -231,7 +231,7 @@ class CategoryClassifier:
         return ClassificationResult(
             category="khac",
             category_vi="Khác",
-            icon="📌",
+            icon="",
             confidence=0.5,
             matched_keywords=[],
             all_scores={}

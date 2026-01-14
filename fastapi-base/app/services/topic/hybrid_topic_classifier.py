@@ -77,7 +77,7 @@ confidence: <0.0-1.0>
             topic_label = result.get('topic_label', 'Uncategorized')
             confidence = float(result.get('confidence', '0.5'))
             
-            logger.info(f"✅ GPT classified short content: Topic {topic_id} ({topic_label})")
+            logger.info(f" GPT classified short content: Topic {topic_id} ({topic_label})")
             return topic_id, topic_label, confidence
             
         except Exception as e:
@@ -180,4 +180,4 @@ confidence: <0.0-1.0>
                 })
         
         self.db.commit()
-        logger.info(f"✅ Saved {len(classifications)} GPT classifications")
+        logger.info(f" Saved {len(classifications)} GPT classifications")

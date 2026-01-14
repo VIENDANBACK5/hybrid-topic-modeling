@@ -23,9 +23,9 @@ class TextCleaner:
         try:
             from underthesea import word_tokenize
             self.word_tokenize = word_tokenize
-            logger.info("✅ Underthesea loaded successfully")
+            logger.info(" Underthesea loaded successfully")
         except ImportError:
-            logger.warning("⚠️ Underthesea not available, using basic tokenization")
+            logger.warning(" Underthesea not available, using basic tokenization")
             self.word_tokenize = None
         
         # Vietnamese stopwords (expanded list)
