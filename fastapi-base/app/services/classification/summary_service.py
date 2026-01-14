@@ -46,20 +46,20 @@ class FieldSummaryService:
                     base_url="https://openrouter.ai/api/v1"
                 )
                 self.provider = "openrouter"
-                logger.info("✅ OpenRouter client initialized for summary generation")
+                logger.info(" OpenRouter client initialized for summary generation")
                 return
             
             # Fallback to direct OpenAI
             if api_key:
                 self.client = OpenAI(api_key=api_key)
                 self.provider = "openai"
-                logger.info("✅ OpenAI client initialized for summary generation")
+                logger.info(" OpenAI client initialized for summary generation")
                 return
                     
         except Exception as e:
             logger.error(f"Failed to initialize LLM client: {e}")
         
-        logger.warning("⚠️ No LLM provider available - summary generation disabled")
+        logger.warning(" No LLM provider available - summary generation disabled")
     
     def is_llm_available(self) -> bool:
         """Kiểm tra LLM có sẵn sàng không"""
@@ -171,7 +171,7 @@ class FieldSummaryService:
         # Tạo prompt - FOCUS VÀO HƯNG YÊN với độ dài chi tiết
         prompt = f"""Phân tích và tóm tắt các bài viết gần đây về TỈNH HƯNG YÊN thuộc lĩnh vực "{field_name}".
 
-⚠️ QUAN TRỌNG: CHỈ TÓM TẮT VỀ HƯNG YÊN, KHÔNG ĐỀ CẬP CÁC TỈNH KHÁC HAY CẢ NƯỚC.
+ QUAN TRỌNG: CHỈ TÓM TẮT VỀ HƯNG YÊN, KHÔNG ĐỀ CẬP CÁC TỈNH KHÁC HAY CẢ NƯỚC.
 
 THỐNG KÊ:
 - Tổng số bài: {statistics['total']}
@@ -240,11 +240,11 @@ Chỉ trả về JSON, không giải thích thêm."""
             
             result = json.loads(result_text)
             
-            logger.info(f"✅ Generated summary for field '{field_name}' using {self.provider}")
+            logger.info(f" Generated summary for field '{field_name}' using {self.provider}")
             return result
             
         except Exception as e:
-            logger.error(f"❌ Failed to generate summary with {self.provider}: {e}")
+            logger.error(f" Failed to generate summary with {self.provider}: {e}")
             return None
     
     def create_summary(
@@ -348,7 +348,7 @@ Chỉ trả về JSON, không giải thích thêm."""
             existing.updated_at = time.time()
             
             self.db.commit()
-            logger.info(f"✅ Updated summary for field {field_id}")
+            logger.info(f" Updated summary for field {field_id}")
             return existing
         else:
             # Create new
@@ -377,7 +377,7 @@ Chỉ trả về JSON, không giải thích thêm."""
             self.db.commit()
             self.db.refresh(summary)
             
-            logger.info(f"✅ Created summary for field {field_id}")
+            logger.info(f" Created summary for field {field_id}")
             return summary
     
     def create_summaries_for_all_fields(

@@ -42,7 +42,7 @@ async def create_indicator(
     db: Session = Depends(get_db)
 ):
     """
-    🆕 Tạo mới một chỉ số kinh tế
+     Tạo mới một chỉ số kinh tế
     
     **Ví dụ:**
     ```json
@@ -79,7 +79,7 @@ async def get_indicator(
     db: Session = Depends(get_db)
 ):
     """
-    📊 Lấy thông tin một chỉ số kinh tế theo ID
+     Lấy thông tin một chỉ số kinh tế theo ID
     """
     service = EconomicIndicatorService(db)
     result = service.get_indicator(indicator_id)
@@ -97,7 +97,7 @@ async def update_indicator(
     db: Session = Depends(get_db)
 ):
     """
-    ✏️ Cập nhật một chỉ số kinh tế
+     Cập nhật một chỉ số kinh tế
     """
     try:
         service = EconomicIndicatorService(db)
@@ -120,7 +120,7 @@ async def delete_indicator(
     db: Session = Depends(get_db)
 ):
     """
-    🗑️ Xóa một chỉ số kinh tế
+     Xóa một chỉ số kinh tế
     """
     try:
         service = EconomicIndicatorService(db)
@@ -156,7 +156,7 @@ async def query_indicators(
     db: Session = Depends(get_db)
 ):
     """
-    🔍 Query các chỉ số kinh tế với filters và pagination
+     Query các chỉ số kinh tế với filters và pagination
     
     **Filters:**
     - `period_type`: monthly, quarterly, yearly
@@ -204,7 +204,7 @@ async def get_latest_indicator(
     db: Session = Depends(get_db)
 ):
     """
-    📈 Lấy chỉ số kinh tế mới nhất
+     Lấy chỉ số kinh tế mới nhất
     """
     service = EconomicIndicatorService(db)
     result = service.get_latest_indicator(period_type, province)
@@ -229,7 +229,7 @@ async def get_period_summary(
     db: Session = Depends(get_db)
 ):
     """
-    📊 Lấy tóm tắt các chỉ số kinh tế cho một kỳ cụ thể
+     Lấy tóm tắt các chỉ số kinh tế cho một kỳ cụ thể
     
     **Ví dụ:**
     - Tháng: `?period_type=monthly&year=2025&month=1`
@@ -267,7 +267,7 @@ async def ask_gpt_for_indicator(
     db: Session = Depends(get_db)
 ):
     """
-    🤖 Hỏi GPT để lấy dữ liệu chỉ số kinh tế khi không có trong DB
+     Hỏi GPT để lấy dữ liệu chỉ số kinh tế khi không có trong DB
     
     **Ví dụ:**
     ```json
@@ -302,7 +302,7 @@ async def batch_import_indicators(
     db: Session = Depends(get_db)
 ):
     """
-    📥 Import hàng loạt chỉ số kinh tế từ file hoặc API
+     Import hàng loạt chỉ số kinh tế từ file hoặc API
     
     **Ví dụ:**
     ```json
@@ -344,7 +344,7 @@ async def fill_missing_data(
     db: Session = Depends(get_db)
 ):
     """
-    🤖 Dùng OpenAI để fill các trường NULL trong indicator
+     Dùng OpenAI để fill các trường NULL trong indicator
     
     **Chức năng:**
     - Kiểm tra các trường quan trọng bị NULL
@@ -379,7 +379,7 @@ async def fill_missing_data(
         }
         
         # Fill missing fields
-        logger.info(f"🤖 Filling missing data for indicator {indicator_id}")
+        logger.info(f" Filling missing data for indicator {indicator_id}")
         filled_data = fill_missing_fields(indicator_dict, use_openai=True)
         
         # Update in database
@@ -419,7 +419,7 @@ async def batch_fill_missing_data(
     db: Session = Depends(get_db)
 ):
     """
-    🤖 Fill missing data hàng loạt cho nhiều indicators
+     Fill missing data hàng loạt cho nhiều indicators
     
     **Chức năng:**
     - Tìm các indicators có trường NULL
@@ -454,7 +454,7 @@ async def batch_fill_missing_data(
         
         indicators = query.limit(limit).all()
         
-        logger.info(f"🤖 Found {len(indicators)} indicators with missing data")
+        logger.info(f" Found {len(indicators)} indicators with missing data")
         
         results = []
         for indicator in indicators:
@@ -520,7 +520,7 @@ async def generate_summaries_for_indicators(
     db: Session = Depends(get_db)
 ):
     """
-    🤖 Tự động tạo summary cho economic indicators bằng OpenAI
+     Tự động tạo summary cho economic indicators bằng OpenAI
     
     **Tham số:**
     - `indicator_ids`: List các ID cụ thể cần gen summary. Nếu None = gen cho tất cả
@@ -557,7 +557,7 @@ async def generate_summaries_for_indicators(
         
         indicators = query.limit(limit).all()
         
-        logger.info(f"🤖 Generating summaries for {len(indicators)} indicators")
+        logger.info(f" Generating summaries for {len(indicators)} indicators")
         
         results = []
         for indicator in indicators:
@@ -590,7 +590,7 @@ async def generate_summaries_for_indicators(
                         "status": "generated",
                         "summary_length": len(summary)
                     })
-                    logger.info(f"  ✅ Generated summary for indicator {indicator.id}")
+                    logger.info(f"   Generated summary for indicator {indicator.id}")
                 else:
                     results.append({
                         "id": indicator.id,
@@ -634,7 +634,7 @@ async def generate_analyses_for_indicators(
     db: Session = Depends(get_db)
 ):
     """
-    🤖 Tự động tạo phân tích chi tiết cho từng nhóm chỉ số bằng OpenAI
+     Tự động tạo phân tích chi tiết cho từng nhóm chỉ số bằng OpenAI
     
     **Tham số:**
     - `indicator_ids`: List các ID cụ thể. Nếu None = gen cho tất cả
@@ -661,7 +661,7 @@ async def generate_analyses_for_indicators(
         
         indicators = query.limit(limit).all()
         
-        logger.info(f"🤖 Generating analyses for {len(indicators)} indicators")
+        logger.info(f" Generating analyses for {len(indicators)} indicators")
         
         results = []
         for indicator in indicators:
@@ -704,7 +704,7 @@ async def generate_analyses_for_indicators(
                         "status": "generated",
                         "analyses_count": len(analyses)
                     })
-                    logger.info(f"  ✅ Generated {len(analyses)} analyses for indicator {indicator.id}")
+                    logger.info(f"   Generated {len(analyses)} analyses for indicator {indicator.id}")
                 else:
                     results.append({
                         "id": indicator.id,

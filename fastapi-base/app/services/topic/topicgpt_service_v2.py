@@ -117,7 +117,7 @@ class TopicGPTServiceV2:
                     max_retries=3,
                     api_key=api_key
                 )
-                logger.info("✅ ChatOpenAI initialized")
+                logger.info(" ChatOpenAI initialized")
             
             elif self.api == "gemini":
                 api_key = os.getenv("GEMINI_API_KEY")
@@ -133,7 +133,7 @@ class TopicGPTServiceV2:
                     max_retries=3,
                     google_api_key=api_key
                 )
-                logger.info("✅ ChatGoogleGenerativeAI initialized")
+                logger.info(" ChatGoogleGenerativeAI initialized")
             
             else:
                 logger.warning(f"API {self.api} not supported")

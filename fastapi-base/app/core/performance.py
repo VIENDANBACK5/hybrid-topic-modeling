@@ -17,7 +17,7 @@ def timer(name: str):
     start = time.perf_counter()
     yield
     elapsed = time.perf_counter() - start
-    logger.info(f"⏱️  {name}: {elapsed:.3f}s")
+    logger.info(f"⏱  {name}: {elapsed:.3f}s")
 
 
 def measure_time(func: Callable) -> Callable:
@@ -30,7 +30,7 @@ def measure_time(func: Callable) -> Callable:
             return result
         finally:
             elapsed = time.perf_counter() - start
-            logger.info(f"⏱️  {func.__name__}: {elapsed:.3f}s")
+            logger.info(f"⏱  {func.__name__}: {elapsed:.3f}s")
     
     @functools.wraps(func)
     def sync_wrapper(*args, **kwargs):
@@ -40,7 +40,7 @@ def measure_time(func: Callable) -> Callable:
             return result
         finally:
             elapsed = time.perf_counter() - start
-            logger.info(f"⏱️  {func.__name__}: {elapsed:.3f}s")
+            logger.info(f"⏱  {func.__name__}: {elapsed:.3f}s")
     
     if asyncio.iscoroutinefunction(func):
         return async_wrapper

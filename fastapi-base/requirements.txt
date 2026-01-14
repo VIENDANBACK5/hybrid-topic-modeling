@@ -108,6 +108,8 @@ zipp==3.21.0
 # Pipeline dependencies
 scrapy==2.11.2
 beautifulsoup4==4.12.3
+lxml==5.3.0  # Better HTML parser
+playwright==1.49.1  # For JS-rendered pages
 feedparser==6.0.11
 aiohttp==3.11.11
 bertopic==0.17.4

@@ -38,19 +38,19 @@ class FieldSentimentService:
                     base_url="https://openrouter.ai/api/v1"
                 )
                 self.provider = "openrouter"
-                logger.info("✅ OpenRouter client initialized for sentiment analysis")
+                logger.info(" OpenRouter client initialized for sentiment analysis")
                 return
             
             if api_key:
                 self.client = OpenAI(api_key=api_key)
                 self.provider = "openai"
-                logger.info("✅ OpenAI client initialized for sentiment analysis")
+                logger.info(" OpenAI client initialized for sentiment analysis")
                 return
                     
         except Exception as e:
             logger.error(f"Failed to initialize LLM client: {e}")
         
-        logger.warning("⚠️ No LLM provider available - sentiment analysis disabled")
+        logger.warning(" No LLM provider available - sentiment analysis disabled")
     
     def is_llm_available(self) -> bool:
         """Kiểm tra LLM có sẵn sàng không"""
@@ -168,11 +168,11 @@ Chỉ trả về JSON."""
             
             result = json.loads(result_text)
             
-            logger.info(f"✅ Analyzed sentiment for field '{field_name}' using {self.provider}")
+            logger.info(f" Analyzed sentiment for field '{field_name}' using {self.provider}")
             return result
             
         except Exception as e:
-            logger.error(f"❌ Failed to analyze sentiment: {e}")
+            logger.error(f" Failed to analyze sentiment: {e}")
             return None
     
     def create_sentiment_analysis(
@@ -276,7 +276,7 @@ Chỉ trả về JSON."""
             existing.updated_at = time.time()
             
             self.db.commit()
-            logger.info(f"✅ Updated sentiment for field {field_id}")
+            logger.info(f" Updated sentiment for field {field_id}")
             return existing
         else:
             # Create new
@@ -310,7 +310,7 @@ Chỉ trả về JSON."""
             self.db.commit()
             self.db.refresh(sentiment)
             
-            logger.info(f"✅ Created sentiment analysis for field {field_id}")
+            logger.info(f" Created sentiment analysis for field {field_id}")
             return sentiment
     
     def create_sentiment_for_all_fields(

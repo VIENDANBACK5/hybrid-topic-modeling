@@ -194,13 +194,13 @@ class TrendAnalysisService:
         
         # Generate title
         if alert.alert_type == 'spike':
-            alert.title = f"📈 Đột biến: {alert.topic_name} tăng {alert.change_percent:.0f}%"
+            alert.title = f" Đột biến: {alert.topic_name} tăng {alert.change_percent:.0f}%"
         elif alert.alert_type == 'crisis':
-            alert.title = f"🚨 Khủng hoảng: {alert.topic_name} ({alert.negative_ratio*100:.0f}% tiêu cực)"
+            alert.title = f" Khủng hoảng: {alert.topic_name} ({alert.negative_ratio*100:.0f}% tiêu cực)"
         elif alert.alert_type == 'drop':
-            alert.title = f"📉 Sụt giảm: {alert.topic_name} giảm {abs(alert.change_percent):.0f}%"
+            alert.title = f" Sụt giảm: {alert.topic_name} giảm {abs(alert.change_percent):.0f}%"
         elif alert.alert_type == 'viral':
-            alert.title = f"🔥 Viral: {alert.topic_name}"
+            alert.title = f" Viral: {alert.topic_name}"
         
         return alert
     

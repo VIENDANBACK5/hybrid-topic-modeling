@@ -20,11 +20,11 @@ class LLMFieldClassifier:
         if self.api_key:
             try:
                 self.client = OpenAI(api_key=self.api_key)
-                logger.info("✅ OpenAI client initialized for field classification")
+                logger.info(" OpenAI client initialized for field classification")
             except Exception as e:
-                logger.error(f"❌ Failed to initialize OpenAI client: {e}")
+                logger.error(f" Failed to initialize OpenAI client: {e}")
         else:
-            logger.warning("⚠️ OPENAI_API_KEY not found - LLM classification disabled")
+            logger.warning(" OPENAI_API_KEY not found - LLM classification disabled")
     
     def is_available(self) -> bool:
         """Kiểm tra LLM có sẵn sàng không"""
@@ -107,17 +107,17 @@ Chỉ trả về JSON, không giải thích thêm."""
             reason = result.get("reason", "")
             
             if field_id > 0 and confidence > 0:
-                logger.info(f"✅ LLM classified: field_id={field_id}, confidence={confidence:.2f}")
+                logger.info(f" LLM classified: field_id={field_id}, confidence={confidence:.2f}")
                 return (field_id, confidence, reason)
             else:
-                logger.warning("❌ LLM could not classify article")
+                logger.warning(" LLM could not classify article")
                 return None
                 
         except json.JSONDecodeError as e:
-            logger.error(f"❌ Failed to parse LLM response: {e}")
+            logger.error(f" Failed to parse LLM response: {e}")
             return None
         except Exception as e:
-            logger.error(f"❌ LLM classification error: {e}")
+            logger.error(f" LLM classification error: {e}")
             return None
     
     def classify_batch(

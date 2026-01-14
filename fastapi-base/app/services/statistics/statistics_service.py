@@ -208,9 +208,9 @@ Danh sách cụm từ từ tin tức Hưng Yên:
 {phrases}
 
 **YÊU CẦU:**
-1. ✅ GIỮ địa danh HOÀN CHỈNH: "hưng yên", "phố hiến", "hà nội"
-2. ❌ LOẠI BỎ: "hình hưng", "truyền hình hưng" (metadata), "có ai", "yên có" (không hoàn chỉnh)
-3. ✅ GIỮ: "giải phóng mặt bằng", "dự án", "phát triển kinh tế", "doanh nghiệp"
+1.  GIỮ địa danh HOÀN CHỈNH: "hưng yên", "phố hiến", "hà nội"
+2.  LOẠI BỎ: "hình hưng", "truyền hình hưng" (metadata), "có ai", "yên có" (không hoàn chỉnh)
+3.  GIỮ: "giải phóng mặt bằng", "dự án", "phát triển kinh tế", "doanh nghiệp"
 
 Output JSON:
 {{

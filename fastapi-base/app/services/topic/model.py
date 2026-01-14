@@ -46,11 +46,11 @@ class TopicModel:
             from app.services.etl.vietnamese_tokenizer import get_vietnamese_tokenizer
             self.vietnamese_tokenizer = get_vietnamese_tokenizer()
             if self.vietnamese_tokenizer:
-                logger.info("✅ Vietnamese tokenizer enabled (Underthesea)")
+                logger.info(" Vietnamese tokenizer enabled (Underthesea)")
             else:
-                logger.warning("⚠️ Vietnamese tokenizer not available, using default")
+                logger.warning(" Vietnamese tokenizer not available, using default")
         except Exception as e:
-            logger.warning(f"⚠️ Could not setup Vietnamese tokenizer: {e}")
+            logger.warning(f" Could not setup Vietnamese tokenizer: {e}")
             self.vietnamese_tokenizer = None
     
     def _setup_topicgpt(self):
@@ -59,12 +59,12 @@ class TopicModel:
             from app.services.topic.topicgpt_service import get_topicgpt_service
             self.topicgpt_service = get_topicgpt_service()
             if self.topicgpt_service and self.topicgpt_service.client:
-                logger.info(f"✅ TopicGPT enabled ({self.topicgpt_service.api}/{self.topicgpt_service.model})")
+                logger.info(f" TopicGPT enabled ({self.topicgpt_service.api}/{self.topicgpt_service.model})")
             else:
-                logger.warning("⚠️ TopicGPT not available (no API key)")
+                logger.warning(" TopicGPT not available (no API key)")
                 self.topicgpt_service = None
         except Exception as e:
-            logger.warning(f"⚠️ Could not setup TopicGPT: {e}")
+            logger.warning(f" Could not setup TopicGPT: {e}")
             self.topicgpt_service = None
     
     def _setup_embedding_model(self):
@@ -111,7 +111,7 @@ class TopicModel:
             filtered = [t for t in tokens if ' ' not in t or t.count(' ') == 1]
             return ' '.join(filtered) if filtered else text
         except Exception as e:
-            logger.warning(f"⚠️ Vietnamese preprocessing error: {e}")
+            logger.warning(f" Vietnamese preprocessing error: {e}")
             return text
     
     def fit(self, documents: List[str], db=None, save_to_db: bool = True, article_ids: List[int] = None) -> Tuple[List[int], np.ndarray]:
@@ -138,12 +138,12 @@ class TopicModel:
         # Preprocess với Vietnamese tokenizer nếu enabled
         processed_documents = documents  # Keep original
         if self.use_vietnamese_tokenizer and self.vietnamese_tokenizer:
-            logger.info("🔧 Preprocessing documents with Vietnamese tokenizer...")
+            logger.info(" Preprocessing documents with Vietnamese tokenizer...")
             try:
                 processed_documents = [self._preprocess_vietnamese(doc) for doc in documents]
-                logger.info("✅ Vietnamese preprocessing completed")
+                logger.info(" Vietnamese preprocessing completed")
             except Exception as e:
-                logger.warning(f"⚠️ Vietnamese preprocessing failed: {e}, using original docs")
+                logger.warning(f" Vietnamese preprocessing failed: {e}, using original docs")
                 processed_documents = documents
         
         umap_model = self._setup_umap(len(processed_documents))
@@ -187,10 +187,10 @@ class TopicModel:
         # Auto-save to database
         if save_to_db and db is not None:
             try:
-                logger.info("💾 Saving discovered topics to database...")
+                logger.info(" Saving discovered topics to database...")
                 self._save_to_database(db, documents, training_duration, article_ids)
             except Exception as e:
-                logger.error(f"❌ Failed to save topics to database: {e}")
+                logger.error(f" Failed to save topics to database: {e}")
         
         return self.topics, self.probs
     
@@ -245,9 +245,9 @@ class TopicModel:
                     )
                     topic_result['description'] = description
                     
-                    logger.info(f"✅ TopicGPT enhanced topic {topic_id}: {label}")
+                    logger.info(f" TopicGPT enhanced topic {topic_id}: {label}")
                 except Exception as e:
-                    logger.warning(f"⚠️ TopicGPT failed for topic {topic_id}: {e}")
+                    logger.warning(f" TopicGPT failed for topic {topic_id}: {e}")
             
             results.append(topic_result)
         
@@ -314,7 +314,7 @@ class TopicModel:
             notes='Auto-saved from TopicModel.fit()'
         )
         
-        logger.info(f"✅ Saved discovered topics to database (session: {session_id})")
+        logger.info(f" Saved discovered topics to database (session: {session_id})")
         return session_id
     
     def save(self, model_name: str = "bertopic_model"):
@@ -385,7 +385,7 @@ class TopicModel:
             else:
                 timestamps = [pd.to_datetime(t) for t in timestamps]
         
-        logger.info(f"📊 Calculating topics over time for {len(documents)} documents...")
+        logger.info(f" Calculating topics over time for {len(documents)} documents...")
         
         # Get topics over time from BERTopic
         topics_over_time = self.topic_model.topics_over_time(
@@ -431,5 +431,5 @@ class TopicModel:
                     "timeline": timeline
                 })
         
-        logger.info(f"✅ Found {len(result['topics'])} topics over time")
+        logger.info(f" Found {len(result['topics'])} topics over time")
         return result

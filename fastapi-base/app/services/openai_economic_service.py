@@ -31,7 +31,7 @@ def call_openai_for_economic_data(
         Dict với dữ liệu tìm được
     """
     if not OPENAI_API_KEY:
-        logger.warning("⚠️ OPENAI_API_KEY not found, returning empty result")
+        logger.warning(" OPENAI_API_KEY not found, returning empty result")
         return {}
     
     try:
@@ -101,11 +101,11 @@ CHỈ trả về JSON, không giải thích."""
         
         result = json.loads(content)
         
-        logger.info(f"✅ OpenAI returned data for {indicator_name} {period_label}")
+        logger.info(f" OpenAI returned data for {indicator_name} {period_label}")
         return result
         
     except Exception as e:
-        logger.error(f"❌ OpenAI API error: {e}")
+        logger.error(f" OpenAI API error: {e}")
         return {}
 
 
@@ -138,10 +138,10 @@ def fill_missing_fields(
     ]
     
     if not missing_fields:
-        logger.info("✅ All important fields are filled")
+        logger.info(" All important fields are filled")
         return indicator_data
     
-    logger.info(f"🔍 Missing fields: {missing_fields}, calling OpenAI...")
+    logger.info(f" Missing fields: {missing_fields}, calling OpenAI...")
     
     # Call OpenAI
     period_label = indicator_data.get("period_label", "Unknown period")
@@ -164,7 +164,7 @@ def fill_missing_fields(
     for field in missing_fields:
         if field in openai_result and openai_result[field] is not None:
             indicator_data[field] = openai_result[field]
-            logger.info(f"  ✅ Filled {field}: {openai_result[field]}")
+            logger.info(f"   Filled {field}: {openai_result[field]}")
     
     # Add metadata
     if openai_result:
@@ -186,7 +186,7 @@ def generate_summary(indicator_data: Dict[str, Any]) -> Optional[str]:
         Tóm tắt ngắn (2-4 câu) hoặc None nếu lỗi
     """
     if not OPENAI_API_KEY:
-        logger.warning("⚠️ OPENAI_API_KEY not found, cannot generate summary")
+        logger.warning(" OPENAI_API_KEY not found, cannot generate summary")
         return None
     
     try:
@@ -254,11 +254,11 @@ Viết giọng điệu chuyên nghiệp, súc tích. CHỈ trả về đoạn t�
         )
         
         summary = response.choices[0].message.content.strip()
-        logger.info(f"✅ Generated summary for {location} {period}: {len(summary)} chars")
+        logger.info(f" Generated summary for {location} {period}: {len(summary)} chars")
         return summary
         
     except Exception as e:
-        logger.error(f"❌ Failed to generate summary: {e}")
+        logger.error(f" Failed to generate summary: {e}")
         return None
 
 
@@ -278,7 +278,7 @@ def generate_indicator_analysis(
         Phân tích chi tiết (3-5 câu) hoặc None nếu lỗi
     """
     if not OPENAI_API_KEY:
-        logger.warning("⚠️ OPENAI_API_KEY not found, cannot generate analysis")
+        logger.warning(" OPENAI_API_KEY not found, cannot generate analysis")
         return None
     
     try:
@@ -403,7 +403,7 @@ Viết 3-4 câu. CHỈ trả về phân tích."""
         
         prompt = prompts.get(indicator_type)
         if not prompt:
-            logger.warning(f"⚠️ Unknown indicator type: {indicator_type}")
+            logger.warning(f" Unknown indicator type: {indicator_type}")
             return None
         
         response = client.chat.completions.create(
@@ -417,11 +417,11 @@ Viết 3-4 câu. CHỈ trả về phân tích."""
         )
         
         analysis = response.choices[0].message.content.strip()
-        logger.info(f"✅ Generated {indicator_type} analysis for {location} {period}: {len(analysis)} chars")
+        logger.info(f" Generated {indicator_type} analysis for {location} {period}: {len(analysis)} chars")
         return analysis
         
     except Exception as e:
-        logger.error(f"❌ Failed to generate {indicator_type} analysis: {e}")
+        logger.error(f" Failed to generate {indicator_type} analysis: {e}")
         return None
 
 

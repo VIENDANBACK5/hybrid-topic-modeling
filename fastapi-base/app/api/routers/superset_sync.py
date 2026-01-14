@@ -28,7 +28,7 @@ async def update_all_superset_tables(
     db: Session = Depends(get_db)
 ) -> Dict:
     """
-    🎯 Update ALL tables for Superset dashboards with 1 click
+     Update ALL tables for Superset dashboards with 1 click
     
     Updates:
     - hot_topics (50 records)
@@ -64,12 +64,12 @@ async def update_all_superset_tables(
     
     try:
         if all_time:
-            logger.info(f"🔄 Starting Superset table updates (ALL TIME)...")
+            logger.info(f" Starting Superset table updates (ALL TIME)...")
             # Use very old date for all-time query
             period_start = datetime(2000, 1, 1)
             period_start_ts = 0  # Unix epoch start
         else:
-            logger.info(f"🔄 Starting Superset table updates (period: {period_days} days)...")
+            logger.info(f" Starting Superset table updates (period: {period_days} days)...")
             period_start = datetime.now() - timedelta(days=period_days)
             period_start_ts = period_start.timestamp()
         
@@ -77,7 +77,7 @@ async def update_all_superset_tables(
         
         # 1. HOT TOPICS
         try:
-            logger.info("1️⃣ Updating hot_topics...")
+            logger.info("1⃣ Updating hot_topics...")
             
             # Delete old records
             db.query(HotTopic).filter(
@@ -120,16 +120,16 @@ async def update_all_superset_tables(
             
             db.commit()
             results['hot_topics'] = len(hot_data)
-            logger.info(f"   ✅ Created {len(hot_data)} hot topics")
+            logger.info(f"    Created {len(hot_data)} hot topics")
             
         except Exception as e:
             errors.append(f"hot_topics: {str(e)}")
             db.rollback()
-            logger.error(f"   ❌ hot_topics failed: {e}")
+            logger.error(f"    hot_topics failed: {e}")
         
         # 2. VIRAL CONTENT
         try:
-            logger.info("2️⃣ Updating viral_contents...")
+            logger.info("2⃣ Updating viral_contents...")
             
             # Delete old records
             db.query(ViralContent).filter(
@@ -165,16 +165,16 @@ async def update_all_superset_tables(
             
             db.commit()
             results['viral_contents'] = v_cnt
-            logger.info(f"   ✅ Created {v_cnt} viral contents")
+            logger.info(f"    Created {v_cnt} viral contents")
             
         except Exception as e:
             errors.append(f"viral_contents: {str(e)}")
             db.rollback()
-            logger.error(f"   ❌ viral_contents failed: {e}")
+            logger.error(f"    viral_contents failed: {e}")
         
         # 3. TREND SERVICES
         try:
-            logger.info("3️⃣ Updating trend statistics...")
+            logger.info("3⃣ Updating trend statistics...")
             trend_service = TrendAnalysisService(db)
             
             # Hashtag stats
@@ -192,16 +192,16 @@ async def update_all_superset_tables(
             db.commit()
             results['trend_alerts'] = len(alerts) if alerts else 0
             
-            logger.info(f"   ✅ Trend statistics updated")
+            logger.info(f"    Trend statistics updated")
             
         except Exception as e:
             errors.append(f"trend_services: {str(e)}")
             db.rollback()
-            logger.error(f"   ❌ trend_services failed: {e}")
+            logger.error(f"    trend_services failed: {e}")
         
         # 4. STATISTICS SERVICES
         try:
-            logger.info("4️⃣ Updating statistics services...")
+            logger.info("4⃣ Updating statistics services...")
             stats_service = StatisticsService(db)
             
             # Trend report
@@ -219,26 +219,26 @@ async def update_all_superset_tables(
             db.commit()
             results['daily_snapshots'] = 'updated'
             
-            logger.info(f"   ✅ Statistics services updated")
+            logger.info(f"    Statistics services updated")
             
         except Exception as e:
             errors.append(f"stats_services: {str(e)}")
             db.rollback()
-            logger.error(f"   ❌ stats_services failed: {e}")
+            logger.error(f"    stats_services failed: {e}")
         
         # 5. FIELD SUMMARIES - SKIPPED (use /update-field-summaries endpoint instead)
         try:
-            logger.info("5️⃣ Skipping field_summaries (use dedicated endpoint)...")
+            logger.info("5⃣ Skipping field_summaries (use dedicated endpoint)...")
             results['field_summaries'] = 'skipped_use_dedicated_endpoint'
             
         except Exception as e:
             errors.append(f"field_summaries: {str(e)}")
             db.rollback()
-            logger.error(f"   ❌ field_summaries failed: {e}")
+            logger.error(f"    field_summaries failed: {e}")
         
         # 6. TOPICS OVER TIME
         try:
-            logger.info("6️⃣ Updating topics_over_time...")
+            logger.info("6⃣ Updating topics_over_time...")
             
             # Delete old records
             db.execute(text("DELETE FROM topics_over_time"))
@@ -279,14 +279,14 @@ async def update_all_superset_tables(
             # Count results
             count = db.execute(text("SELECT COUNT(*) FROM topics_over_time")).scalar()
             results['topics_over_time'] = count
-            logger.info(f"   ✅ Created {count} topics_over_time records")
+            logger.info(f"    Created {count} topics_over_time records")
             
         except Exception as e:
             errors.append(f"topics_over_time: {str(e)}")
             db.rollback()
-            logger.error(f"   ❌ topics_over_time failed: {e}")
+            logger.error(f"    topics_over_time failed: {e}")
         
-        logger.info(f"✅ Superset table updates completed!")
+        logger.info(f" Superset table updates completed!")
         
         return {
             "status": "success" if not errors else "partial_success",
@@ -299,14 +299,14 @@ async def update_all_superset_tables(
         }
         
     except Exception as e:
-        logger.error(f"❌ Superset update failed: {e}", exc_info=True)
+        logger.error(f" Superset update failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/status")
 async def get_superset_table_status(db: Session = Depends(get_db)) -> Dict:
     """
-    📊 Check status of all Superset tables
+     Check status of all Superset tables
     
     Returns record counts and last update times
     """
@@ -377,7 +377,7 @@ async def update_field_summaries_only(
     db: Session = Depends(get_db)
 ) -> Dict:
     """
-    🎯 Update ONLY field_summaries with LLM-generated summaries (using OpenRouter)
+     Update ONLY field_summaries with LLM-generated summaries (using OpenRouter)
     
     Creates monthly summaries for January 2026
     Uses OpenRouter API with gpt-4o-mini (cheap & good quality)
@@ -389,7 +389,7 @@ async def update_field_summaries_only(
         curl -X POST "http://localhost:7777/superset/update-field-summaries"
     """
     try:
-        logger.info("📝 Starting field_summaries update with OpenRouter...")
+        logger.info(" Starting field_summaries update with OpenRouter...")
         
         from app.services.classification.summary_service import FieldSummaryService
         
@@ -403,7 +403,7 @@ async def update_field_summaries_only(
                 "field_summaries": 0
             }
         
-        logger.info(f"✅ Using provider: {summary_service.provider}")
+        logger.info(f" Using provider: {summary_service.provider}")
         
         # Create monthly summary for January 2026 (current data)
         all_summaries = []
@@ -418,13 +418,13 @@ async def update_field_summaries_only(
             )
             if summaries:
                 all_summaries.extend(summaries)
-                logger.info(f"   ✅ Created {len(summaries)} summaries for {target_date.strftime('%B %Y')}")
+                logger.info(f"    Created {len(summaries)} summaries for {target_date.strftime('%B %Y')}")
             db.commit()
         except Exception as e:
-            logger.error(f"   ❌ Failed for {target_date}: {e}")
+            logger.error(f"    Failed for {target_date}: {e}")
             db.rollback()
         
-        logger.info(f"✅ Field summaries updated: {len(all_summaries)} records total")
+        logger.info(f" Field summaries updated: {len(all_summaries)} records total")
         
         return {
             "status": "success",
@@ -435,7 +435,7 @@ async def update_field_summaries_only(
         }
         
     except Exception as e:
-        logger.error(f"❌ Field summaries update failed: {e}", exc_info=True)
+        logger.error(f" Field summaries update failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -444,7 +444,7 @@ async def update_field_sentiments_only(
     db: Session = Depends(get_db)
 ) -> Dict:
     """
-    🎯 Update field_sentiments - Phân tích sentiment theo lĩnh vực
+     Update field_sentiments - Phân tích sentiment theo lĩnh vực
     
     Phân tích cảm xúc (tích cực/tiêu cực/trung lập) của tin tức theo từng lĩnh vực
     Sử dụng OpenRouter + LLM để phân tích sentiment
@@ -456,7 +456,7 @@ async def update_field_sentiments_only(
         curl -X POST "http://localhost:7777/superset/update-field-sentiments"
     """
     try:
-        logger.info("📊 Starting field sentiment analysis...")
+        logger.info(" Starting field sentiment analysis...")
         
         from app.services.classification.field_sentiment_service import FieldSentimentService
         
@@ -470,7 +470,7 @@ async def update_field_sentiments_only(
                 "field_sentiments": 0
             }
         
-        logger.info(f"✅ Using provider: {sentiment_service.provider}")
+        logger.info(f" Using provider: {sentiment_service.provider}")
         
         # Create sentiment analysis for January 2026
         target_date = datetime(2026, 1, 15).date()
@@ -482,14 +482,14 @@ async def update_field_sentiments_only(
                 target_date=target_date,
                 model="openai/gpt-4o-mini"
             )
-            logger.info(f"   ✅ Created {len(sentiments)} sentiment analyses")
+            logger.info(f"    Created {len(sentiments)} sentiment analyses")
             db.commit()
         except Exception as e:
-            logger.error(f"   ❌ Failed sentiment analysis: {e}")
+            logger.error(f"    Failed sentiment analysis: {e}")
             db.rollback()
             raise
         
-        logger.info(f"✅ Field sentiments updated: {len(sentiments)} records")
+        logger.info(f" Field sentiments updated: {len(sentiments)} records")
         
         return {
             "status": "success",
@@ -500,5 +500,5 @@ async def update_field_sentiments_only(
         }
         
     except Exception as e:
-        logger.error(f"❌ Field sentiments update failed: {e}", exc_info=True)
+        logger.error(f" Field sentiments update failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

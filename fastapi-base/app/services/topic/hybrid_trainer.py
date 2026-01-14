@@ -81,7 +81,7 @@ class HybridTopicTrainer:
         Returns:
             Dict with results and method used
         """
-        logger.info("🤖 HYBRID TRAINER - Analyzing training needs...")
+        logger.info(" HYBRID TRAINER - Analyzing training needs...")
         
         # Rollback any pending transaction
         try:
@@ -101,7 +101,7 @@ class HybridTopicTrainer:
         
         if should_retrain:
             # Full training
-            logger.info("🔄 Executing FULL TRAINING...")
+            logger.info(" Executing FULL TRAINING...")
             result = self.full_trainer.train_from_articles(
                 limit=None,  # All articles
                 min_topic_size=min_topic_size,
@@ -113,7 +113,7 @@ class HybridTopicTrainer:
             return result
         else:
             # Transform new articles only
-            logger.info("⚡ Executing INCREMENTAL TRANSFORM...")
+            logger.info(" Executing INCREMENTAL TRANSFORM...")
             result = self._transform_new_articles()
             result['method'] = 'transform'
             result['reason'] = reason
@@ -135,7 +135,7 @@ class HybridTopicTrainer:
             }
         
         # Load latest model
-        logger.info("📥 Loading existing model...")
+        logger.info(" Loading existing model...")
         model = self._load_latest_model()
         
         if not model:
@@ -158,7 +158,7 @@ class HybridTopicTrainer:
         rows = self.db.execute(query, {"since": last_train}).fetchall()
         
         if not rows:
-            logger.info("✅ No new articles to process")
+            logger.info(" No new articles to process")
             return {
                 "status": "success",
                 "message": "No new articles found",
@@ -173,11 +173,11 @@ class HybridTopicTrainer:
         documents = [f"{row[1] or ''}\n{row[2] or ''}" for row in rows]
         
         # Transform
-        logger.info("🔮 Transforming new articles...")
+        logger.info(" Transforming new articles...")
         topics, probs = model.transform(documents)
         
         # Save mappings
-        logger.info("💾 Saving topic mappings...")
+        logger.info(" Saving topic mappings...")
         saved = 0
         for article_id, topic_id, prob in zip(article_ids, topics, probs):
             if topic_id == -1:  # Skip outliers
@@ -200,7 +200,7 @@ class HybridTopicTrainer:
         
         self.db.commit()
         
-        logger.info(f"✅ Transform completed: {saved}/{len(documents)} mapped")
+        logger.info(f" Transform completed: {saved}/{len(documents)} mapped")
         
         return {
             "status": "success",

@@ -32,11 +32,11 @@ class EconomicIndicatorService:
             self.db.add(indicator)
             self.db.commit()
             self.db.refresh(indicator)
-            logger.info(f"✅ Created economic indicator: {data.period_label}")
+            logger.info(f" Created economic indicator: {data.period_label}")
             return indicator
         except Exception as e:
             self.db.rollback()
-            logger.error(f"❌ Failed to create indicator: {e}")
+            logger.error(f" Failed to create indicator: {e}")
             raise
     
     def get_indicator(self, indicator_id: int) -> Optional[EconomicIndicator]:
@@ -62,11 +62,11 @@ class EconomicIndicatorService:
             
             self.db.commit()
             self.db.refresh(indicator)
-            logger.info(f"✅ Updated economic indicator {indicator_id}")
+            logger.info(f" Updated economic indicator {indicator_id}")
             return indicator
         except Exception as e:
             self.db.rollback()
-            logger.error(f"❌ Failed to update indicator: {e}")
+            logger.error(f" Failed to update indicator: {e}")
             raise
     
     def delete_indicator(self, indicator_id: int) -> bool:
@@ -78,11 +78,11 @@ class EconomicIndicatorService:
             
             self.db.delete(indicator)
             self.db.commit()
-            logger.info(f"✅ Deleted economic indicator {indicator_id}")
+            logger.info(f" Deleted economic indicator {indicator_id}")
             return True
         except Exception as e:
             self.db.rollback()
-            logger.error(f"❌ Failed to delete indicator: {e}")
+            logger.error(f" Failed to delete indicator: {e}")
             raise
     
     def query_indicators(self, query: EconomicIndicatorQuery) -> Dict[str, Any]:
@@ -129,7 +129,7 @@ class EconomicIndicatorService:
                 "data": indicators
             }
         except Exception as e:
-            logger.error(f"❌ Failed to query indicators: {e}")
+            logger.error(f" Failed to query indicators: {e}")
             raise
     
     def get_latest_indicator(
@@ -227,7 +227,7 @@ class EconomicIndicatorService:
                 key_metrics=key_metrics
             )
         except Exception as e:
-            logger.error(f"❌ Failed to get summary: {e}")
+            logger.error(f" Failed to get summary: {e}")
             raise
     
     def _get_all_indicator_names(self) -> List[str]:
@@ -287,11 +287,11 @@ class EconomicIndicatorService:
             self.db.commit()
             self.db.refresh(gpt_entry)
             
-            logger.info(f"✅ Created GPT entry for {request.indicator_name}")
+            logger.info(f" Created GPT entry for {request.indicator_name}")
             return gpt_entry
         except Exception as e:
             self.db.rollback()
-            logger.error(f"❌ Failed to create GPT entry: {e}")
+            logger.error(f" Failed to create GPT entry: {e}")
             raise
     
     def batch_import_indicators(
@@ -343,5 +343,5 @@ class EconomicIndicatorService:
             }
         except Exception as e:
             self.db.rollback()
-            logger.error(f"❌ Failed to batch import: {e}")
+            logger.error(f" Failed to batch import: {e}")
             raise

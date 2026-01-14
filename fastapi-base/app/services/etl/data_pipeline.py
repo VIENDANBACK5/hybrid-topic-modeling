@@ -56,7 +56,7 @@ class DataPipelineService:
         Returns:
             Dict với file path và số records
         """
-        logger.info("📥 Step 1: Fetching data from external API...")
+        logger.info(" Step 1: Fetching data from external API...")
         
         try:
             import requests
@@ -85,7 +85,7 @@ class DataPipelineService:
             else:
                 record_count = 0
             
-            logger.info(f"   ✅ Saved {record_count} records to {raw_file}")
+            logger.info(f"    Saved {record_count} records to {raw_file}")
             
             return {
                 "status": "success",
@@ -94,7 +94,7 @@ class DataPipelineService:
             }
             
         except Exception as e:
-            logger.error(f"   ❌ Failed to fetch data: {e}")
+            logger.error(f"    Failed to fetch data: {e}")
             return {
                 "status": "error",
                 "error": str(e)
@@ -115,7 +115,7 @@ class DataPipelineService:
         Returns:
             Dict với file path và số records
         """
-        logger.info("📥 Step 1b: Exporting data from database to raw file...")
+        logger.info(" Step 1b: Exporting data from database to raw file...")
         
         try:
             # Query articles
@@ -162,7 +162,7 @@ class DataPipelineService:
             with open(raw_file, 'w', encoding='utf-8') as f:
                 json.dump(articles, f, ensure_ascii=False, indent=2)
             
-            logger.info(f"   ✅ Exported {len(articles)} articles to {raw_file}")
+            logger.info(f"    Exported {len(articles)} articles to {raw_file}")
             
             return {
                 "status": "success",
@@ -171,7 +171,7 @@ class DataPipelineService:
             }
             
         except Exception as e:
-            logger.error(f"   ❌ Failed to export data: {e}")
+            logger.error(f"    Failed to export data: {e}")
             return {
                 "status": "error",
                 "error": str(e)
@@ -199,7 +199,7 @@ class DataPipelineService:
         Returns:
             Dict với processed file path và statistics
         """
-        logger.info("🔧 Step 2: Processing raw data...")
+        logger.info(" Step 2: Processing raw data...")
         
         try:
             # Load raw data
@@ -260,8 +260,8 @@ class DataPipelineService:
             with open(processed_file, 'w', encoding='utf-8') as f:
                 json.dump(processed_records_serializable, f, ensure_ascii=False, indent=2)
             
-            logger.info(f"   ✅ Processed {stats['success']}/{stats['total']} records")
-            logger.info(f"   💾 Saved to {processed_file}")
+            logger.info(f"    Processed {stats['success']}/{stats['total']} records")
+            logger.info(f"    Saved to {processed_file}")
             
             return {
                 "status": "success",
@@ -275,7 +275,7 @@ class DataPipelineService:
             }
             
         except Exception as e:
-            logger.error(f"   ❌ Failed to process data: {e}")
+            logger.error(f"    Failed to process data: {e}")
             return {
                 "status": "error",
                 "error": str(e)
@@ -296,7 +296,7 @@ class DataPipelineService:
         Returns:
             Dict với statistics
         """
-        logger.info("💾 Step 3: Loading processed data to database...")
+        logger.info(" Step 3: Loading processed data to database...")
         
         try:
             # Load processed data
@@ -412,7 +412,7 @@ class DataPipelineService:
                     self.db.rollback()  # Rollback chỉ record này
                     continue
             
-            logger.info(f"   ✅ Inserted: {stats['inserted']}, Updated: {stats['updated']}, Skipped: {stats['skipped']}")
+            logger.info(f"    Inserted: {stats['inserted']}, Updated: {stats['updated']}, Skipped: {stats['skipped']}")
             
             return {
                 "status": "success",
@@ -420,7 +420,7 @@ class DataPipelineService:
             }
             
         except Exception as e:
-            logger.error(f"   ❌ Failed to load data: {e}")
+            logger.error(f"    Failed to load data: {e}")
             self.db.rollback()
             return {
                 "status": "error",
@@ -442,7 +442,7 @@ class DataPipelineService:
         Returns:
             Dict với documents và metadata
         """
-        logger.info("📚 Loading processed data for training...")
+        logger.info(" Loading processed data for training...")
         
         try:
             # Find file
@@ -486,7 +486,7 @@ class DataPipelineService:
                     "length": len(content)
                 })
             
-            logger.info(f"   ✅ Loaded {len(documents)} documents from {processed_file}")
+            logger.info(f"    Loaded {len(documents)} documents from {processed_file}")
             
             return {
                 "status": "success",
@@ -496,7 +496,7 @@ class DataPipelineService:
             }
             
         except Exception as e:
-            logger.error(f"   ❌ Failed to load training data: {e}")
+            logger.error(f"    Failed to load training data: {e}")
             return {
                 "status": "error",
                 "error": str(e)

@@ -26,9 +26,9 @@ def get_text_cleaner():
         try:
             from app.services.etl.text_cleaner import TextCleaner
             _text_cleaner = TextCleaner()
-            logger.info("✅ TextCleaner initialized for preprocessing")
+            logger.info(" TextCleaner initialized for preprocessing")
         except Exception as e:
-            logger.warning(f"⚠️ Could not initialize TextCleaner: {e}")
+            logger.warning(f" Could not initialize TextCleaner: {e}")
             _text_cleaner = None
     return _text_cleaner
 
@@ -75,7 +75,7 @@ def get_vietnamese_tokenizer() -> Optional[Callable[[str], List[str]]]:
     _tokenizer_initialized = True
     try:
         from underthesea import word_tokenize
-        logger.info("✅ Sử dụng underthesea cho Vietnamese tokenization với phrase extraction")
+        logger.info(" Sử dụng underthesea cho Vietnamese tokenization với phrase extraction")
         
         cleaner = get_text_cleaner()
 
@@ -90,10 +90,9 @@ def get_vietnamese_tokenizer() -> Optional[Callable[[str], List[str]]]:
                 try:
                     text = cleaner.clean(text, deep_clean=True, tokenize=False)
                 except Exception as e:
-                    logger.warning(f"⚠️ Lỗi khi sử dụng TextCleaner: {e}")
+                    logger.warning(f" Lỗi khi sử dụng TextCleaner: {e}")
                     return fallback_tokenize(text)
             else:
-                # Fallback: simple normalize
                 text = text.lower().strip()
             
             if not text:
@@ -157,12 +156,12 @@ def get_vietnamese_tokenizer() -> Optional[Callable[[str], List[str]]]:
         return _vietnamese_tokenizer
         
     except ImportError:
-        logger.warning("⚠️ underthesea chưa được cài đặt. Sử dụng simple tokenizer.")
-        logger.warning("💡 Cài đặt: pip install underthesea")
+        logger.warning(" underthesea chưa được cài đặt. Sử dụng simple tokenizer.")
+        logger.warning(" Cài đặt: pip install underthesea")
         _vietnamese_tokenizer = None
         return None
     except Exception as e:
-        logger.warning(f"⚠️ Lỗi khi khởi tạo underthesea: {e}. Sử dụng simple tokenizer.")
+        logger.warning(f" Lỗi khi khởi tạo underthesea: {e}. Sử dụng simple tokenizer.")
         _vietnamese_tokenizer = None
         return None
 

@@ -11,7 +11,7 @@ from app.core.router import router
 from app.api import api_router
 from app.models import Base
 from app.api.routers import topic_service, sync_service, custom_topics, field_classification, superset_sync, economic_indicators
-from app.api import orchestrator, topicgpt_api, data_pipeline_api, data_fetch_api, data_process_api, api_grdp_detail
+from app.api import orchestrator, topicgpt_api, data_pipeline_api, data_fetch_api, data_process_api, api_grdp_detail, api_economic_extraction
 from app.core.database import get_engine
 from app.core.config import settings
 from app.core.rate_limit import RateLimitMiddleware
@@ -101,6 +101,9 @@ def get_application() -> FastAPI:
     
     # GRDP Detail API
     application.include_router(api_grdp_detail.router)
+    
+    # Economic Data Extraction (Universal)
+    application.include_router(api_economic_extraction.router)
     
     application.add_exception_handler(CustomException, custom_error_handler)
     application.add_exception_handler(ValidationException, validation_exception_handler)

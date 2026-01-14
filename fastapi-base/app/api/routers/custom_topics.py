@@ -49,7 +49,7 @@ async def create_topic(
     api_key: str = Security(verify_api_key)
 ):
     """
-    🆕 Tạo topic mới
+     Tạo topic mới
     
     **Yêu cầu:**
     - Tên topic phải unique
@@ -145,7 +145,7 @@ async def get_topic(
     db: Session = Depends(get_db)
 ):
     """
-    🔍 Chi tiết 1 topic (kèm children và parent)
+     Chi tiết 1 topic (kèm children và parent)
     """
     topic = db.query(CustomTopic).filter(CustomTopic.id == topic_id).first()
     if not topic:
@@ -162,7 +162,7 @@ async def update_topic(
     api_key: str = Security(verify_api_key)
 ):
     """
-    ✏️ Cập nhật topic
+     Cập nhật topic
     
     **Note:** Sau khi update, nên chạy lại classification để cập nhật kết quả
     """
@@ -202,7 +202,7 @@ async def delete_topic(
     api_key: str = Security(verify_api_key)
 ):
     """
-    🗑️ Xóa topic
+     Xóa topic
     
     **Soft delete (default):** Set is_active = False  
     **Hard delete:** Xóa vĩnh viễn (mất tất cả mappings)
@@ -216,7 +216,7 @@ async def delete_topic(
         db.query(ArticleCustomTopic).filter(ArticleCustomTopic.topic_id == topic_id).delete()
         db.delete(topic)
         db.commit()
-        logger.warning(f"🗑️ Hard deleted topic: {topic.name} (ID: {topic_id})")
+        logger.warning(f" Hard deleted topic: {topic.name} (ID: {topic_id})")
         return {"message": "Topic đã được xóa vĩnh viễn"}
     else:
         # Soft delete
@@ -322,7 +322,7 @@ async def get_article_topics(
     db: Session = Depends(get_db)
 ):
     """
-    📄 Lấy danh sách topics của 1 article
+     Lấy danh sách topics của 1 article
     """
     mappings = db.query(ArticleCustomTopic).join(CustomTopic).filter(
         ArticleCustomTopic.article_id == article_id,

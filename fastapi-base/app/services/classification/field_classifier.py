@@ -171,7 +171,7 @@ class FieldClassificationService:
             existing.classification_method = result_method
             existing.updated_at = time.time()
             self.db.commit()
-            logger.info(f"✅ Updated classification for article {article_id}: field={result_field_id}, method={result_method}")
+            logger.info(f" Updated classification for article {article_id}: field={result_field_id}, method={result_method}")
             return existing
         else:
             classification = ArticleFieldClassification(

@@ -56,13 +56,13 @@ class PipelineOrchestrator:
         }
         
         logger.info("=" * 60)
-        logger.info("🚀 STARTING FULL PIPELINE")
+        logger.info(" STARTING FULL PIPELINE")
         logger.info("=" * 60)
         
         try:
             # Step 1: Sync data từ external API
             if sync_data:
-                logger.info("\n📥 Step 1/6: Syncing data from external API...")
+                logger.info("\n Step 1/6: Syncing data from external API...")
                 try:
                     from sqlalchemy import text
                     # Check current count
@@ -77,13 +77,13 @@ class PipelineOrchestrator:
                     }
                     logger.info(f"   Current articles in DB: {count_result}")
                 except Exception as e:
-                    logger.error(f"   ❌ Sync failed: {e}")
+                    logger.error(f"    Sync failed: {e}")
                     results["errors"].append(f"Sync: {str(e)}")
                     results["steps"]["sync"] = {"status": "error", "error": str(e)}
             
             # Step 2: Classify topics
             if classify_topics:
-                logger.info("\n🏷️  Step 2/6: Classifying topics...")
+                logger.info("\n  Step 2/6: Classifying topics...")
                 try:
                     from sqlalchemy import text
                     
@@ -126,22 +126,22 @@ class PipelineOrchestrator:
                             "processed": len(articles_to_classify),
                             "classified": classified_count
                         }
-                        logger.info(f"   ✅ Classified {classified_count}/{len(articles_to_classify)} articles")
+                        logger.info(f"    Classified {classified_count}/{len(articles_to_classify)} articles")
                     else:
                         results["steps"]["classify"] = {
                             "status": "skipped",
                             "message": "No unclassified articles"
                         }
-                        logger.info("   ⏭️  No unclassified articles found")
+                        logger.info("     No unclassified articles found")
                         
                 except Exception as e:
-                    logger.error(f"   ❌ Classification failed: {e}")
+                    logger.error(f"    Classification failed: {e}")
                     results["errors"].append(f"Classify: {str(e)}")
                     results["steps"]["classify"] = {"status": "error", "error": str(e)}
             
             # Step 3: Analyze sentiment & link to topics
             if analyze_sentiment:
-                logger.info("\n😊 Step 3/6: Analyzing sentiment...")
+                logger.info("\n Step 3/6: Analyzing sentiment...")
                 try:
                     from sqlalchemy import text
                     
@@ -182,22 +182,22 @@ class PipelineOrchestrator:
                             "analyzed": analyzed_count,
                             "topics_updated": len(topics)
                         }
-                        logger.info(f"   ✅ Analyzed {analyzed_count} articles, updated {len(topics)} topics")
+                        logger.info(f"    Analyzed {analyzed_count} articles, updated {len(topics)} topics")
                     else:
                         results["steps"]["sentiment"] = {
                             "status": "skipped",
                             "message": "No articles need sentiment analysis"
                         }
-                        logger.info("   ⏭️  No articles need sentiment analysis")
+                        logger.info("     No articles need sentiment analysis")
                         
                 except Exception as e:
-                    logger.error(f"   ❌ Sentiment analysis failed: {e}")
+                    logger.error(f"    Sentiment analysis failed: {e}")
                     results["errors"].append(f"Sentiment: {str(e)}")
                     results["steps"]["sentiment"] = {"status": "error", "error": str(e)}
             
             # Step 4: Calculate statistics
             if calculate_statistics:
-                logger.info("\n📊 Step 4/6: Calculating statistics...")
+                logger.info("\n Step 4/6: Calculating statistics...")
                 try:
                     # Update trend reports
                     trend_report = self.stats_service.calculate_trend_report(period_type='weekly')
@@ -220,16 +220,16 @@ class PipelineOrchestrator:
                         "hot_topics": len(hot_topics) if hot_topics else 0,
                         "snapshot": bool(snapshot)
                     }
-                    logger.info(f"   ✅ Statistics updated: {len(hot_topics or [])} hot topics")
+                    logger.info(f"    Statistics updated: {len(hot_topics or [])} hot topics")
                     
                 except Exception as e:
-                    logger.error(f"   ❌ Statistics calculation failed: {e}")
+                    logger.error(f"    Statistics calculation failed: {e}")
                     results["errors"].append(f"Statistics: {str(e)}")
                     results["steps"]["statistics"] = {"status": "error", "error": str(e)}
             
             # Step 5: Regenerate keywords
             if regenerate_keywords:
-                logger.info("\n🔑 Step 5/6: Regenerating keywords...")
+                logger.info("\n Step 5/6: Regenerating keywords...")
                 try:
                     keyword_result = self.stats_service.regenerate_keywords_with_gpt(
                         limit=limit or 200
@@ -239,16 +239,16 @@ class PipelineOrchestrator:
                         "total": keyword_result.get("total", 0),
                         "method": keyword_result.get("method", "unknown")
                     }
-                    logger.info(f"   ✅ Generated {keyword_result.get('total', 0)} keywords")
+                    logger.info(f"    Generated {keyword_result.get('total', 0)} keywords")
                     
                 except Exception as e:
-                    logger.error(f"   ❌ Keyword generation failed: {e}")
+                    logger.error(f"    Keyword generation failed: {e}")
                     results["errors"].append(f"Keywords: {str(e)}")
                     results["steps"]["keywords"] = {"status": "error", "error": str(e)}
             
             # Step 6: Train BERTopic (optional, expensive)
             if train_bertopic:
-                logger.info("\n🤖 Step 6/6: Training BERTopic...")
+                logger.info("\n Step 6/6: Training BERTopic...")
                 try:
                     from app.services.topic.bertopic_trainer import get_trainer
                     
@@ -268,16 +268,16 @@ class PipelineOrchestrator:
                             "num_documents": training_result.get("training", {}).get("num_documents", 0),
                             "duration": training_result.get("training", {}).get("duration_seconds", 0)
                         }
-                        logger.info(f"   ✅ Discovered {training_result['training']['num_topics']} topics")
+                        logger.info(f"    Discovered {training_result['training']['num_topics']} topics")
                     else:
                         results["steps"]["bertopic"] = {
                             "status": "error",
                             "error": training_result.get("error", "Unknown error")
                         }
-                        logger.error(f"   ❌ Training failed: {training_result.get('error')}")
+                        logger.error(f"    Training failed: {training_result.get('error')}")
                         
                 except Exception as e:
-                    logger.error(f"   ❌ BERTopic training failed: {e}", exc_info=True)
+                    logger.error(f"    BERTopic training failed: {e}", exc_info=True)
                     results["errors"].append(f"BERTopic: {str(e)}")
                     results["steps"]["bertopic"] = {"status": "error", "error": str(e)}
             
@@ -291,16 +291,16 @@ class PipelineOrchestrator:
             total_steps = len(results["steps"])
             
             logger.info("\n" + "=" * 60)
-            logger.info(f"✅ PIPELINE COMPLETED: {success_count}/{total_steps} steps successful")
-            logger.info(f"⏱️  Duration: {duration:.2f} seconds")
+            logger.info(f" PIPELINE COMPLETED: {success_count}/{total_steps} steps successful")
+            logger.info(f"⏱  Duration: {duration:.2f} seconds")
             if results["errors"]:
-                logger.warning(f"⚠️  Errors: {len(results['errors'])}")
+                logger.warning(f"  Errors: {len(results['errors'])}")
             logger.info("=" * 60)
             
             return results
             
         except Exception as e:
-            logger.error(f"💥 Pipeline failed: {e}", exc_info=True)
+            logger.error(f" Pipeline failed: {e}", exc_info=True)
             results["errors"].append(f"Pipeline: {str(e)}")
             results["status"] = "failed"
             return results

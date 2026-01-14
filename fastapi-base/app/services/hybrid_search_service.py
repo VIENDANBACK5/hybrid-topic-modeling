@@ -111,7 +111,7 @@ class HybridSearchService:
             start_timestamp = start_dt.timestamp()
             end_timestamp = end_dt.timestamp()
             
-            logger.info(f"📅 Date range: {start_dt} → {end_dt} (timestamps: {start_timestamp} → {end_timestamp})")
+            logger.info(f" Date range: {start_dt} → {end_dt} (timestamps: {start_timestamp} → {end_timestamp})")
             
             query = self.db.query(Article)
             
@@ -144,7 +144,7 @@ class HybridSearchService:
             
             results = query.limit(limit).all()
             
-            logger.info(f"🔍 BM25 search found {len(results)} articles")
+            logger.info(f" BM25 search found {len(results)} articles")
             return results
             
         except Exception as e:
@@ -205,7 +205,7 @@ class HybridSearchService:
                 "has_numbers": self._has_numeric_data(text)
             })
         
-        logger.info(f"✅ Semantic filter kept {len(filtered)}/{len(articles)} articles")
+        logger.info(f" Semantic filter kept {len(filtered)}/{len(articles)} articles")
         return filtered
     
     def _calculate_score(
@@ -280,7 +280,7 @@ class HybridSearchService:
             reverse=True
         )
         
-        logger.info(f"📊 Top article score: {sorted_results[0]['score']:.2f}" if sorted_results else "No results")
+        logger.info(f" Top article score: {sorted_results[0]['score']:.2f}" if sorted_results else "No results")
         return sorted_results
     
     def prepare_context_for_llm(
@@ -331,5 +331,5 @@ Relevance Score: {item['score']:.2f}
         
         context = "\n".join(context_parts)
         
-        logger.info(f"📝 Prepared context: {len(context)} chars from {len(context_parts)} articles")
+        logger.info(f" Prepared context: {len(context)} chars from {len(context_parts)} articles")
         return context
