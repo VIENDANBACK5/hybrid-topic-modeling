@@ -11,7 +11,7 @@ from app.core.router import router
 from app.api import api_router
 from app.models import Base
 from app.api.routers import topic_service, sync_service, custom_topics, field_classification, superset_sync, economic_indicators
-from app.api import orchestrator, topicgpt_api, data_pipeline_api, data_fetch_api, data_process_api, api_grdp_detail, api_economic_extraction
+from app.api import orchestrator, data_fetch_api, data_process_api, api_grdp_detail, api_economic_extraction, api_social_indicators, api_aqi
 from app.core.database import get_engine
 from app.core.config import settings
 from app.core.rate_limit import RateLimitMiddleware
@@ -66,44 +66,64 @@ def get_application() -> FastAPI:
     
     application.add_middleware(DBSessionMiddleware, db_url=settings.DATABASE_URL)
     
-    # Topic Service API
+    # ============================================
+    # ETL PIPELINE (Giai đoạn 1: Fetch → Process → Load)
+    # ============================================
+    
+    # Data Fetch - Lấy data từ external API
+    application.include_router(data_fetch_api.router)
+    
+    # Data Process - Xử lý và load vào DB
+    application.include_router(data_process_api.router)
+    
+    # ============================================
+    # TOPIC MODELING
+    # ============================================
+    
+    # Topic Service - Topic modeling API
     application.include_router(topic_service.router, prefix="/topic-service", tags=["Topic Service"])
     
-    # Sync Service API
-    application.include_router(sync_service.router, prefix="/api/v1", tags=["Sync Service"])
-    
-    # Custom Topics
+    # Custom Topics - User-defined topics
     application.include_router(custom_topics.router)
     
-    # Field Classification
-    application.include_router(field_classification.router, prefix="/api/v1", tags=["Field Classification"])
-    
-    # Superset Sync (Update all tables for Superset dashboards)
-    application.include_router(superset_sync.router, tags=["Superset Sync"])
+    # ============================================
+    # ECONOMIC DATA
+    # ============================================
     
     # Economic Indicators
     application.include_router(economic_indicators.router)
     
-    # Orchestrator
-    application.include_router(orchestrator.router)
-    
-    # TopicGPT
-    application.include_router(topicgpt_api.router)
-    
-    # Data Pipeline
-    application.include_router(data_pipeline_api.router)
-    
-    # Data Fetch (per data type)
-    application.include_router(data_fetch_api.router)
-    
-    # Data Process (per data type)
-    application.include_router(data_process_api.router)
+    # Economic Data Extraction (Universal)
+    application.include_router(api_economic_extraction.router)
     
     # GRDP Detail API
     application.include_router(api_grdp_detail.router)
     
-    # Economic Data Extraction (Universal)
-    application.include_router(api_economic_extraction.router)
+    # ============================================
+    # SOCIAL INDICATORS (9 Lĩnh vực × 3 Chỉ số = 27 bảng)
+    # ============================================
+    
+    # Social Indicator Extraction - Extract từ articles fill vào 27 bảng detail
+    application.include_router(api_social_indicators.router)
+    
+    # AQI Data - Air Quality Index from external API
+    application.include_router(api_aqi.router)
+    
+    # ============================================
+    # SERVICES & UTILITIES
+    # ============================================
+    
+    # Sync Service - Data synchronization
+    application.include_router(sync_service.router, prefix="/api/v1", tags=["Sync Service"])
+    
+    # Field Classification
+    application.include_router(field_classification.router, prefix="/api/v1", tags=["Field Classification"])
+    
+    # Orchestrator - Workflow orchestration
+    application.include_router(orchestrator.router)
+    
+    # Superset Sync - Dashboard data sync
+    application.include_router(superset_sync.router, tags=["Superset Sync"])
     
     application.add_exception_handler(CustomException, custom_error_handler)
     application.add_exception_handler(ValidationException, validation_exception_handler)

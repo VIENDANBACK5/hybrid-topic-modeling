@@ -15,6 +15,6 @@ class RetailServicesDetail(EconomicIndicatorBase):
     services_value = Column(Numeric, comment='Services revenue only (billion VND)')
     
     __table_args__ = (
-        UniqueConstraint('province', 'year', 'quarter', 'month', name='unique_retail_period'),
+        UniqueConstraint('province', 'year', 'quarter', 'month', 'data_source', name='unique_retail_period'),
         Index('idx_retail_province_year', 'province', 'year'),
     )

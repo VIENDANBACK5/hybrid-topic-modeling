@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.services.topic.topicgpt_service import get_topicgpt_service
+from app.models.model_custom_topic import CustomTopic
 
 logger = logging.getLogger(__name__)
 
@@ -346,6 +347,72 @@ class TopicGPTEnhancer:
                 "status": "error",
                 "error": str(e)
             }
+    
+    def enhance_single_topic(self, topic_id: int) -> Dict:
+        """
+        Enhance a single custom topic's description using TopicGPT
+        
+        Args:
+            topic_id: ID of the custom topic to enhance
+            
+        Returns:
+            Dictionary with enhancement result
+        """
+        if not self.topicgpt.is_available():
+            logger.warning("TopicGPT not available (no API key)")
+            return {
+                "status": "skipped",
+                "message": "OPENAI_API_KEY not configured"
+            }
+        
+        try:
+            # Get the topic
+            topic = self.db.query(CustomTopic).filter(CustomTopic.id == topic_id).first()
+            if not topic:
+                return {"status": "error", "error": f"Topic {topic_id} not found"}
+            
+            # Check if already has good description
+            if topic.description and len(topic.description) > 50:
+                return {"status": "skipped", "reason": "Already has description"}
+            
+            logger.info(f"🤖 Generating description for: {topic.name}")
+            
+            # Get sample articles for this topic
+            sample_query = text("""
+                SELECT a.title, a.content
+                FROM articles a
+                JOIN article_custom_topics act ON a.id = act.article_id
+                WHERE act.topic_id = :topic_id
+                LIMIT 5
+            """)
+            samples = self.db.execute(sample_query, {"topic_id": topic_id}).fetchall()
+            sample_docs = [f"{s[0]}\n{s[1][:300]}" for s in samples] if samples else None
+            
+            # Generate enhanced description using TopicGPT
+            new_description = self.topicgpt.generate_topic_description(
+                topic_label=topic.name,
+                keywords=topic.keywords or [],
+                representative_docs=sample_docs
+            )
+            
+            if new_description:
+                # Update topic
+                topic.description = new_description
+                self.db.commit()
+                
+                logger.info(f"✅ Enhanced topic {topic_id}: {topic.name}")
+                return {
+                    "status": "success",
+                    "topic_id": topic_id,
+                    "topic_name": topic.name,
+                    "description": new_description
+                }
+            else:
+                return {"status": "error", "error": "Failed to generate description"}
+            
+        except Exception as e:
+            logger.error(f"Failed to enhance topic {topic_id}: {e}")
+            return {"status": "error", "error": str(e)}
 
 
 def get_enhancer(db: Session) -> TopicGPTEnhancer:

@@ -86,6 +86,31 @@ class ValueRangeValidator:
         'cpi': (95, 120, 'index', 'Chỉ số giá tiêu dùng')
     }
     
+    # Anti-patterns: từ khóa báo hiệu đây KHÔNG phải số liệu chính
+    ANTI_PATTERNS = {
+        'agri': ['tạ/ha', 'tấn', 'năng suất', 'sản lượng', 'diện tích', 'ha'],
+        'retail': ['xăng dầu', 'lưu trú', 'ăn uống', 'tháng Một', 'tháng Hai', 'tháng Ba'],
+        'budget': ['thu từ', 'khu vực', 'nội địa', 'thuế môn bài', 'thu đất'],
+        'investment': ['của doanh nghiệp', 'khu vực', 'từ FDI'],
+        'iip': ['chế biến', 'khai khoáng', 'điện', 'ngành', 'phân ngành'],
+        'export': ['vốn', 'tín dụng', 'dư nợ', 'cho vay'],
+    }
+    
+    @classmethod
+    def has_anti_pattern(cls, indicator_type: str, text: str) -> bool:
+        """
+        Check if text contains anti-patterns (signals this is NOT the main indicator)
+        Returns True if anti-pattern found (should skip this value)
+        """
+        if indicator_type not in cls.ANTI_PATTERNS:
+            return False
+        
+        text_lower = text.lower()
+        for anti in cls.ANTI_PATTERNS[indicator_type]:
+            if anti.lower() in text_lower:
+                return True
+        return False
+    
     @classmethod
     def validate(cls, indicator_type: str, value: float, is_annual: bool = False) -> Tuple[bool, str]:
         """
@@ -636,6 +661,488 @@ class ValueExtractor:
         return None, ""
     
     @classmethod
+    def extract_qoq_growth(cls, text: str) -> Tuple[Optional[float], str]:
+        """Extract quarter-over-quarter growth rate từ text"""
+        patterns = [
+            (r'tăng\s+(\d+)[.,](\d+)\s*%\s*so với quý trước', lambda m: float(f"{m.group(1)}.{m.group(2)}")),
+            (r'tăng\s+(\d+)\s*%\s*so với quý trước', lambda m: float(m.group(1))),
+            (r'giảm\s+(\d+)[.,](\d+)\s*%\s*so với quý trước', lambda m: -float(f"{m.group(1)}.{m.group(2)}")),
+            (r'giảm\s+(\d+)\s*%\s*so với quý trước', lambda m: -float(m.group(1))),
+            (r'tăng\s+(\d+)[.,](\d+)\s*%\s*so với quý liền kề', lambda m: float(f"{m.group(1)}.{m.group(2)}")),
+            (r'giảm\s+(\d+)[.,](\d+)\s*%\s*so với quý liền kề', lambda m: -float(f"{m.group(1)}.{m.group(2)}")),
+        ]
+        
+        for pattern, converter in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                try:
+                    value = converter(match)
+                    source_text = match.group(0)
+                    return value, source_text
+                except:
+                    continue
+        return None, ""
+    
+    @classmethod
+    def extract_mom_growth(cls, text: str) -> Tuple[Optional[float], str]:
+        """Extract month-over-month growth rate từ text"""
+        patterns = [
+            (r'tăng\s+(\d+)[.,](\d+)\s*%\s*so với tháng trước', lambda m: float(f"{m.group(1)}.{m.group(2)}")),
+            (r'tăng\s+(\d+)\s*%\s*so với tháng trước', lambda m: float(m.group(1))),
+            (r'giảm\s+(\d+)[.,](\d+)\s*%\s*so với tháng trước', lambda m: -float(f"{m.group(1)}.{m.group(2)}")),
+            (r'giảm\s+(\d+)\s*%\s*so với tháng trước', lambda m: -float(m.group(1))),
+            (r'tăng\s+(\d+)[.,](\d+)\s*%\s*so với tháng liền kề', lambda m: float(f"{m.group(1)}.{m.group(2)}")),
+            (r'giảm\s+(\d+)[.,](\d+)\s*%\s*so với tháng liền kề', lambda m: -float(f"{m.group(1)}.{m.group(2)}")),
+        ]
+        
+        for pattern, converter in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                try:
+                    value = converter(match)
+                    source_text = match.group(0)
+                    return value, source_text
+                except:
+                    continue
+        return None, ""
+    
+    @classmethod
+    def extract_forecast(cls, text: str) -> Tuple[Optional[float], str]:
+        """Extract forecast value từ text - chỉ match khi rõ ràng là forecast/kế hoạch"""
+        patterns = [
+            # Chỉ match forecast/plan rõ ràng, KHÔNG match "ước đạt" (actual estimate)
+            (r'(?:dự báo|dự kiến|kế hoạch)(?!.*(?:đạt|thực hiện)).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+            (r'mục tiêu.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+            (r'chỉ tiêu.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+            # Match "năm sau" or future years
+            (r'năm (?:sau|\d{4}).*?(?:dự báo|dự kiến|kế hoạch).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+        ]
+        
+        for pattern, ptype in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                try:
+                    if ptype == 'value_split':
+                        parts = [match.group(1), match.group(2)]
+                        if match.lastindex >= 3 and match.group(3):
+                            parts.append(match.group(3))
+                        value = float(''.join(parts))
+                        
+                        # Double-check: không phải actual value (có "ước đạt", "thực hiện")
+                        full_context = match.group(0)
+                        if re.search(r'(?:ước đạt|thực hiện|đã đạt|đạt được)', full_context, re.IGNORECASE):
+                            continue  # Skip nếu là actual value
+                        
+                        return value, match.group(0)
+                except:
+                    continue
+        return None, ""
+    
+    # =========================================================================
+    # SPECIFIC EXTRACTORS cho từng indicator type
+    # =========================================================================
+    
+    @classmethod
+    def extract_retail_breakdown(cls, text: str) -> Dict[str, Optional[float]]:
+        """
+        Extract retail_value và services_value từ text
+        Returns: {'retail_value': float, 'services_value': float}
+        """
+        result = {'retail_value': None, 'services_value': None}
+        
+        # Pattern cho bán lẻ hàng hóa
+        retail_patterns = [
+            r'bán lẻ hàng hóa.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'doanh thu bán lẻ.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+        ]
+        
+        for pattern in retail_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                parts = [match.group(1), match.group(2)]
+                if match.lastindex >= 3 and match.group(3):
+                    parts.append(match.group(3))
+                result['retail_value'] = float(''.join(parts))
+                break
+        
+        # Pattern cho dịch vụ
+        services_patterns = [
+            r'doanh thu dịch vụ(?!.*lưu trú).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'dịch vụ tiêu dùng.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+        ]
+        
+        for pattern in services_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                parts = [match.group(1), match.group(2)]
+                if match.lastindex >= 3 and match.group(3):
+                    parts.append(match.group(3))
+                result['services_value'] = float(''.join(parts))
+                break
+        
+        return result
+    
+    @classmethod
+    def extract_export_details(cls, text: str) -> Dict[str, Any]:
+        """
+        Extract export_usd, export_vnd, top_products, top_markets
+        Returns: {'export_usd': float, 'export_vnd': float, 'top_products': str, 'top_markets': str}
+        """
+        result = {
+            'export_usd': None,
+            'export_vnd': None,
+            'top_products': None,
+            'top_markets': None
+        }
+        
+        # Extract USD value
+        usd_patterns = [
+            r'kim ngạch xuất khẩu.*?(\d+[.,]\d+)\s*triệu\s*USD',
+            r'xuất khẩu.*?đạt.*?(\d+[.,]\d+)\s*triệu\s*USD',
+        ]
+        for pattern in usd_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                result['export_usd'] = float(match.group(1).replace(',', '.'))
+                break
+        
+        # Extract top products (common Vietnamese export products)
+        product_keywords = [
+            'may mặc', 'dệt may', 'giày dép', 'da giày', 
+            'điện tử', 'linh kiện điện tử', 'thiết bị điện tử',
+            'gỗ', 'đồ gỗ', 'nội thất',
+            'thủy sản', 'tôm', 'cá',
+            'rau quả', 'hoa quả',
+            'cà phê', 'cao su', 'gạo',
+            'xe máy', 'ô tô', 'phụ tùng'
+        ]
+        
+        found_products = []
+        for keyword in product_keywords:
+            if keyword in text.lower():
+                found_products.append(keyword)
+        
+        if found_products:
+            result['top_products'] = ', '.join(found_products[:5])  # Top 5
+        
+        # Extract top markets (common Vietnamese export markets)
+        market_keywords = [
+            'Trung Quốc', 'Mỹ', 'Hoa Kỳ', 'Nhật Bản', 'Hàn Quốc',
+            'EU', 'Châu Âu', 'ASEAN', 'Đông Nam Á',
+            'Đài Loan', 'Hồng Kông', 'Singapore', 'Thái Lan'
+        ]
+        
+        found_markets = []
+        for keyword in market_keywords:
+            if keyword in text:
+                found_markets.append(keyword)
+        
+        if found_markets:
+            result['top_markets'] = ', '.join(found_markets[:5])  # Top 5
+        
+        return result
+    
+    @classmethod
+    def extract_investment_details(cls, text: str) -> Dict[str, Any]:
+        """
+        Extract FDI và DDI details
+        Returns: {
+            'fdi_registered': float (triệu USD),
+            'fdi_disbursed': float (triệu USD),
+            'fdi_projects_new': int,
+            'fdi_projects_expanded': int,
+            'ddi_value': float (tỷ VND),
+            'public_investment': float (tỷ VND)
+        }
+        """
+        result = {
+            'fdi_registered': None,
+            'fdi_disbursed': None,
+            'fdi_projects_new': None,
+            'fdi_projects_expanded': None,
+            'ddi_value': None,
+            'public_investment': None
+        }
+        
+        # FDI registered (vốn đăng ký)
+        fdi_reg_patterns = [
+            r'vốn đăng ký.*?FDI.*?(\d+[.,]\d+)\s*triệu\s*USD',
+            r'FDI.*?đăng ký.*?(\d+[.,]\d+)\s*triệu\s*USD',
+            r'vốn FDI đăng ký.*?(\d+[.,]\d+)\s*triệu\s*USD',
+        ]
+        for pattern in fdi_reg_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                result['fdi_registered'] = float(match.group(1).replace(',', '.'))
+                break
+        
+        # FDI disbursed (vốn giải ngân)
+        fdi_dis_patterns = [
+            r'vốn giải ngân.*?(\d+[.,]\d+)\s*triệu\s*USD',
+            r'FDI.*?giải ngân.*?(\d+[.,]\d+)\s*triệu\s*USD',
+            r'vốn thực hiện.*?FDI.*?(\d+[.,]\d+)\s*triệu\s*USD',
+        ]
+        for pattern in fdi_dis_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                result['fdi_disbursed'] = float(match.group(1).replace(',', '.'))
+                break
+        
+        # FDI projects
+        new_project_patterns = [
+            r'(\d+)\s*dự án mới',
+            r'cấp mới.*?(\d+)\s*dự án',
+        ]
+        for pattern in new_project_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                result['fdi_projects_new'] = int(match.group(1))
+                break
+        
+        expanded_project_patterns = [
+            r'(\d+)\s*dự án điều chỉnh',
+            r'điều chỉnh.*?(\d+)\s*dự án',
+        ]
+        for pattern in expanded_project_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                result['fdi_projects_expanded'] = int(match.group(1))
+                break
+        
+        # DDI (domestic direct investment)
+        ddi_patterns = [
+            r'DDI.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'đầu tư trong nước.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+        ]
+        for pattern in ddi_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                parts = [match.group(1), match.group(2)]
+                if match.lastindex >= 3 and match.group(3):
+                    parts.append(match.group(3))
+                result['ddi_value'] = float(''.join(parts))
+                break
+        
+        # Public investment - thêm nhiều alternative patterns
+        public_patterns = [
+            r'vốn ngân sách[^.;]{0,50}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'đầu tư công[^.;]{0,50}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'vốn đầu tư công[^.;]{0,50}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'vốn nhà nước[^.;]{0,50}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'trong đó[^.;]*vốn ngân sách[^.;]{0,50}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'trong đó[^.;]*đầu tư công[^.;]{0,50}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            # Format: số trước keyword
+            r'(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ[^.;]{0,30}(?:vốn ngân sách|đầu tư công)',
+        ]
+        for pattern in public_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                parts = [match.group(1), match.group(2)]
+                if match.lastindex >= 3 and match.group(3):
+                    parts.append(match.group(3))
+                result['public_investment'] = float(''.join(parts))
+                break
+        
+        return result
+    
+    @classmethod
+    def extract_budget_details(cls, text: str) -> Dict[str, Any]:
+        """
+        Extract budget revenue breakdown
+        Returns: {
+            'tax_revenue': float (tỷ VND),
+            'non_tax_revenue': float (tỷ VND),
+            'land_revenue': float (tỷ VND),
+            'budget_target': float (tỷ VND),
+            'execution_rate': float (%)
+        }
+        """
+        result = {
+            'tax_revenue': None,
+            'non_tax_revenue': None,
+            'land_revenue': None,
+            'budget_target': None,
+            'execution_rate': None
+        }
+        
+        # Tax revenue (thu nội địa, thu thuế)
+        tax_patterns = [
+            r'thu nội địa[^.;]{0,50}?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'trong đó[^.;]*thu nội địa[^.;]{0,50}?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'thu thuế[^.;]{0,50}?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'thu từ thuế[^.;]{0,50}?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+        ]
+        for pattern in tax_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                parts = [match.group(1), match.group(2)]
+                if match.lastindex >= 3 and match.group(3):
+                    parts.append(match.group(3))
+                result['tax_revenue'] = float(''.join(parts))
+                break
+        
+        # Land revenue
+        land_patterns = [
+            r'thu từ đất.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'các khoản thu về đất.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+        ]
+        for pattern in land_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                parts = [match.group(1), match.group(2)]
+                if match.lastindex >= 3 and match.group(3):
+                    parts.append(match.group(3))
+                result['land_revenue'] = float(''.join(parts))
+                break
+        
+        # Budget target
+        target_patterns = [
+            r'dự toán.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+            r'kế hoạch.*?ngân sách.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ',
+        ]
+        for pattern in target_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                parts = [match.group(1), match.group(2)]
+                if match.lastindex >= 3 and match.group(3):
+                    parts.append(match.group(3))
+                result['budget_target'] = float(''.join(parts))
+                break
+        
+        # Execution rate
+        exec_patterns = [
+            r'đạt.*?(\d+[.,]\d+)\s*%.*?(?:dự toán|kế hoạch)',
+            r'(\d+[.,]\d+)\s*%.*?dự toán',
+        ]
+        for pattern in exec_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                result['execution_rate'] = float(match.group(1).replace(',', '.'))
+                break
+        
+        return result
+    
+    @classmethod
+    def extract_cpi_details(cls, text: str) -> Dict[str, Any]:
+        """
+        Extract CPI component indices
+        Returns: {
+            'cpi_food': float (index),
+            'cpi_housing': float (index),
+            'cpi_transport': float (index),
+            'cpi_education': float (index),
+            'cpi_healthcare': float (index),
+            'core_cpi': float (index),
+            'inflation_rate': float (%)
+        }
+        """
+        result = {
+            'cpi_food': None,
+            'cpi_housing': None,
+            'cpi_transport': None,
+            'cpi_education': None,
+            'cpi_healthcare': None,
+            'core_cpi': None,
+            'inflation_rate': None
+        }
+        
+        # Food CPI
+        food_patterns = [
+            r'(?:nhóm|chỉ số).*?lương thực.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+            r'hàng ăn.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+        ]
+        for pattern in food_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                change = float(match.group(1).replace(',', '.'))
+                if 'giảm' in match.group(0).lower():
+                    change = -change
+                result['cpi_food'] = 100 + change
+                break
+        
+        # Housing CPI
+        housing_patterns = [
+            r'nhà ở.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+            r'thuê nhà.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+        ]
+        for pattern in housing_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                change = float(match.group(1).replace(',', '.'))
+                if 'giảm' in match.group(0).lower():
+                    change = -change
+                result['cpi_housing'] = 100 + change
+                break
+        
+        # Transport CPI
+        transport_patterns = [
+            r'giao thông.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+            r'vận chuyển.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+        ]
+        for pattern in transport_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                change = float(match.group(1).replace(',', '.'))
+                if 'giảm' in match.group(0).lower():
+                    change = -change
+                result['cpi_transport'] = 100 + change
+                break
+        
+        # Education CPI
+        education_patterns = [
+            r'giáo dục.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+        ]
+        for pattern in education_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                change = float(match.group(1).replace(',', '.'))
+                if 'giảm' in match.group(0).lower():
+                    change = -change
+                result['cpi_education'] = 100 + change
+                break
+        
+        # Healthcare CPI
+        healthcare_patterns = [
+            r'y tế.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+            r'dược phẩm.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+        ]
+        for pattern in healthcare_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                change = float(match.group(1).replace(',', '.'))
+                if 'giảm' in match.group(0).lower():
+                    change = -change
+                result['cpi_healthcare'] = 100 + change
+                break
+        
+        # Core CPI
+        core_patterns = [
+            r'CPI cơ bản.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%',
+            r'lạm phát cơ bản.*?(\d+[.,]\d+)\s*%',
+        ]
+        for pattern in core_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                change = float(match.group(1).replace(',', '.'))
+                if 'giảm' in match.group(0).lower():
+                    change = -change
+                result['core_cpi'] = 100 + change
+                break
+        
+        # Inflation rate (same as change_yoy usually)
+        inflation_patterns = [
+            r'lạm phát.*?(\d+[.,]\d+)\s*%',
+            r'tỷ lệ lạm phát.*?(\d+[.,]\d+)\s*%',
+        ]
+        for pattern in inflation_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                result['inflation_rate'] = float(match.group(1).replace(',', '.'))
+                break
+        
+        return result
+    
+    @classmethod
     def extract_quarter(cls, text: str) -> Optional[int]:
         """Extract quarter từ text"""
         patterns = [
@@ -668,14 +1175,22 @@ class ValueExtractor:
         Returns:
             {
                 'actual_value': float,
+                'forecast_value': float,
                 'change_yoy': float,
-                'source_texts': {'value': str, 'growth': str},
+                'change_qoq': float,
+                'change_mom': float,
+                'change_prev_period': float,
+                'source_texts': {'value': str, 'growth': str, 'qoq': str, 'mom': str, 'forecast': str},
                 'quarter': int
             }
         """
         result = {
             'actual_value': None,
+            'forecast_value': None,
             'change_yoy': None,
+            'change_qoq': None,
+            'change_mom': None,
+            'change_prev_period': None,
             'source_texts': {},
             'quarter': quarter or None  # Use provided quarter or extract from text
         }
@@ -687,10 +1202,12 @@ class ValueExtractor:
         # INDICATOR-SPECIFIC PATTERNS
         if indicator_type == 'iip':
             patterns = [
-                
-                (r'\(IIP\)\s*(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
-                (r'IIP\s*(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
-                (r'Chỉ số sản xuất công nghiệp\s*\(IIP\)\s*(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
+                # IIP là CHỈ SỐ (index), KHÔNG có giá trị tỷ đồng
+                # Chỉ extract % tăng trưởng (growth)
+                # GROWTH PATTERNS - avoid sub-sectors
+                (r'\(IIP\)\s*(?!.*(?:chế biến|khai khoáng|điện)).*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
+                (r'IIP(?!.*(?:ngành|phân ngành|khu vực))\s*(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
+                (r'Chỉ số sản xuất công nghiệp\s*\(IIP\)(?!.*(?:chế biến|khai khoáng))\s*(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
                 
                 
                 (r'(?:năm|cả năm).*?IIP.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
@@ -716,11 +1233,11 @@ class ValueExtractor:
             
         elif indicator_type == 'retail':
             patterns = [
-                
-                (r'(?:năm \d{4}|cả năm|Năm \d{4}).*?[Tt]ổng mức bán lẻ.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
-                (r'[Tt]ổng mức bán lẻ.*?(?:năm \d{4}|cả năm|Năm \d{4}).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
-                (r'[Tt]ổng mức bán lẻ hàng hóa và doanh thu dịch vụ.*?năm \d{4}.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
-                (r'năm \d{4}.*?[Tt]ổng mức bán lẻ hàng hóa, dịch vụ.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                # Priority: avoid month breakdown and specific sectors
+                (r'(?:năm \d{4}|cả năm|Năm \d{4})(?!.*tháng (?:Một|Hai|Ba|Tư|Năm|Sáu|Bảy|Tám|Chín|Mười)).*?[Tt]ổng mức bán lẻ(?!.*(?:xăng dầu|lưu trú|ăn uống)).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'[Tt]ổng mức bán lẻ(?!.*(?:xăng|lưu trú)).*?(?:năm \d{4}|cả năm|Năm \d{4})(?!.*tháng (?:Một|Hai)).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'[Tt]ổng mức bán lẻ hàng hóa và doanh thu dịch vụ(?!.*(?:lưu trú|xăng)).*?năm \d{4}.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'năm \d{4}.*?[Tt]ổng mức bán lẻ hàng hóa, dịch vụ(?!.*tháng).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
                 
                 
                 (r'[Qq]uý [IVX1-4].*?[Tt]ổng mức bán lẻ.*?(\d{1,2})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
@@ -741,22 +1258,26 @@ class ValueExtractor:
                 (r'[Tt]ổng mức bán lẻ(?!.*tháng (?:Một|Hai|Ba|Tư|Năm|Sáu|Bảy|Tám|Chín|Mười)).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
                 
                 
-                (r'[Tt]ổng mức bán lẻ.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
-                (r'[Bb]án lẻ hàng hóa.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
+                # Growth patterns - thêm variations
+                (r'[Tt]ổng mức bán lẻ[^.;]*(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
+                (r'[Bb]án lẻ hàng hóa[^.;]*(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
                 (r'[Tt]ổng mức bán lẻ.*?tăng trưởng.*?(\d+[.,]\d+)\s*%', 'growth'),
-                (r'(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%.*?[Tt]ổng mức bán lẻ', 'growth'),
+                (r'(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%[^.;]*[Tt]ổng mức bán lẻ', 'growth'),
             ]
             
         elif indicator_type == 'budget':
             patterns = [
+                # Priority: Tổng thu or Thu trên địa bàn, avoid specific revenue sources
+                (r'[Tt]hu ngân sách trên địa bàn(?!.*(?:thu từ|khu vực|nội địa))[^.;]{0,50}(?:đạt|ước đạt)[^.;]{0,30}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'[Tt]ổng thu ngân sách(?!.*(?:thu từ|thu thuế môn bài))[^.;]{0,50}(?:đạt|ước)[^.;]{0,30}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'[Tt]hu ngân sách nhà nước(?!.*(?:thu từ|thu nội))[^.;]{0,50}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'[Tt]hu ngân sách(?!.*(?:thu từ khu vực|thu nội địa|thu thuế môn))[^.;]{0,50}(?:đạt|ước đạt|thực hiện)[^.;]{0,30}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
                 
-                (r'[Tt]hu ngân sách trên địa bàn.*?(?:đạt|ước đạt).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
-                (r'[Tt]ổng thu ngân sách.*?(?:đạt|ước).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
-                (r'[Tt]hu ngân sách nhà nước.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
-                (r'[Tt]hu ngân sách.*?(?:đạt|ước đạt|thực hiện).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                # Alternative: số đứng trước
+                (r'(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ[^.;]{0,40}thu ngân sách(?!.*thu nội địa)', 'value_split'),
                 
                 
-                (r'(?:năm|cả năm).*?[Tt]hu ngân sách.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'(?:năm|cả năm)[^.;]{0,40}[Tt]hu ngân sách[^.;]{0,30}(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
                 (r'[Qq]uý [IVX1-4].*?thu ngân sách.*?(\d{1,2})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
                 (r'(?:3|6|9) tháng.*?thu ngân sách.*?(\d{1,2})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
                 
@@ -781,32 +1302,30 @@ class ValueExtractor:
             
         elif indicator_type == 'agri':
             patterns = [
+                # AGRI trong báo cáo tổng hợp thường chỉ có % tăng trưởng
+                # Value patterns chỉ match khi có keyword "giá trị" rõ ràng
+                (r'[Gg]iá trị sản xuất nông nghiệp(?!.*(?:tạ/ha|tấn))[^.;]+(\d{1,3})[.,](\d{3})\s*tỷ\s*(?:đồng|VND)?', 'value_split'),
+                (r'[Nn]ông, lâm nghiệp và thủy sản[^.;]+giá trị(?!.*(?:tạ|tấn|ha))[^.;]+(\d{1,3})[.,](\d{3})\s*tỷ', 'value_split'),
+                (r'[Ss]ản xuất nông nghiệp[^.;]+giá trị[^.;]+(\d{1,3})[.,](\d{3})\s*tỷ\s*(?:đồng|VND)', 'value_split'),
                 
-                (r'[Gg]iá trị sản xuất nông nghiệp.*?(\d{1,3})[.,](\d{3})\s*tỷ', 'value_split'),
-                (r'[Nn]ông, lâm nghiệp và thủy sản.*?giá trị.*?(\d{1,3})[.,](\d{3})\s*tỷ', 'value_split'),
-                (r'[Ss]ản xuất nông nghiệp.*?(\d{1,3})[.,](\d{3})\s*tỷ\s*(?:đồng|VND)', 'value_split'),
-                
-                
-                (r'[Gg]iá trị sản xuất nông nghiệp.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
-                (r'[Nn]ông, lâm nghiệp và thủy sản(?!.*diện tích|sản lượng).*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
-                (r'[Nn]ông nghiệp.*?tăng trưởng.*?(\d+[.,]\d+)\s*%(?!.*diện tích)', 'growth'),
+                # Growth patterns - avoid năng suất, sản lượng, diện tích
+                (r'[Gg]iá trị sản xuất nông nghiệp(?!.*(?:năng suất|sản lượng|diện tích)).*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
+                (r'[Nn]ông, lâm nghiệp và thủy sản(?!.*(?:diện tích|sản lượng|năng suất|tạ|tấn)).*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
+                (r'[Nn]ông nghiệp.*?tăng trưởng(?!.*(?:diện tích|năng suất)).*?(\d+[.,]\d+)\s*%', 'growth'),
                 
                 
                 (r'(?:năm|cả năm).*?nông nghiệp.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
                 (r'[Qq]uý [IVX1-4].*?nông.*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%', 'growth'),
-                
-                
-                (r'(?:nông nghiệp|nông lâm)(?!.*diện tích|.*sản lượng riêng).*?(\d{1,3})[.,](\d{3})\s*tỷ', 'value_split'),
-                (r'(?:nông nghiệp|nông lâm).*?(?:tăng|giảm)\s+(\d+[.,]\d+)\s*%(?!.*diện tích)', 'growth'),
             ]
             
         elif indicator_type == 'investment':
             patterns = [
-                
-                (r'[Tt]ổng vốn đầu tư phát triển.*?(?:đạt|ước đạt|đạt được).*?(\d{1,3})[.,](\d{3})\s*tỷ', 'value_split'),
-                (r'[Tt]ổng vốn đầu tư.*?(?:đạt|ước).*?(\d{1,3})[.,](\d{3})\s*tỷ', 'value_split'),
-                (r'(?:đạt|ước đạt).*?[Tt]ổng vốn đầu tư.*?(\d{1,3})[.,](\d{3})\s*tỷ', 'value_split'),
-                (r'[Vv]ốn đầu tư phát triển.*?(\d{1,3})[.,](\d{3})\s*tỷ\s*(?:đồng|VND)', 'value_split'),
+                # Priority: Tổng vốn đầu tư toàn xã hội or phát triển toàn xã hội
+                (r'[Tt]ổng vốn đầu tư (?:phát triển )?toàn xã hội(?!.*FDI).*?(?:đạt|ước đạt|ước).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'[Tt]ổng vốn đầu tư phát triển(?!.*FDI).*?(?:đạt|ước đạt|đạt được).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'[Tt]ổng vốn đầu tư(?!.*(?:FDI|của|doanh nghiệp)).*?(?:đạt|ước).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'(?:đạt|ước đạt).*?[Tt]ổng vốn đầu tư(?!.*FDI).*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ', 'value_split'),
+                (r'[Vv]ốn đầu tư phát triển toàn xã hội.*?(\d{1,3})[.,](\d{3})(?:[.,](\d{3}))?\s*tỷ\s*(?:đồng|VND)', 'value_split'),
                 
                 
                 (r'(?:năm|cả năm).*?[Tt]ổng vốn đầu tư.*?(\d{1,3})[.,](\d{3})\s*tỷ', 'value_split'),
@@ -864,7 +1383,13 @@ class ValueExtractor:
         for idx, (pattern, ptype) in enumerate(patterns):
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                logger.debug(f"    Pattern {idx+1} matched ({ptype}): {match.group()[:60]}")
+                # Check for anti-patterns before accepting the value
+                matched_text = match.group(0)
+                if ValueRangeValidator.has_anti_pattern(indicator_type, matched_text):
+                    logger.debug(f"    Pattern {idx+1} SKIPPED (anti-pattern detected): {matched_text[:60]}")
+                    continue
+                
+                logger.debug(f"    Pattern {idx+1} matched ({ptype}): {matched_text[:60]}")
                 try:
                     if ptype == 'value_split':
                         # Giá trị: "129.305" -> 129305, "12.109" -> 12109, "29.951" -> 29951
@@ -924,7 +1449,9 @@ class ValueExtractor:
                 value, source = cls.extract_value_usd(text)
                 result['actual_value'] = value
                 result['source_texts']['value'] = source
-            else:
+            elif indicator_type not in ['iip', 'agri']:
+                # SKIP fallback extraction cho IIP (chỉ số không có giá trị tuyệt đối)
+                # và AGRI (dễ match nhầm sang indicator khác)
                 value, source = cls.extract_value_vnd(text)
                 result['actual_value'] = value
                 result['source_texts']['value'] = source
@@ -934,6 +1461,55 @@ class ValueExtractor:
                 growth, source = cls.extract_growth(text)
                 result['change_yoy'] = growth
                 result['source_texts']['growth'] = source
+        
+        # Extract QoQ growth (quarter-over-quarter)
+        if not result['change_qoq']:
+            qoq_growth, source = cls.extract_qoq_growth(text)
+            result['change_qoq'] = qoq_growth
+            result['source_texts']['qoq'] = source
+        
+        # Extract MoM growth (month-over-month)
+        if not result['change_mom']:
+            mom_growth, source = cls.extract_mom_growth(text)
+            result['change_mom'] = mom_growth
+            result['source_texts']['mom'] = source
+        
+        # Extract forecast value
+        # SKIP forecast cho IIP (chỉ số không có forecast) và AGRI (thường không có trong báo cáo tổng hợp)
+        if not result['forecast_value'] and indicator_type not in ['iip', 'agri']:
+            forecast, source = cls.extract_forecast(text)
+            result['forecast_value'] = forecast
+            result['source_texts']['forecast'] = source
+        
+        # Set change_prev_period: use MoM if available, else QoQ
+        if result['change_mom'] is not None:
+            result['change_prev_period'] = result['change_mom']
+        elif result['change_qoq'] is not None:
+            result['change_prev_period'] = result['change_qoq']
+        
+        # =====================================================================
+        # EXTRACT SPECIFIC FIELDS for each indicator type
+        # =====================================================================
+        
+        if indicator_type == 'retail':
+            breakdown = cls.extract_retail_breakdown(text)
+            result.update(breakdown)
+        
+        elif indicator_type == 'export':
+            export_details = cls.extract_export_details(text)
+            result.update(export_details)
+        
+        elif indicator_type == 'investment':
+            investment_details = cls.extract_investment_details(text)
+            result.update(investment_details)
+        
+        elif indicator_type == 'budget':
+            budget_details = cls.extract_budget_details(text)
+            result.update(budget_details)
+        
+        elif indicator_type == 'cpi':
+            cpi_details = cls.extract_cpi_details(text)
+            result.update(cpi_details)
         
         return result
 
@@ -971,7 +1547,7 @@ class ArticleCrawler:
             logger.info(f"Crawling page {page}: {url}")
             
             try:
-                resp = self.session.get(url, timeout=30)
+                resp = self.session.get(url, timeout=60)
                 resp.raise_for_status()
                 soup = BeautifulSoup(resp.content, 'html.parser')
                 
@@ -1042,11 +1618,25 @@ class ArticleCrawler:
         logger.info(f"Total unique articles found: {len(articles)} (after dedup and filter)")
         return articles
     
-    def get_article_content(self, url: str) -> Optional[str]:
-        """Fetch và extract nội dung bài viết"""
+    def get_article_content(self, url: str, retries: int = 2) -> Optional[str]:
+        """Fetch và extract nội dung bài viết với retry logic"""
+        for attempt in range(retries):
+            try:
+                resp = self.session.get(url, timeout=60)
+                resp.raise_for_status()
+                break
+            except requests.exceptions.Timeout:
+                if attempt < retries - 1:
+                    logger.warning(f"Timeout attempt {attempt + 1}/{retries}, retrying...")
+                    continue
+                else:
+                    logger.error(f"All {retries} attempts timed out for {url}")
+                    return None
+            except Exception as e:
+                logger.error(f"Error fetching {url}: {e}")
+                return None
+        
         try:
-            resp = self.session.get(url, timeout=30)
-            resp.raise_for_status()
             soup = BeautifulSoup(resp.content, 'html.parser')
             
             # Remove navigation elements
@@ -1226,15 +1816,19 @@ class UniversalEconomicExtractor:
                 logger.info(f"   Regex extracted: value={extracted['actual_value']}, yoy={extracted['change_yoy']}")
                 
                 if not extracted['actual_value'] and not extracted['change_yoy']:
-                    logger.info(f"   Context empty, trying full text...")
-                    extracted = ValueExtractor.extract_for_indicator(
-                        text=text,
-                        indicator_type=indicator_type,
-                        year=year,
-                        month=month,
-                        quarter=quarter
-                    )
-                    logger.info(f"   Full text extracted: value={extracted['actual_value']}, yoy={extracted['change_yoy']}")
+                    # KHÔNG retry với full text cho IIP (chỉ số) và AGRI (dễ nhầm indicator khác)
+                    if indicator_type not in ['iip', 'agri']:
+                        logger.info(f"   Context empty, trying full text...")
+                        extracted = ValueExtractor.extract_for_indicator(
+                            text=text,
+                            indicator_type=indicator_type,
+                            year=year,
+                            month=month,
+                            quarter=quarter
+                        )
+                        logger.info(f"   Full text extracted: value={extracted['actual_value']}, yoy={extracted['change_yoy']}")
+                    else:
+                        logger.info(f"   Skip full text retry for {indicator_type} (growth-only indicator)")
                 
                 if not extracted['actual_value'] and not extracted['change_yoy']:
                     results[indicator_type] = {
@@ -1256,6 +1850,7 @@ class UniversalEconomicExtractor:
                 else:
                     period_type = 'year'
                 
+                # Base data (common for all indicators)
                 data = {
                     'province': 'Hưng Yên',
                     'year': year,
@@ -1263,11 +1858,50 @@ class UniversalEconomicExtractor:
                     'quarter': final_quarter,
                     'period_type': period_type,
                     'data_status': 'official',
-                    'actual_value': extracted['actual_value'],
-                    'change_yoy': extracted['change_yoy'],
+                    'actual_value': extracted.get('actual_value'),
+                    'forecast_value': extracted.get('forecast_value'),
+                    'change_yoy': extracted.get('change_yoy'),
+                    'change_qoq': extracted.get('change_qoq'),
+                    'change_mom': extracted.get('change_mom'),
+                    'change_prev_period': extracted.get('change_prev_period'),
                     'last_updated': self._calculate_timestamp(year, final_month, final_quarter),
                     'data_source': source_url
                 }
+                
+                # Add indicator-specific fields
+                if indicator_type == 'retail':
+                    data['retail_value'] = extracted.get('retail_value')
+                    data['services_value'] = extracted.get('services_value')
+                
+                elif indicator_type == 'export':
+                    data['export_usd'] = extracted.get('export_usd')
+                    data['export_vnd'] = extracted.get('export_vnd')
+                    data['top_products'] = extracted.get('top_products')
+                    data['top_markets'] = extracted.get('top_markets')
+                
+                elif indicator_type == 'investment':
+                    data['fdi_registered'] = extracted.get('fdi_registered')
+                    data['fdi_disbursed'] = extracted.get('fdi_disbursed')
+                    data['fdi_projects_new'] = extracted.get('fdi_projects_new')
+                    data['fdi_projects_expanded'] = extracted.get('fdi_projects_expanded')
+                    data['ddi_value'] = extracted.get('ddi_value')
+                    data['public_investment'] = extracted.get('public_investment')
+                
+                elif indicator_type == 'budget':
+                    data['tax_revenue'] = extracted.get('tax_revenue')
+                    data['non_tax_revenue'] = extracted.get('non_tax_revenue')
+                    data['land_revenue'] = extracted.get('land_revenue')
+                    data['budget_target'] = extracted.get('budget_target')
+                    data['execution_rate'] = extracted.get('execution_rate')
+                
+                elif indicator_type == 'cpi':
+                    data['cpi_food'] = extracted.get('cpi_food')
+                    data['cpi_housing'] = extracted.get('cpi_housing')
+                    data['cpi_transport'] = extracted.get('cpi_transport')
+                    data['cpi_education'] = extracted.get('cpi_education')
+                    data['cpi_healthcare'] = extracted.get('cpi_healthcare')
+                    data['core_cpi'] = extracted.get('core_cpi')
+                    data['inflation_rate'] = extracted.get('inflation_rate')
                 
                 # Add source text for audit
                 source_texts = extracted.get('source_texts', {})
@@ -1351,10 +1985,11 @@ class UniversalEconomicExtractor:
         
         data['data_source'] = source_url
         
-        # Check for existing record
+        # Check for existing record (including data_source for uniqueness)
         query = self.db.query(model_class).filter(
             model_class.province == data['province'],
-            model_class.year == data['year']
+            model_class.year == data['year'],
+            model_class.data_source == source_url
         )
         
         if data.get('quarter'):

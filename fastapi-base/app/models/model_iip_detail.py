@@ -11,6 +11,6 @@ class IIPDetail(EconomicIndicatorBase):
     __tablename__ = "iip_detail"
     
     __table_args__ = (
-        UniqueConstraint('province', 'year', 'quarter', 'month', name='unique_iip_period'),
+        UniqueConstraint('province', 'year', 'quarter', 'month', 'data_source', name='unique_iip_period'),
         Index('idx_iip_province_year', 'province', 'year', 'quarter', 'month'),
     )

@@ -95,7 +95,12 @@ class NewspaperProcessor(BaseProcessor):
     def _parse_timestamp(self, record: Dict) -> Optional[datetime]:
         """
         Parse timestamp from news article
-        Priority: time_int (Unix) > created_at > published_at
+        
+        Priority (FIXED để lấy ngày xuất bản thực, không phải ngày crawl):
+        1. time_int (Unix timestamp - if available)
+        2. publish_date, published_date (ngày xuất bản thực)
+        3. published_at 
+        4. Nếu không có → None (KHÔNG dùng created_at vì đó là timestamp crawl)
         """
         meta = record.get('meta_data', {})
         
@@ -107,12 +112,14 @@ class NewspaperProcessor(BaseProcessor):
             except:
                 logger.warning(f"Invalid time_int: {time_int}")
         
-        # Priority 2: created_at (format: YYYY-MM-DD HH:MM:SS)
-        created_at = meta.get('created_at') or record.get('created_at')
-        if created_at:
-            dt = self._try_parse_datetime(created_at, prefer_format='%Y-%m-%d %H:%M:%S')
-            if dt:
-                return dt
+        # Priority 2: publish_date, published_date (NGÀY XUẤT BẢN THỰC)
+        # Format: DD/MM/YYYY hoặc DD-MM-YYYY
+        for field in ['publish_date', 'published_date', 'publication_date']:
+            value = meta.get(field) or record.get(field)
+            if value:
+                dt = self._try_parse_datetime(value, prefer_format='%d/%m/%Y')
+                if dt:
+                    return dt
         
         # Priority 3: published_at (format: DD-MM-YYYY HH:MM:SS)
         published_at = meta.get('published_at') or record.get('published_at')
@@ -121,15 +128,17 @@ class NewspaperProcessor(BaseProcessor):
             if dt:
                 return dt
         
-        # Priority 4: Other fields
-        for field in ['published_date', 'publish_date', 'date', 'timestamp']:
+        # Priority 4: Other timestamp fields (date, timestamp)
+        for field in ['date', 'timestamp']:
             value = meta.get(field) or record.get(field)
             if value:
                 dt = self._try_parse_datetime(value)
                 if dt:
                     return dt
         
-        return super()._parse_timestamp(record)
+        # KHÔNG dùng created_at/updated_at vì đó là timestamp crawl, không phải ngày xuất bản
+        # Trả về None nếu không tìm thấy publish date
+        return None
     
     def _try_parse_datetime(self, value, prefer_format: Optional[str] = None) -> Optional[datetime]:
         """
@@ -160,14 +169,14 @@ class NewspaperProcessor(BaseProcessor):
                 except:
                     pass
                 
-                # Common formats - extended to handle DD-MM-YYYY
+                # Common formats - extended to handle DD-MM-YYYY and DD/MM/YYYY
                 formats = [
+                    '%d/%m/%Y',           # 18/04/2023 (newspaper publish_date format)
+                    '%d-%m-%Y',           # 14-10-2018
                     '%Y-%m-%d %H:%M:%S',  # 2018-10-14 20:47:13
                     '%d-%m-%Y %H:%M:%S',  # 14-10-2018 20:47:13 (newspaper format)
-                    '%d/%m/%Y %H:%M:%S',
+                    '%d/%m/%Y %H:%M:%S',  # 18/04/2023 10:30:00
                     '%Y-%m-%d',
-                    '%d-%m-%Y',           # 14-10-2018
-                    '%d/%m/%Y',
                     '%Y/%m/%d',
                 ]
                 for fmt in formats:
@@ -185,16 +194,25 @@ class NewspaperProcessor(BaseProcessor):
         meta = record.get('meta_data', {})
         url = record.get('url', '')
         
-        # Extract domain as source name
-        source_name = None
-        try:
-            parsed = urlparse(url)
-            source_name = parsed.netloc.replace('www.', '')
-        except:
-            pass
+        # Extract source name (newspaper name) from metadata, fallback to domain
+        # Priority: source > newspaper_name > site_name > domain
+        source_name = (
+            meta.get('source') or 
+            meta.get('newspaper_name') or 
+            meta.get('site_name') or
+            meta.get('publisher')
+        )
         
-        # Extract category
-        category = meta.get('category') or meta.get('section') or meta.get('rubric')
+        # If no name in metadata, use domain as fallback
+        if not source_name:
+            try:
+                parsed = urlparse(url)
+                source_name = parsed.netloc.replace('www.', '')
+            except:
+                pass
+        
+        # Extract category - Map type_newspaper → category
+        category = meta.get('type_newspaper') or meta.get('category') or meta.get('section') or meta.get('rubric')
         
         # Extract tags
         tags = meta.get('tags', [])

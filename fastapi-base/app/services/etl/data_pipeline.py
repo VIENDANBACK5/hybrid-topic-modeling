@@ -364,15 +364,17 @@ class DataPipelineService:
                         INSERT INTO articles (
                             title, content, url, source, source_type, domain, category,
                             published_datetime, published_date, created_at, updated_at,
-                            likes_count, shares_count, comments_count, reactions,
-                            social_platform, account_name, account_id, post_id, post_type,
+                            likes_count, shares_count, comments_count, views_count, reactions,
+                            social_platform, account_name, account_id, account_url, post_id, post_type,
+                            tags, images, videos, summary,
                             word_count, raw_metadata
                         )
                         VALUES (
                             :title, :content, :url, :source, :source_type, :domain, :category,
                             :published_datetime, :published_date, :created_at, :updated_at,
-                            :likes_count, :shares_count, :comments_count, :reactions,
-                            :social_platform, :account_name, :account_id, :post_id, :post_type,
+                            :likes_count, :shares_count, :comments_count, :views_count, :reactions,
+                            :social_platform, :account_name, :account_id, :account_url, :post_id, :post_type,
+                            :tags, :images, :videos, :summary,
                             :word_count, :raw_metadata
                         )
                     """)
@@ -386,22 +388,28 @@ class DataPipelineService:
                         "source": record.get('source', 'external'),
                         "source_type": record.get('source_type', 'facebook'),
                         "domain": record.get('domain'),
-                        "category": metadata.get('category'),
+                        "category": record.get('category'),
                         "published_datetime": record.get('published_at'),
                         "published_date": to_unix(record.get('published_at')),
                         "created_at": to_unix(record.get('created_at')),
                         "updated_at": to_unix(record.get('updated_at')),
-                        "likes_count": reactions.get('like', 0),
-                        "shares_count": metadata.get('shares_count', 0),
-                        "comments_count": metadata.get('comments_count', 0),
+                        "likes_count": record.get('likes_count', 0),
+                        "shares_count": record.get('shares_count', 0),
+                        "comments_count": record.get('comments_count', 0),
+                        "views_count": record.get('views_count', 0),
                         "reactions": json.dumps(reactions) if reactions else None,
-                        "social_platform": record.get('platform', 'facebook'),
-                        "account_name": metadata.get('author_name'),
-                        "account_id": metadata.get('author_id'),
-                        "post_id": metadata.get('post_id'),
-                        "post_type": metadata.get('post_type'),
-                        "word_count": record.get('content_length'),
-                        "raw_metadata": json.dumps(metadata)
+                        "social_platform": record.get('social_platform', record.get('platform', 'facebook')),
+                        "account_name": record.get('account_name'),
+                        "account_id": record.get('account_id'),
+                        "account_url": record.get('account_url'),
+                        "post_id": record.get('post_id'),
+                        "post_type": record.get('post_type'),
+                        "tags": json.dumps(record.get('tags')) if record.get('tags') else None,
+                        "images": json.dumps(record.get('images')) if record.get('images') else None,
+                        "videos": json.dumps(record.get('videos')) if record.get('videos') else None,
+                        "summary": record.get('summary'),
+                        "word_count": record.get('word_count', record.get('content_length')),
+                        "raw_metadata": json.dumps(record.get('raw_metadata', metadata))
                     })
                     self.db.commit()  # Commit per record
                     stats["inserted"] += 1

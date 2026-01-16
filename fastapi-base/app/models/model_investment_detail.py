@@ -21,6 +21,6 @@ class InvestmentDetail(EconomicIndicatorBase):
     fdi_projects_expanded = Column(Numeric, comment='Number of expanded FDI projects')
     
     __table_args__ = (
-        UniqueConstraint('province', 'year', 'quarter', 'month', name='unique_investment_period'),
+        UniqueConstraint('province', 'year', 'quarter', 'month', 'data_source', name='unique_investment_period'),
         Index('idx_investment_province_year', 'province', 'year'),
     )

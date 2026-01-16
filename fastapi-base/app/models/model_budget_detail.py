@@ -20,6 +20,6 @@ class BudgetRevenueDetail(EconomicIndicatorBase):
     execution_rate = Column(Numeric, comment='Budget execution rate (%)')
     
     __table_args__ = (
-        UniqueConstraint('province', 'year', 'quarter', 'month', name='unique_budget_period'),
+        UniqueConstraint('province', 'year', 'quarter', 'month', 'data_source', name='unique_budget_period'),
         Index('idx_budget_province_year', 'province', 'year', 'quarter', 'month'),
     )

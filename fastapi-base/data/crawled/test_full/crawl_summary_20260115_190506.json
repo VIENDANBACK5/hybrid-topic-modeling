@@ -1,0 +1,15 @@
+{
+  "crawl_date": "20260115_190506",
+  "statistics": {
+    "total_listing_pages": 1,
+    "total_articles_found": 10,
+    "articles_crawled": 10,
+    "articles_failed": 0,
+    "start_time": "2026-01-15 19:05:06.190353",
+    "end_time": "2026-01-15 19:05:39.978893"
+  },
+  "output_files": {
+    "article_list": "article_list_20260115_190506.json",
+    "full_articles": "all_articles_20260115_190506.json"
+  }
+}

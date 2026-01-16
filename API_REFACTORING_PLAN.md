@@ -1,59 +1,61 @@
-# Kế hoạch tối ưu API Endpoints (71 → ~30 endpoints)
+                                                                                    #  Kế hoạ                                                                                               
+                                                                                         
+                                                                                                                                                                                                                                                                                                                                                                                                                          ch tối ưu API Endpoints (71 → ~30 endpoints)
+ 
+##  📊 Hiện trạng
+- * *71 endpoints** - quá nhiều, khó quản lý
+-  Nhiều endpoints làm việc tương tự nhau
+-  Phân tán ở nhiều prefix khác nhau
+ 
+-- -
 
-## 📊 Hiện trạng
-- **71 endpoints** - quá nhiều, khó quản lý
-- Nhiều endpoints làm việc tương tự nhau
-- Phân tán ở nhiều prefix khác nhau
-
----
-
-## 🎯 Đề xuất gộp endpoints
-
-### 1. **FETCH APIs (7→3 endpoints)** ⭐ Ưu tiên cao
-
-#### Hiện tại:
-```
-POST /api/fetch/facebook
-POST /api/fetch/newspaper  
-POST /api/fetch/threads
-POST /api/fetch/tiktok
-POST /api/fetch/all
-GET  /api/fetch/status
+# # 🎯 Đề xuất gộp endpoints
+ 
+# ## 1. **FETCH APIs (7→3 endpoints)** ⭐ Ưu tiên cao
+ 
+####  Hiện tại:
+``` 
+POST /a pi/fetch/facebook
+POST / api/fetch/newspaper  
+POST  /api/fetch/threads
+POST  /api/fetch/tiktok
+POS T /api/fetch/all
+GE T  /api/fetch/status
 GET  /api/fetch/files/{data_type}
-```
-
-#### ✅ Sau khi gộp:
-```python
-# GỘP THÀNH 1 ENDPOINT DUY NHẤT
-POST /api/fetch
-Body: {
-    "sources": ["facebook", "newspaper", "threads", "tiktok"],  # hoặc ["all"]
-    "params": {...}  # params riêng cho từng source
-}
-Response: {
-    "status": "success",
-    "results": {
+` ``
+ 
+#### ✅  Sau khi gộp:
+```pyth on
+# GỘP  THÀNH 1 ENDPOINT DUY NHẤT
+POST  /api/fetch
+Body : {
+     "sources": ["facebook", "newspaper", "threads", "tiktok"],  # hoặc ["all"]
+     "params": {...}  # params riêng cho từng source
+} 
+Respon se: {
+    " status": "success",
+     "results": {
         "facebook": {...},
-        "newspaper": {...}
-    }
-}
-
-GET /api/fetch/status?source=facebook  # Optional filter
-GET /api/fetch/files/{data_type}  # Giữ nguyên
-```
-
-**Lợi ích:** 
-- Giảm từ 7→3 endpoints
+         "newspaper": {...}
+     }
+} 
+ 
+GET  /api/fetch/status?source=facebook  # Optional filter
+GE T /api/fetch/files/{data_type}  # Giữ nguyên
+` ``
+ 
+**Lợi  ích:** 
+- Gi ảm từ 7→3 endpoints
 - Linh hoạt fetch 1 hoặc nhiều source cùng lúc
-- Code dễ maintain hơn
-
----
-
-### 2. **PROCESS APIs (8→3 endpoints)** ⭐ Ưu tiên cao
-
-#### Hiện tại:
-```
-POST /api/process/facebook
+- C ode dễ maintain hơn
+                                                                  
+- --
+ 
+### 2. **PRO CESS APIs (8→3 endpoints)** ⭐ Ưu tiên cao                                                                                              
+                                                                                                                                 
+#### Hiện tại:                                            
+```                                                                                                                                           
+     POST /api/process/      facebook                                                                                                                                            
 POST /api/process/newspaper
 POST /api/process/threads
 POST /api/process/tiktok

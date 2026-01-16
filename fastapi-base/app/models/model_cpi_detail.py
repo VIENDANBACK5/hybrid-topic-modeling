@@ -25,6 +25,6 @@ class CPIDetail(EconomicIndicatorBase):
     basket_weights = Column(String, comment='Category weights (JSON)')
     
     __table_args__ = (
-        UniqueConstraint('province', 'year', 'quarter', 'month', name='unique_cpi_period'),
+        UniqueConstraint('province', 'year', 'quarter', 'month', 'data_source', name='unique_cpi_period'),
         Index('idx_cpi_province_year', 'province', 'year'),
     )

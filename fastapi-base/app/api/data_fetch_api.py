@@ -52,123 +52,96 @@ class FetchResult(BaseModel):
 
 
 # ============================================
-# FACEBOOK
+# FETCH ALL TYPES (Must be BEFORE dynamic route)
 # ============================================
 
-@router.post("/facebook", response_model=FetchResult)
-def fetch_facebook(
+@router.post("/all")
+def fetch_all_types(
     config: FetchConfig = FetchConfig(),
     db: Session = Depends(get_db)
 ):
     """
-    Fetch data Facebook tu external API
+    Fetch tat ca cac data types
     
-    Response format:
-    - url: Link post
-    - title: Tieu de
-    - content: Noi dung
-    - meta_data: {post_id, message, timestamp, comments_count, reactions_count, reshare_count, reactions, author, album_preview, ...}
-    - data_type: "facebook"
-    - created_at, updated_at
+    Example:
+    ```bash
+    curl -X POST http://localhost:7777/api/fetch/all \\
+      -H "Content-Type: application/json" \\
+      -d '{"page_size": 100, "max_pages": 5}'
+    ```
+    """
+    results = {}
+    
+    for data_type in ["facebook", "tiktok", "threads", "newspaper"]:
+        try:
+            result = _fetch_data_type(data_type, config)
+            results[data_type] = {
+                "status": result.status,
+                "unique_records": result.unique_records,
+                "duplicates": result.duplicates_in_api,
+                "raw_file": result.raw_file
+            }
+        except Exception as e:
+            logger.error(f"Failed to fetch {data_type}: {e}")
+            results[data_type] = {
+                "status": "error",
+                "error": str(e)
+            }
+    
+    total_records = sum(r.get("unique_records", 0) for r in results.values() if isinstance(r.get("unique_records"), int))
+    
+    return {
+        "status": "success",
+        "message": f"Fetched {total_records} total records across all types",
+        "results": results
+    }
+
+
+# ============================================
+# DYNAMIC FETCH ENDPOINT (CONSOLIDATED)
+# ============================================
+
+@router.post("/{data_type}", response_model=FetchResult)
+def fetch_data(
+    data_type: str,
+    config: FetchConfig = FetchConfig(),
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch data tu external API (Consolidated endpoint for all data types)
+    
+    Supported data_type:
+    - facebook: Facebook posts
+    - tiktok: TikTok videos
+    - threads: Threads posts
+    - newspaper: News articles
+    
+    Response format varies by type:
+    - Facebook: {url, title, content, meta_data: {post_id, reactions_count, ...}}
+    - TikTok: {url, title, content, meta_data: {url_video, views, hashtags, ...}}
+    - Threads: {url, title, content, meta_data: {username, likes, replies, ...}}
+    - Newspaper: {url, title, content, meta_data: {type_newspaper, publish_date, ...}}
     
     Example:
     ```bash
     curl -X POST http://localhost:7777/api/fetch/facebook \\
       -H "Content-Type: application/json" \\
       -d '{"page_size": 100, "max_pages": 10}'
-    ```
-    """
-    return _fetch_data_type("facebook", config)
-
-
-# ============================================
-# TIKTOK
-# ============================================
-
-@router.post("/tiktok", response_model=FetchResult)
-def fetch_tiktok(
-    config: FetchConfig = FetchConfig(),
-    db: Session = Depends(get_db)
-):
-    """
-    Fetch data TikTok tu external API
     
-    Response format:
-    - url: Link video
-    - title: Tieu de video
-    - content: Noi dung (giong title)
-    - meta_data: {url_video, username, views, views_text, hashtags, thumbnail_url, badge}
-    - data_type: "tiktok"
-    - created_at, updated_at
-    
-    Example:
-    ```bash
-    curl -X POST http://localhost:7777/api/fetch/tiktok \\
-      -H "Content-Type: application/json" \\
-      -d '{"page_size": 100, "max_pages": 10}'
-    ```
-    """
-    return _fetch_data_type("tiktok", config)
-
-
-# ============================================
-# THREADS
-# ============================================
-
-@router.post("/threads", response_model=FetchResult)
-def fetch_threads(
-    config: FetchConfig = FetchConfig(),
-    db: Session = Depends(get_db)
-):
-    """
-    Fetch data Threads tu external API
-    
-    Response format:
-    - url: Link post
-    - title: Noi dung post
-    - content: Noi dung post
-    - meta_data: {username, likes, replies, reposts, shares, time, datetime}
-    - data_type: "threads"
-    - created_at, updated_at
-    
-    Example:
-    ```bash
-    curl -X POST http://localhost:7777/api/fetch/threads \\
-      -H "Content-Type: application/json" \\
-      -d '{"page_size": 100, "max_pages": 10}'
-    ```
-    """
-    return _fetch_data_type("threads", config)
-
-
-# ============================================
-# NEWSPAPER
-# ============================================
-
-@router.post("/newspaper", response_model=FetchResult)
-def fetch_newspaper(
-    config: FetchConfig = FetchConfig(),
-    db: Session = Depends(get_db)
-):
-    """
-    Fetch data Newspaper tu external API
-    
-    Response format:
-    - url: Link bai bao
-    - title: Tieu de
-    - content: Noi dung
-    - meta_data: {...}
-    - data_type: "newspaper"
-    - created_at, updated_at
-    
-    Example:
-    ```bash
     curl -X POST http://localhost:7777/api/fetch/newspaper \\
       -H "Content-Type: application/json" \\
       -d '{"page_size": 100, "max_pages": null}'
     ```
     """
-    return _fetch_data_type("newspaper", config)
+    # Validate data_type
+    valid_types = ["facebook", "tiktok", "threads", "newspaper"]
+    if data_type not in valid_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid data_type '{data_type}'. Supported types: {', '.join(valid_types)}"
+        )
+    
+    return _fetch_data_type(data_type, config)
 
 
 # ============================================
@@ -292,48 +265,61 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
 
 
 # ============================================
-# STATUS & FILES
+# STATUS AND FILE LISTING
 # ============================================
 
 @router.get("/status")
 def get_fetch_status():
     """
-    Xem tong quan cac file da fetch theo tung loai
+    Xem trang thai fetch hien tai
+    
+    Returns: Thong ke ve so file va records cua moi data type
     """
     status = {}
     
     for data_type in ["facebook", "tiktok", "threads", "newspaper"]:
         type_dir = RAW_DATA_DIR / data_type
-        if type_dir.exists():
-            files = list(type_dir.glob("*.json"))
-            total_size = sum(f.stat().st_size for f in files)
-            
-            # Get latest file info
-            latest = None
-            if files:
-                latest_file = max(files, key=lambda f: f.stat().st_mtime)
-                latest = {
-                    "filename": latest_file.name,
-                    "modified": datetime.fromtimestamp(latest_file.stat().st_mtime).isoformat(),
-                    "size_mb": round(latest_file.stat().st_size / 1024 / 1024, 2)
-                }
-            
+        
+        if not type_dir.exists():
             status[data_type] = {
-                "file_count": len(files),
-                "total_size_mb": round(total_size / 1024 / 1024, 2),
-                "latest": latest
-            }
-        else:
-            status[data_type] = {
-                "file_count": 0,
-                "total_size_mb": 0,
+                "files": 0,
                 "latest": None
             }
+            continue
+        
+        files = list(type_dir.glob("*.json"))
+        if not files:
+            status[data_type] = {
+                "files": 0,
+                "latest": None
+            }
+            continue
+        
+        latest_file = max(files, key=lambda f: f.stat().st_mtime)
+        stat = latest_file.stat()
+        
+        # Try to count records in latest file
+        record_count = None
+        try:
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                record_count = data.get("total_records") or len(data.get("records", []))
+        except:
+            pass
+        
+        status[data_type] = {
+            "files": len(files),
+            "latest": {
+                "filename": latest_file.name,
+                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "size_mb": round(stat.st_size / 1024 / 1024, 2),
+                "records": record_count
+            }
+        }
     
     return {
         "status": "ok",
-        "data_types": status,
-        "raw_dir": str(RAW_DATA_DIR)
+        "types": status
     }
 
 
@@ -386,45 +372,7 @@ def list_files_by_type(data_type: str):
         "count": len(files),
         "files": files[:50]  # Latest 50
     }
+# ============================================
+# STATUS & FILES
+# ============================================
 
-
-@router.post("/all")
-def fetch_all_types(
-    config: FetchConfig = FetchConfig(),
-    db: Session = Depends(get_db)
-):
-    """
-    Fetch tat ca cac data types
-    
-    Example:
-    ```bash
-    curl -X POST http://localhost:7777/api/fetch/all \\
-      -H "Content-Type: application/json" \\
-      -d '{"page_size": 100, "max_pages": 5}'
-    ```
-    """
-    results = {}
-    
-    for data_type in ["facebook", "tiktok", "threads", "newspaper"]:
-        try:
-            result = _fetch_data_type(data_type, config)
-            results[data_type] = {
-                "status": result.status,
-                "unique_records": result.unique_records,
-                "duplicates": result.duplicates_in_api,
-                "raw_file": result.raw_file
-            }
-        except Exception as e:
-            logger.error(f"Failed to fetch {data_type}: {e}")
-            results[data_type] = {
-                "status": "error",
-                "error": str(e)
-            }
-    
-    total_records = sum(r.get("unique_records", 0) for r in results.values() if isinstance(r.get("unique_records"), int))
-    
-    return {
-        "status": "success",
-        "message": f"Fetched {total_records} total records across all types",
-        "results": results
-    }

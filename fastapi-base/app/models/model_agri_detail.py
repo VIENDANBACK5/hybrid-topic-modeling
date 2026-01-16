@@ -11,6 +11,6 @@ class AgriProductionDetail(EconomicIndicatorBase):
     __tablename__ = "agri_production_detail"
     
     __table_args__ = (
-        UniqueConstraint('province', 'year', 'quarter', 'month', name='unique_agri_period'),
+        UniqueConstraint('province', 'year', 'quarter', 'month', 'data_source', name='unique_agri_period'),
         Index('idx_agri_province_year', 'province', 'year'),
     )
