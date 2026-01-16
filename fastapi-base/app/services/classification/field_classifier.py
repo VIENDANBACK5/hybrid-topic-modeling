@@ -19,6 +19,20 @@ from app.services.classification.llm_classifier import LLMFieldClassifier
 
 logger = logging.getLogger(__name__)
 
+# Platform detection mapping
+SOCIAL_PLATFORMS = {
+    'facebook.com': 'Facebook',
+    'fb.com': 'Facebook',
+    'tiktok.com': 'TikTok',
+    'threads.net': 'Threads',
+    'youtube.com': 'YouTube',
+    'youtu.be': 'YouTube',
+    'twitter.com': 'Twitter',
+    'x.com': 'Twitter',
+    'instagram.com': 'Instagram',
+    'zalo.me': 'Zalo',
+}
+
 
 class FieldClassificationService:
     """Service để phân loại bài viết theo lĩnh vực"""
@@ -37,6 +51,28 @@ class FieldClassificationService:
         text = re.sub(r'[^\w\s]', ' ', text)
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
+    
+    def _detect_platform(self, source: str, url: str = None) -> str:
+        """
+        Phát hiện platform từ source/domain hoặc URL
+        Returns: Platform name hoặc 'Newspaper' nếu không phải social media
+        """
+        # Thử detect từ source trước
+        if source and source != 'external':
+            source_lower = source.lower()
+            for pattern, platform in SOCIAL_PLATFORMS.items():
+                if pattern in source_lower:
+                    return platform
+        
+        # Nếu source là "external" hoặc không có info, check URL
+        if url:
+            url_lower = url.lower()
+            for pattern, platform in SOCIAL_PLATFORMS.items():
+                if pattern in url_lower:
+                    return platform
+        
+        # Nếu không match với social platform nào, coi như là báo chí
+        return 'Newspaper'
     
     def _match_keywords(self, text: str, keywords: List[str]) -> Tuple[bool, List[str]]:
         """
@@ -379,6 +415,19 @@ class FieldClassificationService:
                 if source:
                     source_dist[source] = count
             
+            # Phân bố theo platform (Facebook, TikTok, Threads, etc.)
+            # Cần query từng article để lấy URL khi source = "external"
+            platform_dist = {}
+            articles_for_platform = self.db.query(
+                Article.source, Article.url
+            ).filter(
+                Article.id.in_(article_ids)
+            ).all()
+            
+            for article in articles_for_platform:
+                platform = self._detect_platform(article.source, article.url)
+                platform_dist[platform] = platform_dist.get(platform, 0) + 1
+            
             # Phân bố theo tỉnh
             province_dist = {}
             province_results = self.db.query(
@@ -410,6 +459,7 @@ class FieldClassificationService:
                 stats.avg_comments = float(engagement_stats.avg_comments or 0)
                 stats.total_engagement = int(engagement_stats.total_engagement or 0)
                 stats.source_distribution = source_dist
+                stats.platform_distribution = platform_dist
                 stats.province_distribution = province_dist
                 stats.stats_date = time.time()
                 stats.updated_at = time.time()
@@ -426,6 +476,7 @@ class FieldClassificationService:
                     avg_comments=float(engagement_stats.avg_comments or 0),
                     total_engagement=int(engagement_stats.total_engagement or 0),
                     source_distribution=source_dist,
+                    platform_distribution=platform_dist,
                     province_distribution=province_dist,
                     stats_date=time.time(),
                     created_at=time.time(),

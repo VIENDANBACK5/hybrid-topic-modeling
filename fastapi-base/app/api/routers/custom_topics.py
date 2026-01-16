@@ -35,7 +35,7 @@ from fastapi import Security
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/custom-topics", tags=["Custom Topics"])
+router = APIRouter(prefix="/api/v1/custom-topics", tags=["Custom Topics (Options)"])
 
 
 # ============================================
@@ -99,7 +99,19 @@ async def create_topic(
     db.commit()
     db.refresh(db_topic)
     
-    logger.info(f" Created topic: {db_topic.name} (ID: {db_topic.id})")
+    logger.info(f"✅ Created topic: {db_topic.name} (ID: {db_topic.id})")
+    
+    # Auto-enhance with TopicGPT if no description
+    if not db_topic.description or len(db_topic.description.strip()) < 10:
+        try:
+            from app.services.topic.topicgpt_enhancer import get_enhancer
+            enhancer = get_enhancer(db)
+            result = enhancer.enhance_single_topic(db_topic.id)
+            if result.get("status") == "success":
+                db.refresh(db_topic)
+                logger.info(f"🤖 TopicGPT auto-enhanced: {db_topic.name}")
+        except Exception as e:
+            logger.warning(f"⚠️ TopicGPT enhancement failed (skipped): {e}")
     
     # Clear classifier cache
     get_classifier().clear_cache()

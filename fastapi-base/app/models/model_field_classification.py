@@ -55,6 +55,7 @@ class FieldStatistics(BareBaseModel):
     
     # Thống kê theo nguồn
     source_distribution = Column(JSON)  # {"vnexpress": 100, "tuoitre": 50, ...}
+    platform_distribution = Column(JSON)  # {"facebook": 150, "tiktok": 80, "threads": 30, ...}
     province_distribution = Column(JSON)  # {"Hà Nội": 80, "TP HCM": 60, ...}
     
     # Timestamp để biết lần update cuối

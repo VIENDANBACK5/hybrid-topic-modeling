@@ -1,0 +1,317 @@
+{
+  "data_type": "facebook",
+  "processed_at": "2026-01-16T03:47:14.052821",
+  "source_file": "data/raw/facebook/facebook_20260116_034702.json",
+  "statistics": {
+    "total": 3,
+    "success": 3,
+    "failed": 0,
+    "errors": []
+  },
+  "records": [
+    {
+      "url": "https://www.facebook.com/permalink.php?story_fbid=pfbid02FvxwY38EPvs64uJFWdh75DCsR2BePsm7F9zs1ZiCCHugbW8pJydZaQ5Z5tDDK2bFl&id=100089245479139",
+      "source_type": "facebook",
+      "source": "https://www.facebook.com/permalink.php?story_fbid=pfbid02FvxwY38EPvs64uJFWdh75DCsR2BePsm7F9zs1ZiCCHugbW8pJydZaQ5Z5tDDK2bFl&id=100089245479139",
+      "domain": "facebook.com",
+      "social_platform": "facebook",
+      "title": "Yên Mỹ  Chá.y  cạnh trường mầm non Liêu Trung - Liêu Xá - Yên Mỹ rất may đã đưa được hết các chá...",
+      "content": "Yên Mỹ  Chá.y  cạnh trường mầm non Liêu Trung - Liêu Xá - Yên Mỹ rất may đã đưa được hết các cháu ra ngoài Khổ thân các cháu quá  Video dưới cmt",
+      "word_count": 33,
+      "published_date": 1766644190.0,
+      "published_datetime": "2025-12-25 06:29:50",
+      "likes_count": 28,
+      "shares_count": 0,
+      "comments_count": 2,
+      "views_count": 0,
+      "reactions": {
+        "angry": 0,
+        "care": 0,
+        "haha": 0,
+        "like": 28,
+        "love": 0,
+        "sad": 0,
+        "wow": 0
+      },
+      "account_id": "100089245479139",
+      "account_name": "Beat Hưng Yên +",
+      "account_url": "https://www.facebook.com/people/Beat-H%C6%B0ng-Y%C3%AAn-/100089245479139/",
+      "post_id": "877658211885687",
+      "post_type": "post",
+      "raw_metadata": {
+        "post_id": "877658211885687",
+        "type": "post",
+        "url": "https://www.facebook.com/permalink.php?story_fbid=pfbid02FvxwY38EPvs64uJFWdh75DCsR2BePsm7F9zs1ZiCCHugbW8pJydZaQ5Z5tDDK2bFl&id=100089245479139",
+        "message": "Yên Mỹ ‼️ Chá.y 🔥 cạnh  trường mầm non Liêu Trung - Liêu Xá - Yên Mỹ rất may đã đưa được hết các cháu ra ngoài Khổ thân các cháu quá 🥶 Video dưới cmt 👇",
+        "message_rich": "Yên Mỹ ‼️ Chá.y 🔥 cạnh  trường mầm non Liêu Trung - Liêu Xá - Yên Mỹ rất may đã đưa được hết các cháu ra ngoài Khổ thân các cháu quá 🥶 Video dưới cmt 👇",
+        "timestamp": 1766644190,
+        "comments_count": 2,
+        "reactions_count": 28,
+        "reshare_count": 0,
+        "reactions": {
+          "angry": 0,
+          "care": 0,
+          "haha": 0,
+          "like": 28,
+          "love": 0,
+          "sad": 0,
+          "wow": 0
+        },
+        "author": {
+          "id": "100089245479139",
+          "name": "Beat Hưng Yên +",
+          "url": "https://www.facebook.com/people/Beat-H%C6%B0ng-Y%C3%AAn-/100089245479139/",
+          "profile_picture_url": "https://scontent.fkul8-2.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=cp0_dst-png_s40x40&_nc_cat=1&ccb=1-7&_nc_sid=3e70f4&_nc_ohc=y2dPFfHIikYQ7kNvwE50DwA&_nc_oc=AdkchKAHX23-8FxLwKWYm8uJ7mdKNVMlkg1xeVWda6UM6uE9Us0R9jucz6xo1g9fgFc&_nc_zt=24&_nc_ht=scontent.fkul8-2.fna&oh=00_AfpZaM4fR5iG6i7CNXend2GDaJQJ7J0zc2KeXXWVnELsHw&oe=6981B7BA"
+        },
+        "author_title": null,
+        "image": null,
+        "video": null,
+        "album_preview": [
+          {
+            "type": "photo",
+            "image_file_uri": "https://scontent.fkul8-5.fna.fbcdn.net/v/t39.30808-6/603774770_877657908552384_8576291744396823661_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_ohc=pGPnnwuVld0Q7kNvwFiBtDr&_nc_oc=Adnq_OnwtUNcLcfOfwLsuClTLnFBW3qbbwKgjYTT6OOUg5pArn1YlaljgmD22nkp54s&_nc_zt=23&_nc_ht=scontent.fkul8-5.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfrJVxPXJVX_zjkAo_kRCnY3WMRRvluNgrguOMD2Fl36nw&oe=69602552",
+            "url": "https://www.facebook.com/photo.php?fbid=877657905219051&set=a.104297885888394&type=3",
+            "id": "877657905219051"
+          },
+          {
+            "type": "photo",
+            "image_file_uri": "https://scontent.fkul8-5.fna.fbcdn.net/v/t39.30808-6/605609735_877657951885713_3277635731641195814_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=833d8c&_nc_ohc=Gqq8HozgnSwQ7kNvwHBHWRY&_nc_oc=AdmjouDxs3wB-BsuaiSG3k6KTSszLpc6q7dkxt2vvjVI2f4dEiUtsok0FcXB_0fz4hI&_nc_zt=23&_nc_ht=scontent.fkul8-5.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfqJDo2RefqqveFL_FtH8BZOjkaU5gFRR2xnSYlCOgWTjg&oe=6960374E",
+            "url": "https://www.facebook.com/photo.php?fbid=877657948552380&set=a.104297885888394&type=3",
+            "id": "877657948552380"
+          },
+          {
+            "type": "photo",
+            "image_file_uri": "https://scontent.fkul8-2.fna.fbcdn.net/v/t39.30808-6/603839354_877658001885708_1851217732974965431_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=833d8c&_nc_ohc=wFoKKPf_C-4Q7kNvwEU1FQt&_nc_oc=AdkGWq0VfG_y2v7ZMur7LLeY3tklLkX7H9blpOhobNTW9dnhMmLEzsPTPt-Mr4b83Sk&_nc_zt=23&_nc_ht=scontent.fkul8-2.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfocKb-atv7TeJDrZl8lsZ6PWILIg6zf5YT2OXbQdB2VnA&oe=69603146",
+            "url": "https://www.facebook.com/photo.php?fbid=877657998552375&set=a.104297885888394&type=3",
+            "id": "877657998552375"
+          },
+          {
+            "type": "photo",
+            "image_file_uri": "https://scontent.fkul8-2.fna.fbcdn.net/v/t39.30808-6/603860746_877658061885702_3291619246581829992_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_ohc=W3J0RlU_PmsQ7kNvwFNNwsV&_nc_oc=AdlSwtdbiZYRhvXyWjEuaJ73U-Eo2zs1XW_lgdGQdJjpAw0NebskabAJ9Q81LT-C10s&_nc_zt=23&_nc_ht=scontent.fkul8-2.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfqHsX6QfGYeX0FGPiPfy63qGhmHuJTHxAivCpZxDW5SUw&oe=69600E19",
+            "url": "https://www.facebook.com/photo.php?fbid=877658058552369&set=a.104297885888394&type=3",
+            "id": "877658058552369"
+          },
+          {
+            "type": "photo",
+            "image_file_uri": "https://scontent.fkul8-5.fna.fbcdn.net/v/t39.30808-6/603821814_877658131885695_7067835135448417347_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=833d8c&_nc_ohc=nUFmP08Y3ZYQ7kNvwFByZtX&_nc_oc=AdmdyVK7Pk9yFn55BjA4EaeQjTS1urvls6qhxPecT5PVE45vorYquoaFY_7FajDOowI&_nc_zt=23&_nc_ht=scontent.fkul8-5.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfrpyUrKMSvvu8_IUglkLPafcKWy0lrL3r9LcVfpPg9ykA&oe=69603279",
+            "url": "https://www.facebook.com/photo.php?fbid=877658125219029&set=a.104297885888394&type=3",
+            "id": "877658125219029"
+          }
+        ],
+        "video_files": null,
+        "video_thumbnail": null,
+        "external_url": null,
+        "attached_event": null,
+        "attached_post": null,
+        "attached_post_url": null,
+        "text_format_metadata": null,
+        "comments_id": "877658211885687",
+        "shares_id": "877658211885687"
+      },
+      "is_cleaned": true,
+      "data_type": "facebook",
+      "images": [
+        "https://scontent.fkul8-5.fna.fbcdn.net/v/t39.30808-6/603774770_877657908552384_8576291744396823661_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_ohc=pGPnnwuVld0Q7kNvwFiBtDr&_nc_oc=Adnq_OnwtUNcLcfOfwLsuClTLnFBW3qbbwKgjYTT6OOUg5pArn1YlaljgmD22nkp54s&_nc_zt=23&_nc_ht=scontent.fkul8-5.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfrJVxPXJVX_zjkAo_kRCnY3WMRRvluNgrguOMD2Fl36nw&oe=69602552",
+        "https://scontent.fkul8-5.fna.fbcdn.net/v/t39.30808-6/605609735_877657951885713_3277635731641195814_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=833d8c&_nc_ohc=Gqq8HozgnSwQ7kNvwHBHWRY&_nc_oc=AdmjouDxs3wB-BsuaiSG3k6KTSszLpc6q7dkxt2vvjVI2f4dEiUtsok0FcXB_0fz4hI&_nc_zt=23&_nc_ht=scontent.fkul8-5.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfqJDo2RefqqveFL_FtH8BZOjkaU5gFRR2xnSYlCOgWTjg&oe=6960374E",
+        "https://scontent.fkul8-2.fna.fbcdn.net/v/t39.30808-6/603839354_877658001885708_1851217732974965431_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=833d8c&_nc_ohc=wFoKKPf_C-4Q7kNvwEU1FQt&_nc_oc=AdkGWq0VfG_y2v7ZMur7LLeY3tklLkX7H9blpOhobNTW9dnhMmLEzsPTPt-Mr4b83Sk&_nc_zt=23&_nc_ht=scontent.fkul8-2.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfocKb-atv7TeJDrZl8lsZ6PWILIg6zf5YT2OXbQdB2VnA&oe=69603146",
+        "https://scontent.fkul8-2.fna.fbcdn.net/v/t39.30808-6/603860746_877658061885702_3291619246581829992_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_ohc=W3J0RlU_PmsQ7kNvwFNNwsV&_nc_oc=AdlSwtdbiZYRhvXyWjEuaJ73U-Eo2zs1XW_lgdGQdJjpAw0NebskabAJ9Q81LT-C10s&_nc_zt=23&_nc_ht=scontent.fkul8-2.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfqHsX6QfGYeX0FGPiPfy63qGhmHuJTHxAivCpZxDW5SUw&oe=69600E19",
+        "https://scontent.fkul8-5.fna.fbcdn.net/v/t39.30808-6/603821814_877658131885695_7067835135448417347_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=833d8c&_nc_ohc=nUFmP08Y3ZYQ7kNvwFByZtX&_nc_oc=AdmdyVK7Pk9yFn55BjA4EaeQjTS1urvls6qhxPecT5PVE45vorYquoaFY_7FajDOowI&_nc_zt=23&_nc_ht=scontent.fkul8-5.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfrpyUrKMSvvu8_IUglkLPafcKWy0lrL3r9LcVfpPg9ykA&oe=69603279"
+      ],
+      "videos": null,
+      "external_url": null,
+      "attached_post_url": null
+    },
+    {
+      "url": "https://www.facebook.com/reel/1528069175118270/",
+      "source_type": "facebook",
+      "source": "https://www.facebook.com/reel/1528069175118270/",
+      "domain": "facebook.com",
+      "social_platform": "facebook",
+      "title": "Phát hiện hố đen vũ trụ tại sân Pickleball, hút cả bóng vào mãi mới tìm ra  Video: Hương gấu pick ...",
+      "content": "Phát hiện hố đen vũ trụ tại sân Pickleball, hút cả bóng vào mãi mới tìm ra  Video: Hương gấu pick Nguồn Beat now",
+      "word_count": 24,
+      "published_date": 1766652892.0,
+      "published_datetime": "2025-12-25 08:54:52",
+      "likes_count": 17,
+      "shares_count": 0,
+      "comments_count": 2,
+      "views_count": 0,
+      "reactions": {
+        "angry": 0,
+        "care": 0,
+        "haha": 2,
+        "like": 15,
+        "love": 0,
+        "sad": 0,
+        "wow": 0
+      },
+      "account_id": "100089245479139",
+      "account_name": "Beat Hưng Yên +",
+      "account_url": "https://www.facebook.com/people/Beat-H%C6%B0ng-Y%C3%AAn-/100089245479139/",
+      "post_id": "877732965211545",
+      "post_type": "post",
+      "raw_metadata": {
+        "post_id": "877732965211545",
+        "type": "post",
+        "url": "https://www.facebook.com/reel/1528069175118270/",
+        "message": "Phát hiện hố đen vũ trụ tại sân Pickleball, hút cả bóng vào mãi mới tìm ra 😆\n\nVideo: Hương gấu pick\nNguồn Beat now",
+        "message_rich": "Phát hiện hố đen vũ trụ tại sân Pickleball, hút cả bóng vào mãi mới tìm ra 😆\n\nVideo: Hương gấu pick\nNguồn Beat now",
+        "timestamp": 1766652892,
+        "comments_count": 2,
+        "reactions_count": 17,
+        "reshare_count": 0,
+        "reactions": {
+          "angry": 0,
+          "care": 0,
+          "haha": 2,
+          "like": 15,
+          "love": 0,
+          "sad": 0,
+          "wow": 0
+        },
+        "author": {
+          "id": "100089245479139",
+          "name": "Beat Hưng Yên +",
+          "url": "https://www.facebook.com/people/Beat-H%C6%B0ng-Y%C3%AAn-/100089245479139/",
+          "profile_picture_url": "https://scontent.fkul8-2.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=cp0_dst-png_s40x40&_nc_cat=1&ccb=1-7&_nc_sid=3e70f4&_nc_ohc=y2dPFfHIikYQ7kNvwE50DwA&_nc_oc=AdkchKAHX23-8FxLwKWYm8uJ7mdKNVMlkg1xeVWda6UM6uE9Us0R9jucz6xo1g9fgFc&_nc_zt=24&_nc_ht=scontent.fkul8-2.fna&oh=00_AfpZaM4fR5iG6i7CNXend2GDaJQJ7J0zc2KeXXWVnELsHw&oe=6981B7BA"
+        },
+        "author_title": null,
+        "image": null,
+        "video": "https://www.facebook.com/reel/1528069175118270/",
+        "album_preview": null,
+        "video_files": {
+          "video_sd_file": null,
+          "video_hd_file": null
+        },
+        "video_thumbnail": null,
+        "external_url": null,
+        "attached_event": null,
+        "attached_post": null,
+        "attached_post_url": null,
+        "text_format_metadata": null,
+        "comments_id": "877732965211545",
+        "shares_id": "877732965211545"
+      },
+      "is_cleaned": true,
+      "data_type": "facebook",
+      "images": null,
+      "videos": [
+        "https://www.facebook.com/reel/1528069175118270/"
+      ],
+      "external_url": null,
+      "attached_post_url": null
+    },
+    {
+      "url": "https://www.facebook.com/permalink.php?story_fbid=pfbid0349dsrirE9vhypHTPW5arnXCS5xoAGx9ezrmxLXsx5PRSC87MpcZhrP8CWt8JKYfvl&id=100089245479139",
+      "source_type": "facebook",
+      "source": "https://www.facebook.com/permalink.php?story_fbid=pfbid0349dsrirE9vhypHTPW5arnXCS5xoAGx9ezrmxLXsx5PRSC87MpcZhrP8CWt8JKYfvl&id=100089245479139",
+      "domain": "facebook.com",
+      "social_platform": "facebook",
+      "title": "May mắn thoát chet trong gang tấc tết nhất đến nơi rồi mọi người nhẹ chân tay ga thôi nhé Video",
+      "content": "May mắn thoát chet trong gang tấc tết nhất đến nơi rồi mọi người nhẹ chân tay ga thôi nhé Video",
+      "word_count": 21,
+      "published_date": 1766654641.0,
+      "published_datetime": "2025-12-25 09:24:01",
+      "likes_count": 16,
+      "shares_count": 0,
+      "comments_count": 1,
+      "views_count": 0,
+      "reactions": {
+        "angry": 0,
+        "care": 0,
+        "haha": 0,
+        "like": 16,
+        "love": 0,
+        "sad": 0,
+        "wow": 0
+      },
+      "account_id": "100089245479139",
+      "account_name": "Beat Hưng Yên +",
+      "account_url": "https://www.facebook.com/people/Beat-H%C6%B0ng-Y%C3%AAn-/100089245479139/",
+      "post_id": "877748201876688",
+      "post_type": "post",
+      "raw_metadata": {
+        "post_id": "877748201876688",
+        "type": "post",
+        "url": "https://www.facebook.com/permalink.php?story_fbid=pfbid0349dsrirE9vhypHTPW5arnXCS5xoAGx9ezrmxLXsx5PRSC87MpcZhrP8CWt8JKYfvl&id=100089245479139",
+        "message": "May mắn thoát che*t trong gang tấc tết nhất đến nơi rồi mọi người nhẹ chân tay ga thôi nhé \nVideo 👇",
+        "message_rich": "May mắn thoát che*t trong gang tấc tết nhất đến nơi rồi mọi người nhẹ chân tay ga thôi nhé \nVideo 👇",
+        "timestamp": 1766654641,
+        "comments_count": 1,
+        "reactions_count": 16,
+        "reshare_count": 0,
+        "reactions": {
+          "angry": 0,
+          "care": 0,
+          "haha": 0,
+          "like": 16,
+          "love": 0,
+          "sad": 0,
+          "wow": 0
+        },
+        "author": {
+          "id": "100089245479139",
+          "name": "Beat Hưng Yên +",
+          "url": "https://www.facebook.com/people/Beat-H%C6%B0ng-Y%C3%AAn-/100089245479139/",
+          "profile_picture_url": "https://scontent.fkul8-2.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=cp0_dst-png_s40x40&_nc_cat=1&ccb=1-7&_nc_sid=3e70f4&_nc_ohc=y2dPFfHIikYQ7kNvwE50DwA&_nc_oc=AdkchKAHX23-8FxLwKWYm8uJ7mdKNVMlkg1xeVWda6UM6uE9Us0R9jucz6xo1g9fgFc&_nc_zt=24&_nc_ht=scontent.fkul8-2.fna&oh=00_AfpZaM4fR5iG6i7CNXend2GDaJQJ7J0zc2KeXXWVnELsHw&oe=6981B7BA"
+        },
+        "author_title": null,
+        "image": null,
+        "video": null,
+        "album_preview": null,
+        "video_files": null,
+        "video_thumbnail": null,
+        "external_url": null,
+        "attached_event": null,
+        "attached_post": null,
+        "attached_post_url": null,
+        "text_format_metadata": {
+          "avatar_story_text_format_id": null,
+          "fixed_aspect_ratio": null,
+          "should_add_text_shadow_and_stroke": false,
+          "is_text_always_vertical_centered": false,
+          "background_color": "FFFFF287",
+          "background_gradient_color": null,
+          "background_gradient_direction": null,
+          "background_image": {
+            "uri": "https://scontent.fkul8-1.fna.fbcdn.net/v/t39.10873-6/369186583_2046306545719967_2469896020376717206_n.jpg?stp=dst-jpg_p235x350_tt6&_nc_cat=101&ccb=1-7&_nc_sid=4bb800&_nc_ohc=dpVloWM-IekQ7kNvwGDPTz0&_nc_oc=AdmveeGWps0suDnA3Y0BlYs9otA-tH36D12ST23LdFhHp7SsA7nmzUfAZIuTQDvvy4s&_nc_zt=14&_nc_ht=scontent.fkul8-1.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfpoMfV3T0k0myhp0MEGFVo9F8NJyOqtEt17yEK57lYO_w&oe=69602994"
+          },
+          "color": "FF9D8000",
+          "font_weight": "BOLD",
+          "font_style": "NORMAL",
+          "portrait_background_image": {
+            "uri": "https://scontent.fkul8-1.fna.fbcdn.net/v/t39.10873-6/369186583_2046306545719967_2469896020376717206_n.jpg?stp=dst-jpg_p235x350_tt6&_nc_cat=101&ccb=1-7&_nc_sid=4bb800&_nc_ohc=dpVloWM-IekQ7kNvwGDPTz0&_nc_oc=AdmveeGWps0suDnA3Y0BlYs9otA-tH36D12ST23LdFhHp7SsA7nmzUfAZIuTQDvvy4s&_nc_zt=14&_nc_ht=scontent.fkul8-1.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfpoMfV3T0k0myhp0MEGFVo9F8NJyOqtEt17yEK57lYO_w&oe=69602994"
+          },
+          "text_align": "CENTER",
+          "inspirations_custom_font_object": null,
+          "background": {
+            "__typename": "TextFormatImageBackground",
+            "image": {
+              "uri": "https://scontent.fkul8-1.fna.fbcdn.net/v/t39.10873-6/369186583_2046306545719967_2469896020376717206_n.jpg?stp=dst-jpg_p235x350_tt6&_nc_cat=101&ccb=1-7&_nc_sid=4bb800&_nc_ohc=dpVloWM-IekQ7kNvwGDPTz0&_nc_oc=AdmveeGWps0suDnA3Y0BlYs9otA-tH36D12ST23LdFhHp7SsA7nmzUfAZIuTQDvvy4s&_nc_zt=14&_nc_ht=scontent.fkul8-1.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfpoMfV3T0k0myhp0MEGFVo9F8NJyOqtEt17yEK57lYO_w&oe=69602994"
+            },
+            "color": "FFFFF287",
+            "gradient_color": null,
+            "gradient_direction": null,
+            "portrait_image": {
+              "uri": "https://scontent.fkul8-1.fna.fbcdn.net/v/t39.10873-6/369186583_2046306545719967_2469896020376717206_n.jpg?stp=dst-jpg_p235x350_tt6&_nc_cat=101&ccb=1-7&_nc_sid=4bb800&_nc_ohc=dpVloWM-IekQ7kNvwGDPTz0&_nc_oc=AdmveeGWps0suDnA3Y0BlYs9otA-tH36D12ST23LdFhHp7SsA7nmzUfAZIuTQDvvy4s&_nc_zt=14&_nc_ht=scontent.fkul8-1.fna&_nc_gid=1p2wRVsJ2T_dHuOx9t5HIw&oh=00_AfpoMfV3T0k0myhp0MEGFVo9F8NJyOqtEt17yEK57lYO_w&oe=69602994"
+            },
+            "__module_operation_CometFeedStoryFormattedBackgroundMessageRenderingStrategy_message": {
+              "__dr": "CometFeedStoryFormattedBackgroundMessageImageRenderer_data$normalization.graphql"
+            },
+            "__module_component_CometFeedStoryFormattedBackgroundMessageRenderingStrategy_message": {
+              "__dr": "CometFeedStoryFormattedBackgroundMessageImageRenderer.react"
+            }
+          }
+        },
+        "comments_id": "877748201876688",
+        "shares_id": "877748201876688"
+      },
+      "is_cleaned": true,
+      "data_type": "facebook",
+      "images": null,
+      "videos": null,
+      "external_url": null,
+      "attached_post_url": null
+    }
+  ]
+}

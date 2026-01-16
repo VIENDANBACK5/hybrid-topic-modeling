@@ -17,6 +17,6 @@ class ExportDetail(EconomicIndicatorBase):
     top_markets = Column(String, comment='Top export markets (JSON array)')
     
     __table_args__ = (
-        UniqueConstraint('province', 'year', 'quarter', 'month', name='unique_export_period'),
+        UniqueConstraint('province', 'year', 'quarter', 'month', 'data_source', name='unique_export_period'),
         Index('idx_export_province_year', 'province', 'year', 'quarter', 'month'),
     )
