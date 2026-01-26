@@ -94,8 +94,8 @@ class AQIService:
                 
                 # Process forecast data (daily predictions)
                 if store_mode == "historical":
-                    # Xóa forecast cũ (ngày đã qua) trước khi tạo forecast mới
-                    self._cleanup_old_forecasts(province)
+                    # KHÔNG xóa forecast cũ - giữ lại để tracking độ chính xác của dự báo
+                    # Official data và forecast data tồn tại song song
                     
                     forecast_result = self._process_forecast(station_data, province)
                     results["records_created"] += forecast_result.get("created", 0)
@@ -230,9 +230,9 @@ class AQIService:
                 co=co,
                 o3=o3,
                 good_days_pct=good_days_pct,
-                data_source=f"AQICN API - {station_name}",
-                data_status="official",
-                last_updated=measurement_time  # Lưu timestamp từ API
+                data_source=f"AQICN API - {station_name} (measured: {measurement_time.strftime('%Y-%m-%d %H:%M')})",
+                data_status="official"
+                # last_updated sẽ dùng server_default=func.now() để lưu thời điểm cập nhật thực tế
             )
             
             self.db.add(new_record)
@@ -322,11 +322,16 @@ class AQIService:
                 quarter = (forecast_date.month - 1) // 3 + 1
                 month = forecast_date.month
                 
-                # Check if forecast record already exists (by exact timestamp and status)
+                # Check if forecast record already exists for this specific date
+                # Dùng data_source để identify forecast cho ngày cụ thể
+                forecast_marker = f"forecast:{forecast_date.strftime('%Y-%m-%d')}"
                 existing = self.db.query(AirQualityDetail).filter(
                     AirQualityDetail.province == province,
-                    AirQualityDetail.last_updated == forecast_date,
-                    AirQualityDetail.data_status == "forecast"
+                    AirQualityDetail.year == year,
+                    AirQualityDetail.quarter == quarter,
+                    AirQualityDetail.month == month,
+                    AirQualityDetail.data_status == "forecast",
+                    AirQualityDetail.data_source.like(f"%{forecast_marker}%")
                 ).first()
                 
                 if existing:
@@ -347,9 +352,9 @@ class AQIService:
                     co=co_avg,        # Sẽ fill nếu API có
                     o3=o3_avg,        # Sẽ fill nếu API có
                     good_days_pct=self._calculate_good_days_pct(aqi_value),
-                    data_source=f"AQICN API Forecast - {station_name}",
-                    data_status="forecast",
-                    last_updated=forecast_date
+                    data_source=f"AQICN API Forecast - {station_name} ({forecast_marker})",
+                    data_status="forecast"
+                    # last_updated sẽ dùng server_default=func.now() = thời điểm tạo forecast này
                 )
                 
                 self.db.add(forecast_record)
@@ -377,28 +382,20 @@ class AQIService:
     
     def _cleanup_old_forecasts(self, province: str) -> int:
         """
-        Xóa các forecast record đã cũ (ngày đã qua)
+        [DEPRECATED] Không còn xóa forecast records nữa
+        
+        Forecast data được GIỮ LẠI như lịch sử để:
+        - Đối chiếu độ chính xác của dự báo
+        - Phân tích xu hướng dự báo vs thực tế
+        - Tracking lịch sử đầy đủ
+        
+        Official data và forecast data tồn tại song song, phân biệt bằng data_status
         
         Returns:
-            Number of records deleted
+            0 (không xóa gì)
         """
-        from app.models.model_indicator_details import AirQualityDetail
-        from datetime import date
-        
-        today = date.today()
-        
-        # Xóa forecast records có last_updated <= hôm nay
-        deleted = self.db.query(AirQualityDetail).filter(
-            AirQualityDetail.province == province,
-            AirQualityDetail.data_status == "forecast",
-            AirQualityDetail.last_updated <= today
-        ).delete(synchronize_session=False)
-        
-        if deleted > 0:
-            self.db.commit()
-            logger.info(f"Cleaned up {deleted} old forecast records for {province}")
-        
-        return deleted
+        logger.info(f"Forecast cleanup disabled - keeping all forecast records for {province}")
+        return 0
     
     @staticmethod
     def _extract_pollutant_value(pollutant_data: Optional[Dict]) -> Optional[float]:

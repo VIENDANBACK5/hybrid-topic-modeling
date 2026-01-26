@@ -1,7 +1,8 @@
 """
 Social Indicator Extractor - Trích xuất chỉ số xã hội từ articles
 
-9 Lĩnh vực × 3 Chỉ số = 27 bảng detail
+HIỆN TẠI: 42 bảng detail/statistics trong DB
+(Đã mở rộng từ 27 bảng ban đầu)
 
 Pipeline:
     Articles → LLM Classification → Regex Extraction → Validation → DB
@@ -10,6 +11,9 @@ NGUYÊN TẮC:
 - LLM CHỈ dùng để classify và detect relevance
 - Số liệu = REGEX ONLY từ văn bản gốc
 - KHÔNG sinh ảo, KHÔNG bịa số - không có thì để NULL
+
+LƯU Ý: File này chỉ define một số indicators cơ bản
+Nhiều bảng khác được tạo qua migrations và scripts khác
 """
 import re
 import logging
@@ -67,38 +71,32 @@ FIELD_DEFINITIONS = {
     # LĨNH VỰC 1: Xây dựng Đảng & Hệ thống chính trị
     "xay_dung_dang": {
         "name": "Xây dựng Đảng & Hệ thống chính trị",
+        "province": "Hưng Yên",  # Hard-code tỉnh, không auto-detect
         "indicators": {
-            "corruption_prevention": {
-                "name": "Mức độ phòng chống tham nhũng",
-                "keywords": ["tham nhũng", "phòng chống tham nhũng", "tiêu cực", "kê khai tài sản", 
-                            "minh bạch", "thanh tra", "kiểm toán", "xử lý kỷ luật"],
+            "cadre_statistics": {
+                "name": "Thống kê số lượng cán bộ",
+                "keywords": ["cán bộ", "công chức", "viên chức", "biên chế", "hợp đồng",
+                            "cấp tỉnh", "cấp huyện", "cấp xã", "lao động"],
+                # Pre-filter: URL/title patterns để tìm bài liên quan nhanh
+                "url_patterns": ["bien-che", "can-bo", "cong-chuc", "vien-chuc", "nhan-su"],
+                "title_patterns": ["biên chế", "cán bộ", "công chức", "viên chức", "nhân sự", "tạm giao"],
+                # Unit validation: đơn vị mong đợi cho mỗi field
+                "units": {
+                    "total_authorized": "người",
+                    "provincial_level": "người",
+                    "commune_level": "người",
+                    "contract_workers": "người"
+                },
                 "patterns": {
-                    "corruption_perception_index": r"(?:chỉ số|điểm)\s*(?:cảm nhận)?\s*tham nhũng[:\s]+(\d+[.,]?\d*)",
-                    "reported_cases": r"(?:phát hiện|báo cáo|xử lý)\s*(\d+)\s*(?:vụ|vụ việc|trường hợp)",
-                    "resolved_cases": r"(?:xử lý|kết luận|giải quyết)\s*(\d+)\s*(?:vụ|vụ việc)",
-                    "resolution_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:xử lý|giải quyết)[:\s]+(\d+[.,]?\d*)\s*%",
-                }
-            },
-            "cadre_quality": {
-                "name": "Chất lượng đội ngũ cán bộ, đảng viên",
-                "keywords": ["cán bộ", "đảng viên", "công chức", "viên chức", "đào tạo cán bộ",
-                            "bồi dưỡng", "nâng cao trình độ", "học vị", "bằng cấp"],
-                "patterns": {
-                    "total_cadres": r"(?:tổng số|có)\s*(\d+(?:[.,]\d+)?)\s*(?:cán bộ|công chức|viên chức)",
-                    "cadres_with_degree": r"(\d+(?:[.,]\d+)?)\s*(?:cán bộ|người)\s*(?:có|đạt)\s*(?:bằng|trình độ)",
-                    "degree_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:có bằng|đạt chuẩn|trình độ)[:\s]+(\d+[.,]?\d*)\s*%",
-                    "training_completion_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:hoàn thành|tham gia)\s*(?:đào tạo|bồi dưỡng)[:\s]+(\d+[.,]?\d*)\s*%",
-                }
-            },
-            "party_discipline": {
-                "name": "Mức độ tuân thủ kỷ luật Đảng (DCI)",
-                "keywords": ["kỷ luật đảng", "vi phạm", "cảnh cáo", "khiển trách", "khai trừ",
-                            "kiểm tra đảng viên", "giám sát", "thi hành kỷ luật"],
-                "patterns": {
-                    "discipline_violations": r"(\d+)\s*(?:trường hợp|đảng viên|người)\s*vi phạm",
-                    "warnings_issued": r"(?:cảnh cáo|khiển trách)\s*(\d+)\s*(?:trường hợp|đảng viên|người)",
-                    "dismissals": r"(?:khai trừ|cách chức|kỷ luật)\s*(\d+)\s*(?:trường hợp|đảng viên|người)",
-                    "compliance_rate": r"(?:tỷ lệ|tỉ lệ)\s*tuân thủ[:\s]+(\d+[.,]?\d*)\s*%",
+                    # Tổng số biên chế: "6.485 người" hoặc "gần 6500 biên chế"
+                    # Negative lookahead: không match nếu sau đó là "cấp tỉnh", "cấp xã", "hợp đồng"
+                    "total_authorized": r"(?:tổng số|tạm giao|giao|có|gần|khoảng|trên|dưới)(?:[\s\w]{0,30}?)(?<!cấp\s)(?<!tỉnh\s)(?<!xã\s)(\d+[.,]?\d*)\s*(?:người|biên chế|cán bộ|viên chức)(?!.*(?:cấp tỉnh|cấp xã|hợp đồng))",
+                    # Cấp tỉnh: "hơn 2.000 biên chế cho cấp tỉnh" hoặc "sở ban ngành 2016 người"
+                    "provincial_level": r"(?:cấp tỉnh|tỉnh|sở[,\s]+ban[,\s]+ngành|cơ quan tỉnh)[\s\w,]{0,50}?(?:được giao|giao|nhận|có|hơn|gần)?[\s]*(\d+[.,]?\d*)\s*(?:biên chế|cán bộ|người|viên chức)",
+                    # Cấp xã: "hơn 4.400 biên chế cấp xã" hoặc "xã, phường nhận 4469"
+                    "commune_level": r"(?:cấp xã|xã[,\s]+phường|phường[,\s]+xã|cấp cơ sở|xã và phường)[\s\w,]{0,50}?(?:được giao|giao|nhận|có|hơn|gần)?[\s]*(\d+[.,]?\d*)\s*(?:biên chế|cán bộ|người|viên chức)",
+                    # Hợp đồng: "240 lao động hợp đồng" hoặc "hợp đồng 68 lao động"
+                    "contract_workers": r"(?:có|gồm|trong đó)?[\s]*(\d+[.,]?\d*)\s*(?:lao động|người|cán bộ)?[\s]*(?:hợp đồng|làm việc theo hợp đồng)",
                 }
             }
         }
@@ -107,37 +105,41 @@ FIELD_DEFINITIONS = {
     # LĨNH VỰC 2: Văn hóa, Thể thao & Đời sống tinh thần
     "van_hoa_the_thao": {
         "name": "Văn hóa, Thể thao & Đời sống tinh thần",
+        "province": "Hưng Yên",  # Hard-code tỉnh
         "indicators": {
-            "culture_sport_access": {
-                "name": "Tiếp cận dịch vụ văn hóa thể thao (ACSS)",
-                "keywords": ["văn hóa", "thể thao", "thể dục", "vận động viên", "huy chương",
-                            "câu lạc bộ", "nhà văn hóa", "sân vận động", "bể bơi"],
+            "culture_lifestyle_stats": {
+                "name": "Thống kê văn hóa và đời sống",
+                "keywords": [
+                    "di tích", "di sản", "văn hóa phi vật thể", "danh thắng",
+                    "khách tham quan", "du khách", "lượt khách", "du lịch văn hóa",
+                    "doanh thu du lịch", "phát triển du lịch", "khu du lịch",
+                    "lễ hội", "không gian văn hóa", "bảo tàng", "nhà văn hóa"
+                ],
+                # Pre-filter patterns - CHẶT HƠN
+                "url_patterns": [
+                    "di-tich", "di-san", "van-hoa", "du-lich", "khach-tham-quan",
+                    "danh-thang", "le-hoi", "khu-du-lich", "hung-yen-don-khach"
+                ],
+                "title_patterns": [
+                    "di tích", "di sản", "văn hóa phi vật thể", "danh thắng",
+                    "khách tham quan", "du lịch", "lượt khách", "khu du lịch",
+                    "lễ hội", "Hưng Yên đón khách", "phát triển du lịch"
+                ],
+                # Unit validation
+                "units": {
+                    "total_heritage_sites": "di tích",
+                    "tourist_visitors": "lượt",
+                    "tourism_revenue_billion": "tỷ"
+                },
                 "patterns": {
-                    "participation_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:tham gia|luyện tập)[:\s]+(\d+[.,]?\d*)\s*%",
-                    "cultural_facilities_per_capita": r"(\d+[.,]?\d*)\s*(?:cơ sở|điểm)/\s*(?:vạn|10\.?000)\s*dân",
-                }
-            },
-            "cultural_infrastructure": {
-                "name": "Số lượng & chất lượng công trình văn hóa",
-                "keywords": ["thư viện", "bảo tàng", "nhà hát", "rạp chiếu phim", "di tích",
-                            "di sản", "nhà văn hóa", "trung tâm văn hóa"],
-                "patterns": {
-                    "libraries": r"(\d+)\s*thư viện",
-                    "museums": r"(\d+)\s*bảo tàng",
-                    "theaters": r"(\d+)\s*nhà hát",
-                    "cultural_houses": r"(\d+)\s*nhà văn hóa",
-                    "heritage_sites": r"(\d+)\s*di tích",
-                    "total_facilities": r"(?:tổng số|có)\s*(\d+)\s*(?:công trình|cơ sở)\s*văn hóa",
-                }
-            },
-            "culture_socialization": {
-                "name": "Xã hội hóa hoạt động văn hóa thể thao",
-                "keywords": ["xã hội hóa", "tư nhân", "đầu tư văn hóa", "doanh nghiệp văn hóa",
-                            "sự kiện văn hóa", "lễ hội"],
-                "patterns": {
-                    "socialization_rate": r"(?:tỷ lệ|tỉ lệ)\s*xã hội hóa[:\s]+(\d+[.,]?\d*)\s*%",
-                    "private_investment_billion": r"(?:đầu tư|vốn)\s*(?:tư nhân|xã hội hóa)[:\s]+(\d+(?:[.,]\d+)?)\s*tỷ",
-                    "community_events": r"(?:tổ chức|có)\s*(\d+)\s*(?:sự kiện|lễ hội|hoạt động)",
+                    # Tổng số di tích: "123 di tích" - PHẢI có từ "di tích" trong context, giới hạn 1-500
+                    "total_heritage_sites": r"(?:tổng\s*số|có|hiện\s*có|gồm|quản\s*lý){0,30}\s*((?:[1-9]|[1-9][0-9]|[1-4][0-9]{2}|500))\s*(?:di\s*tích|công\s*trình\s*di\s*tích|danh\s*thắng|di\s*sản)",
+                    
+                    # Số khách tham quan: "1.5 triệu lượt khách" - PHẢI có context du lịch, từ 0.1-50 triệu
+                    "tourist_visitors": r"(?:đón|thu\s*hút|tiếp\s*đón|phục\s*vụ){0,30}\s*([0-9]|[1-4][0-9]|50)(?:[.,][0-9]+)?\s*(triệu|nghìn|ngàn)?\s*(?:lượt|du\s*khách|khách\s*du\s*lịch|lượt\s*khách|người\s*tham\s*quan)",
+                    
+                    # Doanh thu du lịch: "150 tỷ đồng từ du lịch" - PHẢI có "du lịch" hoặc "văn hóa" trước số, từ 10-10000 tỷ
+                    "tourism_revenue_billion": r"(?:doanh\s*thu|thu\s*nhập){0,20}\s*(?:du\s*lịch|văn\s*hóa|từ\s*du\s*lịch){0,30}[^\d]{0,30}([1-9][0-9]{1,3}|10000)\s*tỷ\s*(?:đồng|VNĐ)?",
                 }
             }
         }
@@ -147,17 +149,17 @@ FIELD_DEFINITIONS = {
     "moi_truong": {
         "name": "Môi trường & Biến đổi khí hậu",
         "indicators": {
-            "air_quality": {
-                "name": "Chỉ số chất lượng không khí (AQI)",
-                "keywords": ["chất lượng không khí", "ô nhiễm không khí", "AQI", "bụi mịn", 
-                            "PM2.5", "PM10", "khí thải"],
-                "patterns": {
-                    "aqi_score": r"(?:AQI|chỉ số\s*(?:chất lượng)?\s*không khí)[:\s]+(\d+[.,]?\d*)",
-                    "pm25": r"PM2[.,]5[:\s]+(\d+[.,]?\d*)",
-                    "pm10": r"PM10[:\s]+(\d+[.,]?\d*)",
-                    "good_days_pct": r"(\d+[.,]?\d*)\s*%\s*(?:ngày|số ngày)\s*(?:không khí)?\s*(?:tốt|đạt)",
-                }
-            },
+            # "air_quality": {
+            #     "name": "Chỉ số chất lượng không khí (AQI)",
+            #     "keywords": ["chất lượng không khí", "ô nhiễm không khí", "AQI", "bụi mịn", 
+            #                 "PM2.5", "PM10", "khí thải"],
+            #     "patterns": {
+            #         "aqi_score": r"(?:AQI|chỉ số\s*(?:chất lượng)?\s*không khí)[:\s]+(\d+[.,]?\d*)",
+            #         "pm25": r"PM2[.,]5[:\s]+(\d+[.,]?\d*)",
+            #         "pm10": r"PM10[:\s]+(\d+[.,]?\d*)",
+            #         "good_days_pct": r"(\d+[.,]?\d*)\s*%\s*(?:ngày|số ngày)\s*(?:không khí)?\s*(?:tốt|đạt)",
+            #     }
+            # },
             "climate_resilience": {
                 "name": "Khả năng chống chịu biến đổi khí hậu",
                 "keywords": ["biến đổi khí hậu", "thiên tai", "lũ lụt", "hạn hán", "bão",
@@ -186,15 +188,35 @@ FIELD_DEFINITIONS = {
     # LĨNH VỰC 4: An sinh xã hội & Chính sách
     "an_sinh_xa_hoi": {
         "name": "An sinh xã hội & Chính sách",
+        "province": "Hưng Yên",  # Hard-code tỉnh
         "indicators": {
             "hdi": {
                 "name": "Chỉ số phát triển con người (HDI)",
-                "keywords": ["HDI", "phát triển con người", "tuổi thọ", "giáo dục", "thu nhập bình quân"],
+                "keywords": ["HDI", "phát triển con người", "tuổi thọ", "giáo dục", "thu nhập bình quân",
+                            "chỉ số HDI", "năm đi học", "GNI", "thu nhập đầu người"],
+                # Pre-filter patterns
+                "url_patterns": ["hdi", "phat-trien-con-nguoi", "tuoi-tho", "thu-nhap", "giao-duc"],
+                "title_patterns": ["HDI", "phát triển con người", "tuổi thọ", "thu nhập bình quân", 
+                                  "chỉ số HDI", "năm đi học", "GNI"],
+                # Unit validation
+                "units": {
+                    "hdi_score": "điểm (0-1)",
+                    "life_expectancy": "năm/tuổi",
+                    "mean_schooling_years": "năm",
+                    "expected_schooling_years": "năm",
+                    "gni_per_capita": "USD/người"
+                },
                 "patterns": {
-                    "hdi_score": r"(?:HDI|chỉ số\s*phát triển\s*con người)[:\s]+(\d+[.,]?\d*)",
-                    "life_expectancy": r"tuổi thọ[:\s]+(\d+[.,]?\d*)\s*(?:tuổi|năm)?",
-                    "mean_schooling_years": r"(?:số năm|năm)\s*(?:đi học|học)[:\s]+(\d+[.,]?\d*)",
-                    "gni_per_capita": r"(?:thu nhập|GNI)[:\s]+(\d+(?:[.,]\d+)?)\s*(?:USD|đô la)",
+                    # 1. Điểm HDI: "HDI đạt 0.725" hoặc "chỉ số HDI 0.7" (0-1)
+                    "hdi_score": r"(?:HDI|ch\u1ec9 s\u1ed1\s*(?:HDI|ph\u00e1t tri\u1ec3n\s*con ng\u01b0\u1eddi))[:\s]*(?:\u0111\u1ea1t|\u0111o|\u00f4ng)?[:\s]*(\d+[.,]?\d*)",
+                    # 2. Tuổi thọ trung bình: "tuổi thọ 76.5 năm" hoặc "tuổi thọ trung bình đạt 75 tuổi"
+                    "life_expectancy": r"tu\u1ed5i th\u1ecd\s*(?:trung b\u00ecnh)?[:\s]*(?:\u0111\u1ea1t|l\u00e0)?[:\s]*(\d+[.,]?\d*)\s*(?:tu\u1ed5i|n\u0103m)",
+                    # 3. Số năm đi học trung bình: "số năm đi học 8.5 năm" hoặc "trung bình 9 năm đi học"
+                    "mean_schooling_years": r"(?:s\u1ed1 n\u0103m|n\u0103m)\s*(?:\u0111i h\u1ecdc|h\u1ecdc tập|h\u1ecdc v\u1ea5n)\s*(?:trung b\u00ecnh)?[:\s]*(?:\u0111\u1ea1t|l\u00e0)?[:\s]*(\d+[.,]?\d*)\s*n\u0103m",
+                    # 4. Số năm đi học kỳ vọng: "kỳ vọng 12.5 năm" hoặc "số năm học kỳ vọng 13 năm"
+                    "expected_schooling_years": r"(?:s\u1ed1 n\u0103m h\u1ecdc|n\u0103m \u0111i h\u1ecdc)?\s*k\u1ef3 v\u1ecdng[:\s]*(?:\u0111\u1ea1t|l\u00e0)?[:\s]*(\d+[.,]?\d*)\s*n\u0103m",
+                    # 5. Thu nhập bình quân: "GNI 3,500 USD" hoặc "thu nhập đầu người 4000 đô la"
+                    "gni_per_capita": r"(?:thu nh\u1eadp|GNI|thu nh\u1eadp \u0111\u1ea7u ng\u01b0\u1eddi|thu nh\u1eadp b\u00ecnh qu\u00e2n)[:\s]*(?:\u0111\u1ea1t|l\u00e0)?[:\s]*(\d+(?:[.,]\d+)?)\s*(?:USD|\u0111\u00f4 la|dollar)",
                 }
             },
             "social_security_coverage": {
@@ -225,36 +247,47 @@ FIELD_DEFINITIONS = {
     # LĨNH VỰC 5: An ninh, Trật tự & Quốc phòng
     "an_ninh_trat_tu": {
         "name": "An ninh, Trật tự & Quốc phòng",
+        "province": "Hưng Yên",
+        "url_patterns": [
+            "ma-tuy", "phong-chong-ma-tuy", "bat-giu-ma-tuy",
+            "toi-pham", "an-ninh", "cong-an", "phong-chong-toi-pham",
+            "hung-yen-bat-giu", "hung-yen-phat-hien",
+            "tong-ket-cong-an-hung-yen", "bao-cao-trat-tu"
+        ],
+        "title_patterns": [
+            "ma túy", "phòng chống ma túy", "bắt giữ ma túy", "tang vật ma túy",
+            "tội phạm", "giảm tội phạm", "an ninh", "công an",
+            "Hưng Yên bắt giữ", "Hưng Yên phát hiện", "tổng kết công an",
+            "an ninh Hưng Yên", "Hưng Yên triệt phá", "công an Hưng Yên"
+        ],
         "indicators": {
-            "public_order": {
-                "name": "Bảo đảm an ninh trật tự xã hội",
-                "keywords": ["an ninh", "trật tự", "an toàn xã hội", "tội phạm", "vi phạm pháp luật"],
+            "security": {
+                "name": "An ninh trật tự",
+                "keywords": [
+                    "ma túy", "ma tuý", "phòng chống ma túy", "bắt giữ ma túy",
+                    "vụ ma túy", "đối tượng ma túy", "tang vật ma túy",
+                    "tội phạm", "giảm tội phạm", "phòng chống tội phạm",
+                    "an ninh trật tự", "ANTT", "công an", "lực lượng công an",
+                    "tổng kết công tác", "báo cáo an ninh", "toàn tỉnh", "địa bàn"
+                ],
                 "patterns": {
-                    "crime_rate_per_100k": r"(\d+[.,]?\d*)\s*(?:vụ|tội phạm)/\s*100[.,]?000\s*dân",
-                    "police_per_capita": r"(\d+[.,]?\d*)\s*(?:công an|cảnh sát)/\s*(?:vạn|10\.?000)\s*dân",
-                }
-            },
-            "crime_prevention": {
-                "name": "Phòng chống & giảm tội phạm",
-                "keywords": ["phòng chống tội phạm", "phá án", "bắt giữ", "khởi tố", "truy tố",
-                            "ma túy", "trộm cắp", "cướp giật"],
-                "patterns": {
-                    "crime_reduction_rate": r"(?:giảm|giảm|giảm)\s*(\d+[.,]?\d*)\s*%\s*(?:tội phạm|vụ án)",
-                    "case_clearance_rate": r"(?:tỷ lệ|tỉ lệ)\s*phá án[:\s]+(\d+[.,]?\d*)\s*%",
-                    "total_cases": r"(?:xảy ra|phát hiện)\s*(\d+)\s*(?:vụ|vụ án)",
-                    "solved_cases": r"(?:phá|điều tra làm rõ)\s*(\d+)\s*(?:vụ|vụ án)",
-                }
-            },
-            "traffic_safety": {
-                "name": "An toàn giao thông",
-                "keywords": ["tai nạn giao thông", "an toàn giao thông", "TNGT", "tử vong giao thông",
-                            "vi phạm giao thông", "nồng độ cồn"],
-                "patterns": {
-                    "accidents_total": r"(?:xảy ra|có)\s*(\d+)\s*(?:vụ)?\s*tai nạn",
-                    "fatalities": r"(?:tử vong|chết)\s*(\d+)\s*(?:người|trường hợp)",
-                    "injuries": r"(?:bị thương)\s*(\d+)\s*(?:người|trường hợp)",
-                    "accident_reduction_rate": r"(?:giảm)\s*(\d+[.,]?\d*)\s*%\s*(?:tai nạn|TNGT)",
-                    "drunk_driving_cases": r"(\d+)\s*(?:vụ|trường hợp)\s*(?:vi phạm)?\s*nồng độ cồn",
+                    # Số vụ ma túy - BẮT BUỘC phải có "Hưng Yên/toàn tỉnh/địa bàn" trong context gần
+                    # TRÁNH: "cả nước", "toàn quốc" bằng negative lookahead
+                    # VD: "Năm 2024, trên địa bàn Hưng Yên phát hiện 125 vụ ma túy"
+                    "drug_cases": r"(?:Hưng\s*Yên|toàn\s*tỉnh|địa\s*bàn)(?:(?!cả\s*nước|toàn\s*quốc).){0,300}?(?:phát\s*hiện|bắt\s*giữ|xử\s*lý|triệt\s*phá|phá)[\s\S]{0,100}?(\d{2,4})\s*vụ[\s\S]{0,50}?(?:ma\s*túy|vi\s*phạm)",
+                    
+                    # Số người vi phạm ma túy - BẮT BUỘC context tỉnh
+                    # VD: "Công an Hưng Yên bắt giữ 250 đối tượng ma túy"
+                    "drug_offenders": r"(?:Hưng\s*Yên|toàn\s*tỉnh|địa\s*bàn)(?:(?!cả\s*nước|toàn\s*quốc).){0,300}?(?:bắt\s*giữ|khởi\s*tố|xử\s*lý)[\s\S]{0,100}?(\d{2,4})\s*(?:đối\s*tượng|người|trường\s*hợp)[\s\S]{0,100}?(?:ma\s*túy|vi\s*phạm)",
+                    
+                    # Tỷ lệ giảm tội phạm - BẮT BUỘC context tỉnh, tránh con số quá cao (>30% không thực tế)
+                    # VD: "Toàn tỉnh tội phạm giảm 15%"
+                    "crime_reduction_rate": r"(?:Hưng\s*Yên|toàn\s*tỉnh|địa\s*bàn)(?:(?!cả\s*nước|toàn\s*quốc).){0,300}?(?:tội\s*phạm|vụ\s*án)[\s\S]{0,100}?giảm[\s\S]{0,50}?(\d{1,2})\s*%",
+                },
+                "units": {
+                    "drug_cases": "vụ",
+                    "drug_offenders": "người",
+                    "crime_reduction_rate": "%"
                 }
             }
         }
@@ -263,23 +296,62 @@ FIELD_DEFINITIONS = {
     # LĨNH VỰC 6: Hành chính công & Quản lý Nhà nước
     "hanh_chinh_cong": {
         "name": "Hành chính công & Quản lý Nhà nước",
+        "province": "Hưng Yên",
+        "url_patterns": [
+            "par-index", "par", "cai-cach-hanh-chinh", "cchc", 
+            "sipas", "hai-long", "dich-vu-cong", "mot-cua", 
+            "thu-tuc-hanh-chinh", "chuyen-doi-so", "hung-yen-nang-cao"
+        ],
+        "title_patterns": [
+            "PAR Index", "PAR-Index", "cải cách hành chính", "CCHC",
+            "SIPAS", "hài lòng", "sự hài lòng", "dịch vụ công",
+            "thủ tục hành chính", "một cửa", "chuyển đổi số",
+            "Hưng Yên nâng cao", "chất lượng phục vụ"
+        ],
         "indicators": {
             "par_index": {
                 "name": "Chỉ số cải cách hành chính (PAR Index)",
-                "keywords": ["PAR Index", "cải cách hành chính", "CCHC", "thủ tục hành chính",
-                            "dịch vụ công", "một cửa"],
+                "keywords": [
+                    "PAR Index", "PAR-Index", "chỉ số PAR", "cải cách hành chính", 
+                    "CCHC", "thủ tục hành chính", "TTHC", "dịch vụ công", 
+                    "một cửa", "bộ phận một cửa", "thủ tục đơn giản hóa",
+                    "cải thiện môi trường kinh doanh", "PCI", "DDCI",
+                    "giải quyết hồ sơ", "tiếp nhận hồ sơ", "trả kết quả",
+                    "cắt giảm thời gian", "rút ngắn quy trình"
+                ],
                 "patterns": {
-                    "par_index_score": r"(?:PAR\s*Index|chỉ số\s*CCHC)[:\s]+(\d+[.,]?\d*)",
-                    "admin_procedure_score": r"(?:điểm|chỉ số)\s*(?:thủ tục|TTHC)[:\s]+(\d+[.,]?\d*)",
+                    "par_index_score": r"(?:PAR[\s-]*Index|chỉ\s*số\s*(?:cải\s*cách\s*)?hành\s*chính|CCHC){0,50}[^\d]{0,50}(?:đạt|là|đứng|xếp|hạng|điểm)?{0,50}[:\s]*(\d+[.,]?\d*)\s*(?:điểm|%)?",
+                    "admin_procedure_score": r"(?:điểm|chỉ\s*số|kết\s*quả){0,30}\s*(?:thủ\s*tục|TTHC){0,30}\s*(?:hành\s*chính)?{0,50}[:\s]*(\d+[.,]?\d*)\s*(?:điểm|%)?",
+                    "onestop_processing_rate": r"(?:tỷ\s*lệ|tỉ\s*lệ){0,20}\s*giải\s*quyết{0,30}(?:đúng|trước)?\s*(?:hạn|thời\s*gian)?{0,50}[:\s]*(\d+[.,]?\d*)\s*%",
+                    "simplified_procedures_count": r"(\d+(?:[.,]\d+)?)\s*(?:thủ\s*tục|TTHC|quy\s*trình){0,30}\s*(?:đơn\s*giản|rút\s*gọn|cắt\s*giảm)",
+                },
+                "units": {
+                    "par_index_score": "điểm",
+                    "admin_procedure_score": "điểm",
+                    "onestop_processing_rate": "%",
+                    "simplified_procedures_count": "thủ tục"
                 }
             },
             "sipas": {
                 "name": "Chỉ số hài lòng của người dân (SIPAS)",
-                "keywords": ["SIPAS", "hài lòng", "sự hài lòng", "đánh giá người dân", "khảo sát"],
+                "keywords": [
+                    "SIPAS", "chỉ số SIPAS", "chỉ số hài lòng", "sự hài lòng", 
+                    "mức độ hài lòng", "đánh giá người dân", "đánh giá của dân", 
+                    "khảo sát hài lòng", "khảo sát người dân", "phản hồi người dân",
+                    "chất lượng phục vụ", "thái độ cán bộ", "tiếp dân",
+                    "giải quyết khiếu nại", "giải quyết thắc mắc"
+                ],
                 "patterns": {
-                    "sipas_score": r"(?:SIPAS|chỉ số\s*hài lòng)[:\s]+(\d+[.,]?\d*)",
-                    "service_access_score": r"(?:điểm|chỉ số)\s*tiếp cận[:\s]+(\d+[.,]?\d*)",
-                    "respondents_count": r"(\d+(?:[.,]\d+)?)\s*(?:người|phản hồi|khảo sát)",
+                    "sipas_score": r"(?:SIPAS|chỉ\s*số\s*hài\s*lòng|mức\s*độ\s*hài\s*lòng){0,50}[^\d]{0,50}(?:đạt|là|đứng|xếp|hạng|điểm)?{0,50}[:\s]*(\d+[.,]?\d*)\s*(?:điểm|%)?",
+                    "service_access_score": r"(?:điểm|chỉ\s*số|đánh\s*giá){0,30}\s*(?:tiếp\s*cận|dễ\s*dàng\s*tiếp\s*cận){0,50}[:\s]*(\d+[.,]?\d*)\s*(?:điểm|%)?",
+                    "respondents_count": r"(\d+(?:[.,]\d+)?)\s*(?:người|phản\s*hồi|người\s*được\s*khảo\s*sát|người\s*tham\s*gia|mẫu)",
+                    "satisfaction_rate": r"(?:tỷ\s*lệ|tỉ\s*lệ){0,20}\s*hài\s*lòng{0,50}[:\s]*(\d+[.,]?\d*)\s*%",
+                },
+                "units": {
+                    "sipas_score": "điểm",
+                    "service_access_score": "điểm",
+                    "respondents_count": "người",
+                    "satisfaction_rate": "%"
                 }
             },
             "egovernment": {
@@ -299,36 +371,63 @@ FIELD_DEFINITIONS = {
     # LĨNH VỰC 7: Y tế & Chăm sóc sức khỏe
     "y_te": {
         "name": "Y tế & Chăm sóc sức khỏe",
+        "province": "Hưng Yên",  # Hard-code tỉnh
         "indicators": {
-            "health_insurance": {
-                "name": "Bao phủ Bảo hiểm Y tế (BHYT)",
-                "keywords": ["bảo hiểm y tế", "BHYT", "thẻ BHYT", "khám chữa bệnh BHYT"],
+            "health_statistics": {
+                "name": "Thống kê Y tế & Dân số",
+                "keywords": ["bảo hiểm y tế", "BHYT", "dân số", "cao tuổi", "khám sức khỏe", 
+                            "tỷ số giới tính", "khai sinh", "tham gia BHYT"],
+                # Pre-filter patterns
+                "url_patterns": ["bao-hiem-y-te", "bhyt", "dan-so", "cao-tuoi", "khai-sinh"],
+                "title_patterns": ["bảo hiểm y tế", "BHYT", "dân số", "cao tuổi", "khám sức khỏe", "tỷ số giới tính"],
+                # Unit validation
+                "units": {
+                    "bhyt_coverage_rate": "%",
+                    "total_insured": "người",
+                    "voluntary_insured": "người",
+                    "natural_population_growth_rate": "%",
+                    "elderly_health_checkup_rate": "%",
+                    "sex_ratio_at_birth": "ratio"
+                },
                 "patterns": {
-                    "bhyt_coverage_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:bao phủ|tham gia)\s*BHYT[:\s]+(\d+[.,]?\d*)\s*%",
-                    "total_insured": r"(\d+(?:[.,]\d+)?)\s*(?:người|thẻ)\s*(?:có|tham gia)\s*BHYT",
-                    "claims_amount_billion": r"chi\s*(?:trả|thanh toán)\s*BHYT[:\s]+(\d+(?:[.,]\d+)?)\s*tỷ",
+                    # 1. Tỷ lệ bao phủ BHYT: "95.5% dân số tham gia BHYT" (phải có %)
+                    "bhyt_coverage_rate": r"(?:tỷ lệ|tỉ lệ|tỷ suất)\s*(?:bao phủ|tham gia|người có)\s*(?:BHYT|bảo hiểm y tế)[:\s]*(?:đạt)?[:\s]*(\d+[.,]?\d*)\s*%",
+                    # 2. Số người tham gia BHYT: "950 nghìn người" hoặc "950.000 người có BHYT"
+                    # Phải xử lý "nghìn", "triệu" trong code, regex chỉ lấy số + unit
+                    "total_insured": r"(?:có|gồm)?[\s]*(\d+[.,]?\d*)\s*(nghìn|ngàn|triệu)?\s*(?:người|thẻ|hộ)\s*(?:có|tham gia|được cấp|đang tham gia)\s*(?:BHYT|bảo hiểm y tế)",
+                    # 3. Số người BHYT tự nguyện: "120 nghìn người tự nguyện"
+                    "voluntary_insured": r"(\d+[.,]?\d*)\s*(nghìn|ngàn|triệu)?\s*(?:người|hộ|thẻ)\s*(?:tham gia)?\s*(?:BHYT)?\s*tự nguyện",
+                    # 4. Tốc độ tăng dân số tự nhiên: "1.2%" hoặc "tăng 0.8%" (phải có %)
+                    "natural_population_growth_rate": r"(?:tốc độ|tỷ lệ)\s*tăng\s*dân số\s*(?:tự nhiên)?[:\s]*(?:là|đạt)?[:\s]*(\d+[.,]?\d*)\s*(?:%|‰)",
+                    # 5. Người cao tuổi khám: "80% cao tuổi được khám" (phải có %)
+                    "elderly_health_checkup_rate": r"(\d+[.,]?\d*)\s*%\s*(?:người\s*)?(?:cao tuổi|người già)\s*(?:được|đi)?\s*(?:khám|khám sức khỏe|khám định kỳ)",
+                    # 6. Tỷ số giới tính khi sinh: "110.5" hoặc "tỷ số 110.5/100" (số thuần, không %)
+                    "sex_ratio_at_birth": r"(?:tỷ số|tỉ số)\s*giới tính\s*(?:khi sinh)?[:\s]*(?:là)?[:\s]*(\d+[.,]?\d*)(?:/100|\s*bé trai)?",
                 }
             },
             "haq_index": {
                 "name": "Chất lượng dịch vụ y tế (HAQ Index)",
                 "keywords": ["HAQ", "chất lượng y tế", "bệnh viện", "giường bệnh", "bác sĩ",
-                            "y tá", "điều dưỡng", "cơ sở y tế"],
+                            "y tá", "điều dưỡng", "cơ sở y tế", "tử vong", "sơ sinh"],
+                # Pre-filter patterns
+                "url_patterns": ["benh-vien", "y-te", "bac-si", "dieu-duong", "chat-luong-y-te"],
+                "title_patterns": ["bệnh viện", "giường bệnh", "bác sĩ", "điều dưỡng", "y tá", "cơ sở y tế", "chất lượng y tế"],
+                # Unit validation
+                "units": {
+                    "hospital_beds_per_10k": "giường/10k dân",
+                    "doctors_per_10k": "bác sĩ/10k dân",
+                    "nurses_per_10k": "điều dưỡng/10k dân",
+                    "infant_mortality_rate": "‰"
+                },
                 "patterns": {
-                    "hospital_beds_per_10k": r"(\d+[.,]?\d*)\s*giường\s*(?:bệnh)?/\s*(?:vạn|10\.?000)\s*dân",
-                    "doctors_per_10k": r"(\d+[.,]?\d*)\s*bác sĩ/\s*(?:vạn|10\.?000)\s*dân",
-                    "nurses_per_10k": r"(\d+[.,]?\d*)\s*(?:điều dưỡng|y tá)/\s*(?:vạn|10\.?000)\s*dân",
-                    "infant_mortality_rate": r"(?:tỷ lệ|tỉ lệ)\s*tử vong\s*(?:trẻ|sơ sinh)[:\s]+(\d+[.,]?\d*)",
-                }
-            },
-            "preventive_health": {
-                "name": "Y tế dự phòng",
-                "keywords": ["tiêm chủng", "vaccine", "vắc xin", "phòng dịch", "y tế dự phòng",
-                            "sàng lọc", "khám sức khỏe định kỳ"],
-                "patterns": {
-                    "vaccination_coverage": r"(?:tỷ lệ|tỉ lệ)\s*tiêm\s*(?:chủng|vaccine)[:\s]+(\d+[.,]?\d*)\s*%",
-                    "health_screening_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:sàng lọc|khám)[:\s]+(\d+[.,]?\d*)\s*%",
-                    "clean_water_access_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:sử dụng|tiếp cận)\s*nước sạch[:\s]+(\d+[.,]?\d*)\s*%",
-                    "sanitation_access_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:có)?\s*(?:nhà|công trình)\s*vệ sinh[:\s]+(\d+[.,]?\d*)\s*%",
+                    # Số giường bệnh/10k dân: "25.5 giường/10.000 dân"
+                    "hospital_beds_per_10k": r"(\d+[.,]?\d*)\s*giường\s*(?:bệnh)?[/\s]*(?:trên|cho)?[/\s]*(?:vạn|10[.,]?000|mười nghìn)\s*dân",
+                    # Số bác sĩ/10k dân: "12.3 bác sĩ/vạn dân"
+                    "doctors_per_10k": r"(\d+[.,]?\d*)\s*bác sĩ[/\s]*(?:trên|cho)?[/\s]*(?:vạn|10[.,]?000|mười nghìn)\s*dân",
+                    # Số điều dưỡng/10k dân: "28 điều dưỡng/10.000 dân"
+                    "nurses_per_10k": r"(\d+[.,]?\d*)\s*(?:điều dưỡng|y tá)[/\s]*(?:trên|cho)?[/\s]*(?:vạn|10[.,]?000|mười nghìn)\s*dân",
+                    # Tỷ lệ tử vong sơ sinh: "4.5‰" hoặc "4.5 trên 1000 trẻ sinh sống"
+                    "infant_mortality_rate": r"(?:tỷ lệ|tỉ lệ)\s*tử vong\s*(?:trẻ|sơ sinh|trẻ sơ sinh)[:\s]*(?:là)?[:\s]*(\d+[.,]?\d*)\s*(?:‰|%o|/1[.,]?000)?",
                 }
             }
         }
@@ -337,28 +436,87 @@ FIELD_DEFINITIONS = {
     # LĨNH VỰC 8: Giáo dục & Đào tạo
     "giao_duc": {
         "name": "Giáo dục & Đào tạo",
+        "province": "Hưng Yên",
+        "url_patterns": [
+            "giao-duc", "dao-tao", "hoc-sinh", "giao-vien", "truong-hoc",
+            "tot-nghiep-thpt", "thi-tot-nghiep", "ky-thi-quoc-gia",
+            "chat-luong-giao-duc", "eqi", "hung-yen-dat-chuan"
+        ],
+        "title_patterns": [
+            "giáo dục", "đào tạo", "học sinh", "giáo viên", "trường học",
+            "tốt nghiệp THPT", "thi tốt nghiệp", "kỳ thi quốc gia",
+            "chất lượng giáo dục", "EQI", "Hưng Yên đạt chuẩn",
+            "phổ cập giáo dục", "xóa mù chữ"
+        ],
         "indicators": {
             "eqi": {
                 "name": "Chỉ số chất lượng giáo dục (EQI)",
-                "keywords": ["chất lượng giáo dục", "tỷ lệ biết chữ", "nhập học", "hoàn thành",
-                            "giáo viên", "học sinh", "trường học"],
+                "url_patterns": ["chat-luong-giao-duc", "eqi", "pho-cap-giao-duc", "xoa-mu-chu", "giao-vien-dat-chuan"],
+                "title_patterns": ["chất lượng giáo dục", "EQI", "phổ cập giáo dục", "xóa mù chữ", "giáo viên đạt chuẩn", "biết chữ"],
+                "keywords": [
+                    "chất lượng giáo dục", "EQI", "chỉ số giáo dục",
+                    "tỷ lệ biết chữ", "phổ cập giáo dục", "xóa mù chữ",
+                    "nhập học", "hoàn thành", "tốt nghiệp",
+                    "giáo viên", "GV", "giáo viên đạt chuẩn", "trình độ giáo viên",
+                    "học sinh", "tỷ lệ ra lớp", "tỷ lệ đi học",
+                    "trường học", "cơ sở giáo dục", "trường chuẩn quốc gia",
+                    "phòng học", "thiết bị dạy học", "sách giáo khoa"
+                ],
                 "patterns": {
-                    "literacy_rate": r"(?:tỷ lệ|tỉ lệ)\s*biết chữ[:\s]+(\d+[.,]?\d*)\s*%",
-                    "school_enrollment_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:đi học|nhập học|ra lớp)[:\s]+(\d+[.,]?\d*)\s*%",
-                    "primary_completion_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:hoàn thành|tốt nghiệp)\s*tiểu học[:\s]+(\d+[.,]?\d*)\s*%",
-                    "teacher_qualification_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:giáo viên|GV)\s*đạt chuẩn[:\s]+(\d+[.,]?\d*)\s*%",
-                    "student_teacher_ratio": r"(\d+[.,]?\d*)\s*học sinh/\s*(?:giáo viên|GV)",
+                    # Tỷ lệ biết chữ: "99.5% dân số biết chữ" - tránh nhầm "kết nối", "đồng bộ"
+                    "literacy_rate": r"(?<!kết\s*nối\s)(?<!đồng\s*bộ\s)(?<!xác\s*thực\s)(?:tỷ\s*lệ|tỉ\s*lệ){0,20}\s*(?:biết\s*chữ|xóa\s*mù\s*chữ|người\s*biết\s*chữ){0,50}[^\d]{0,50}[:\s]*(99\.[0-9]|[89][0-9])\s*%",
+                    
+                    # Tỷ lệ nhập học/ra lớp: "98.5% học sinh ra lớp" - tránh nhầm "số hóa", "gắn mã"  
+                    "school_enrollment_rate": r"(?<!số\s*hóa\s)(?<!gắn\s*mã\s)(?<!kết\s*nối\s)(?:tỷ\s*lệ|tỉ\s*lệ){0,20}\s*(?:đi\s*học|nhập\s*học|ra\s*lớp|phổ\s*cập){0,50}(?:\s*(?:tiểu\s*học|trung\s*học|THCS|THPT))?{0,50}[^\d]{0,50}[:\s]*([89][0-9]|100)\s*%",
+                    
+                    # Tỷ lệ hoàn thành tiểu học: "95% học sinh hoàn thành tiểu học"
+                    "primary_completion_rate": r"(?:tỷ\s*lệ|tỉ\s*lệ){0,20}\s*(?:hoàn\s*thành|tốt\s*nghiệp){0,30}\s*tiểu\s*học{0,50}[^\d]{0,50}[:\s]*([89][0-9]|100)\s*%",
+                    
+                    # Tỷ lệ giáo viên đạt chuẩn: "85% giáo viên đạt chuẩn" - phải có "giáo viên" và "đạt chuẩn"
+                    "teacher_qualification_rate": r"(?:tỷ\s*lệ|tỉ\s*lệ){0,20}\s*(?:giáo\s*viên|GV){0,30}\s*(?:đạt\s*chuẩn|có\s*trình\s*độ){0,50}[^\d]{0,50}[:\s]*([6-9][0-9]|100)\s*%",
+                    
+                    # Tỷ lệ HS/GV: "18 học sinh/giáo viên", "1/20" - phải nhỏ hơn 50
+                    "student_teacher_ratio": r"(?<!có\s)(?<!đạt\s)(?<!được\s)([1-4][0-9]|[5-9])\s*(?:học\s*sinh|HS)?\s*[/:]\s*(?:giáo\s*viên|GV|1)",
+                },
+                "units": {
+                    "literacy_rate": "%",
+                    "school_enrollment_rate": "%",
+                    "primary_completion_rate": "%",
+                    "teacher_qualification_rate": "%",
+                    "student_teacher_ratio": "HS/GV"
                 }
             },
             "highschool_graduation": {
                 "name": "Tỷ lệ tốt nghiệp THPT",
-                "keywords": ["tốt nghiệp THPT", "thi tốt nghiệp", "kỳ thi quốc gia", "điểm thi",
-                            "thí sinh", "đỗ tốt nghiệp"],
+                "url_patterns": ["tot-nghiep-thpt", "thi-tot-nghiep", "ky-thi-thpt", "thpt-quoc-gia", "diem-thi-thpt"],
+                "title_patterns": ["tốt nghiệp THPT", "thi tốt nghiệp", "kỳ thi THPT", "THPT quốc gia", "điểm thi", "thí sinh đỗ"],
+                "keywords": [
+                    "tốt nghiệp THPT", "thi tốt nghiệp THPT", "kỳ thi THPT",
+                    "kỳ thi tốt nghiệp", "kỳ thi quốc gia", "thi quốc gia",
+                    "thi THPT quốc gia", "điểm thi THPT", "kết quả thi",
+                    "thí sinh", "thí sinh dự thi", "thí sinh tốt nghiệp",
+                    "đỗ tốt nghiệp", "đạt tốt nghiệp", "hoàn thành THPT",
+                    "điểm trung bình", "điểm TB", "học sinh xuất sắc",
+                    "môn thi", "bài thi"
+                ],
                 "patterns": {
-                    "graduation_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:đỗ|tốt nghiệp)[:\s]+(\d+[.,]?\d*)\s*%",
-                    "total_candidates": r"(\d+(?:[.,]\d+)?)\s*thí sinh",
-                    "passed_candidates": r"(\d+(?:[.,]\d+)?)\s*(?:thí sinh|em)\s*(?:đỗ|đạt)",
-                    "average_score": r"điểm\s*(?:trung bình|TB)[:\s]+(\d+[.,]?\d*)",
+                    # Tỷ lệ đỗ tốt nghiệp: "98.5% đỗ tốt nghiệp" - phải >70% và <100%
+                    "graduation_rate": r"(?:tỷ\s*lệ|tỉ\s*lệ){0,20}\s*(?:đỗ|tốt\s*nghiệp|đạt){0,30}(?:\s*THPT)?{0,50}[^\d]{0,50}[:\s]*([7-9][0-9]\.[0-9]{1,2}|100|[89][0-9])\s*%",
+                    
+                    # Tổng số thí sinh: "15.000 thí sinh dự thi" - phải từ 5k-35k cho Hưng Yên
+                    "total_candidates": r"(?<!tỷ\s*lệ\s)(?<!tỉ\s*lệ\s)((?:[1-3][0-9]|[5-9])(?:[.,][0-9]{3})?)\s*(?:thí\s*sinh|học\s*sinh|em|HS)(?:\s*(?:dự\s*thi|tham\s*gia))?",
+                    
+                    # Số thí sinh đỗ: "14.500 thí sinh đỗ tốt nghiệp"
+                    "passed_candidates": r"(?<!tỷ\s*lệ\s)(?<!tỉ\s*lệ\s)((?:[1-3][0-9]|[5-9])(?:[.,][0-9]{3})?)\s*(?:thí\s*sinh|học\s*sinh|em|HS){0,20}\s*(?:đỗ|đạt|tốt\s*nghiệp)",
+                    
+                    # Điểm trung bình: "Điểm TB: 6.85" - phải từ 4.0-10.0
+                    "average_score": r"(?:điểm|Điểm){0,20}\s*(?:trung\s*bình|TB){0,50}[^\d]{0,50}[:\s]*([4-9]\.[0-9]{1,2}|10(?:\.0{1,2})?)",
+                },
+                "units": {
+                    "graduation_rate": "%",
+                    "total_candidates": "thí sinh",
+                    "passed_candidates": "thí sinh",
+                    "average_score": "điểm"
                 }
             },
             "tvet_employment": {
@@ -376,39 +534,55 @@ FIELD_DEFINITIONS = {
     },
     
     # LĨNH VỰC 9: Hạ tầng & Giao thông
+    # LĨNH VỰC 9: Hạ tầng & Giao thông
     "ha_tang_giao_thong": {
         "name": "Hạ tầng & Giao thông",
+        "province": "Hưng Yên",
+        "url_patterns": [
+            "tai-nan-giao-thong", "tngt", "an-toan-giao-thong",
+            "atgt", "tong-ket", "bao-cao", "tinh-hinh-tngt",
+            "hung-yen-giam-tai-nan", "atgt", "6-thang", "quy",
+            "csgt-hung-yen"
+        ],
+        "title_patterns": [
+            "TNGT", "an toàn giao thông", "tình hình TNGT",
+            "Hưng Yên giảm tai nạn", "tổng kết ATGT",
+            "báo cáo tai nạn", "6 tháng", "quý", "năm 2024", "năm 2025",
+            "địa bàn Hưng Yên", "toàn tỉnh"
+        ],
         "indicators": {
-            "transport_infrastructure": {
-                "name": "Chất lượng hạ tầng giao thông",
-                "keywords": ["hạ tầng giao thông", "đường bộ", "cầu", "đường cao tốc",
-                            "giao thông công cộng", "xe buýt"],
+            "traffic_safety": {
+                "name": "An toàn giao thông",
+                "keywords": [
+                    "tai nạn giao thông", "TNGT", "an toàn giao thông", "ATGT",
+                    "tử vong giao thông", "tử vong do tai nạn", "chết do tai nạn",
+                    "bị thương", "người bị thương", "thương tích giao thông",
+                    "vi phạm giao thông", "nồng độ cồn", "say rượu lái xe",
+                    "CSGT", "cảnh sát giao thông", "tuần tra", "xử lý vi phạm",
+                    "giảm tai nạn", "tăng cường ATGT", "kiểm soát giao thông"
+                ],
                 "patterns": {
-                    "road_length_km": r"(?:tổng|chiều dài)[:\s]+(\d+(?:[.,]\d+)?)\s*km\s*đường",
-                    "paved_road_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:đường|mặt đường)\s*(?:nhựa|bê tông)[:\s]+(\d+[.,]?\d*)\s*%",
-                    "bridge_count": r"(\d+)\s*cầu",
-                }
-            },
-            "traffic_congestion": {
-                "name": "Vận hành & ùn tắc giao thông",
-                "keywords": ["ùn tắc", "kẹt xe", "lưu lượng", "tốc độ giao thông",
-                            "điểm đen giao thông"],
-                "patterns": {
-                    "congestion_points": r"(\d+)\s*(?:điểm|nút)\s*(?:ùn tắc|đen)",
-                    "average_speed_kmh": r"tốc độ\s*(?:trung bình|TB)[:\s]+(\d+[.,]?\d*)\s*km/h",
-                    "public_transport_usage_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:sử dụng|đi)\s*(?:GTCC|xe buýt)[:\s]+(\d+[.,]?\d*)\s*%",
-                }
-            },
-            "planning_progress": {
-                "name": "Tiến độ dự án & quy hoạch",
-                "keywords": ["dự án", "tiến độ", "quy hoạch", "giải ngân", "đầu tư công",
-                            "giải phóng mặt bằng", "GPMB"],
-                "patterns": {
-                    "total_projects": r"(?:tổng số|có)\s*(\d+)\s*dự án",
-                    "on_schedule_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:đúng tiến độ|hoàn thành)[:\s]+(\d+[.,]?\d*)\s*%",
-                    "budget_execution_rate": r"(?:tỷ lệ|tỉ lệ)\s*giải ngân[:\s]+(\d+[.,]?\d*)\s*%",
-                    "total_investment_billion": r"(?:tổng|vốn)\s*đầu tư[:\s]+(\d+(?:[.,]\d+)?)\s*tỷ",
-                    "land_clearance_completion_rate": r"(?:tỷ lệ|tỉ lệ)\s*(?:GPMB|giải phóng)[:\s]+(\d+[.,]?\d*)\s*%",
+                    # Số vụ tai nạn: "toàn tỉnh xảy ra 353 vụ TNGT" - PHẢI có context tổng hợp (toàn tỉnh/địa bàn)
+                    "accidents_total": r"(?:toàn\s*tỉnh|địa\s*bàn|trên\s*địa\s*bàn){0,30}\s*(?:xảy\s*ra|có|ghi\s*nhận){0,20}\s*([5-9][0-9]|[1-9][0-9]{2}|1000)\s*(?:vụ)?\s*(?:tai\s*nạn|TNGT)",
+                    
+                    # Số người tử vong: "làm chết 212 người" - PHẢI có context số lượng lớn (>10)
+                    "fatalities": r"(?:làm\s*chết|tử\s*vong|thiệt\s*mạng){0,30}\s*([1-9][0-9]|[1-9][0-9]{2}|500)\s*(?:người|trường\s*hợp|nạn\s*nhân)",
+                    
+                    # Số người bị thương: "bị thương 263 người" - từ 20-1000 người
+                    "injuries": r"(?:bị\s*thương){0,30}\s*([2-9][0-9]|[1-9][0-9]{2}|1000)\s*(?:người|trường\s*hợp|nạn\s*nhân)",
+                    
+                    # Tỷ lệ giảm tai nạn: "giảm 15% TNGT" - từ 1-50%
+                    "accident_reduction_rate": r"(?:giảm){0,20}\s*([1-4][0-9]|50)\s*%\s*(?:tai\s*nạn|TNGT|vụ)",
+                    
+                    # Số vụ vi phạm nồng độ cồn: "xử lý 3829 trường hợp vi phạm nồng độ cồn" - từ 500-10000 vụ
+                    "drunk_driving_cases": r"(?:xử\s*lý|phạt|lập\s*biên\s*bản){0,30}\s*([5-9][0-9]{2}|[1-9][0-9]{3}|10000)\s*(?:vụ|trường\s*hợp){0,20}\s*(?:vi\s*phạm)?{0,20}\s*nồng\s*độ\s*cồn",
+                },
+                "units": {
+                    "accidents_total": "vụ",
+                    "fatalities": "người",
+                    "injuries": "người",
+                    "accident_reduction_rate": "%",
+                    "drunk_driving_cases": "vụ"
                 }
             }
         }
@@ -441,111 +615,72 @@ class LLMClassifier:
         self, 
         title: str, 
         content: str, 
-        field_key: str
+        field_key: str,
+        url: str = ""
     ) -> Dict[str, Any]:
         """
-        Classify if article is relevant to a field and which indicators
+        Classify article - PRE-FILTER bằng URL/title trước, không cần đọc hết content
+        
+        Strategy:
+        1. Pre-filter: Check URL/title patterns first (FAST)
+        2. If matched: Extract keywords từ title/first paragraph only
+        3. Province: Hard-code từ field definition, KHÔNG auto-detect
         
         Returns:
             {
                 "is_relevant": bool,
                 "relevant_indicators": ["indicator1", "indicator2"],
                 "confidence": float,
-                "province": str or None,
+                "province": str (hard-coded),
                 "year": int or None,
                 "quarter": int or None,
                 "month": int or None
             }
         """
-        if not self.client:
-            # Fallback to keyword matching
-            return self._keyword_classify(title, content, field_key)
-        
         field_def = FIELD_DEFINITIONS.get(field_key)
         if not field_def:
             return {"is_relevant": False, "relevant_indicators": [], "confidence": 0}
         
-        # Build indicator list for prompt
-        indicator_list = "\n".join([
-            f"- {ind_key}: {ind_def['name']}"
-            for ind_key, ind_def in field_def['indicators'].items()
-        ])
-        
-        prompt = f"""Phân tích bài viết sau và trả lời:
-
-TIÊU ĐỀ: {title}
-
-NỘI DUNG (trích): {content[:2000]}
-
-LĨNH VỰC: {field_def['name']}
-CÁC CHỈ SỐ TRONG LĨNH VỰC:
-{indicator_list}
-
-Trả lời dạng JSON (chỉ JSON, không giải thích):
-{{
-    "is_relevant": true/false,  // Bài viết có liên quan đến lĩnh vực này không?
-    "relevant_indicators": ["indicator_key1", "indicator_key2"],  // Các chỉ số liên quan (dùng key)
-    "confidence": 0.0-1.0,  // Độ tin cậy
-    "province": "tên tỉnh" hoặc null,  // Địa phương được đề cập
-    "year": năm hoặc null,  // Năm của dữ liệu
-    "quarter": 1-4 hoặc null,  // Quý nếu có
-    "month": 1-12 hoặc null  // Tháng nếu có
-}}"""
-
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "Bạn là chuyên gia phân tích dữ liệu. Chỉ trả về JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=500
-            )
-            
-            content_resp = response.choices[0].message.content.strip()
-            
-            # Extract JSON
-            if "```json" in content_resp:
-                content_resp = content_resp.split("```json")[1].split("```")[0].strip()
-            elif "```" in content_resp:
-                content_resp = content_resp.split("```")[1].split("```")[0].strip()
-            
-            return json.loads(content_resp)
-            
-        except Exception as e:
-            logger.error(f"LLM classify error: {e}")
-            return self._keyword_classify(title, content, field_key)
-    
-    def _keyword_classify(
-        self, 
-        title: str, 
-        content: str, 
-        field_key: str
-    ) -> Dict[str, Any]:
-        """Fallback: keyword-based classification"""
-        field_def = FIELD_DEFINITIONS.get(field_key)
-        if not field_def:
-            return {"is_relevant": False, "relevant_indicators": [], "confidence": 0}
-        
-        text = f"{title} {content}".lower()
+        # STEP 1: Pre-filter by URL/title patterns (NHANH)
         relevant_indicators = []
-        
         for ind_key, ind_def in field_def['indicators'].items():
-            keyword_count = sum(1 for kw in ind_def['keywords'] if kw.lower() in text)
-            if keyword_count >= 2:  # At least 2 keywords match
+            # Check URL patterns
+            url_patterns = ind_def.get('url_patterns', [])
+            url_match = any(pattern in url.lower() for pattern in url_patterns) if url else False
+            
+            # Check title patterns
+            title_patterns = ind_def.get('title_patterns', [])
+            title_match = any(pattern in title.lower() for pattern in title_patterns)
+            
+            # Nếu match URL hoặc title → relevant
+            if url_match or title_match:
                 relevant_indicators.append(ind_key)
+                logger.info(f"Pre-filter MATCH: {ind_key} - URL:{url_match} Title:{title_match}")
         
-        # Extract period info
-        year = self._extract_year(text)
-        quarter = self._extract_quarter(text)
-        month = self._extract_month(text)
-        province = self._extract_province(text)
+        # STEP 2: Nếu không match URL/title, fallback keyword check (CHỈ title + 500 ký tự đầu)
+        if not relevant_indicators:
+            text_sample = f"{title} {content[:500]}".lower()
+            for ind_key, ind_def in field_def['indicators'].items():
+                keyword_count = sum(1 for kw in ind_def['keywords'] if kw.lower() in text_sample)
+                if keyword_count >= 2:  # At least 2 keywords
+                    relevant_indicators.append(ind_key)
+        
+        if not relevant_indicators:
+            return {"is_relevant": False, "relevant_indicators": [], "confidence": 0}
+        
+        # Extract period info (title + first 500 chars only)
+        text_sample = f"{title} {content[:500]}"
+        year = self._extract_year(text_sample)
+        quarter = self._extract_quarter(text_sample)
+        month = self._extract_month(text_sample)
+        
+        # PROVINCE: Hard-code từ field definition, KHÔNG auto-detect
+        province = field_def.get('province', 'Hưng Yên')
         
         return {
-            "is_relevant": len(relevant_indicators) > 0,
+            "is_relevant": True,
             "relevant_indicators": relevant_indicators,
-            "confidence": min(len(relevant_indicators) * 0.3, 0.9),
+            "confidence": 0.9 if relevant_indicators else 0.5,
             "province": province,
             "year": year,
             "quarter": quarter,
@@ -576,18 +711,6 @@ Trả lời dạng JSON (chỉ JSON, không giải thích):
             if 1 <= m <= 12:
                 return m
         return None
-    
-    def _extract_province(self, text: str) -> Optional[str]:
-        provinces = [
-            "Hưng Yên", "Hà Nội", "TP.HCM", "Hồ Chí Minh", "Đà Nẵng", "Hải Phòng",
-            "Cần Thơ", "Bình Dương", "Đồng Nai", "Bắc Ninh", "Hải Dương",
-            "Thái Bình", "Nam Định", "Ninh Bình", "Hà Nam", "Vĩnh Phúc"
-        ]
-        text_lower = text.lower()
-        for p in provinces:
-            if p.lower() in text_lower:
-                return p
-        return None
 
 
 # =============================================================================
@@ -598,12 +721,47 @@ class ValueExtractor:
     """Extract numeric values from text using REGEX - NO LLM"""
     
     @staticmethod
+    def parse_number_with_unit(value_str: str, unit_str: str = None) -> Optional[float]:
+        """
+        Parse Vietnamese number format with unit (nghìn, triệu, tỷ)
+        
+        Args:
+            value_str: Number string (e.g., "950" or "1.5")
+            unit_str: Unit string (e.g., "nghìn", "triệu", "tỷ")
+        
+        Returns:
+            Converted float value
+        """
+        if not value_str:
+            return None
+        
+        # Clean number string
+        value_str = value_str.replace(',', '.').replace(' ', '').strip()
+        
+        try:
+            value = float(value_str)
+        except ValueError:
+            return None
+        
+        # Apply multiplier based on unit
+        if unit_str:
+            unit_lower = unit_str.lower().strip()
+            if unit_lower in ['nghìn', 'ngàn']:
+                value *= 1_000
+            elif unit_lower == 'triệu':
+                value *= 1_000_000
+            elif unit_lower == 'tỷ':
+                value *= 1_000_000_000
+        
+        return value
+    
+    @staticmethod
     def extract_values(
         text: str, 
         patterns: Dict[str, str]
     ) -> Dict[str, Any]:
         """
-        Extract all values matching the patterns
+        Extract all values matching the patterns with unit handling
         
         Args:
             text: Text to extract from
@@ -619,12 +777,20 @@ class ValueExtractor:
             try:
                 match = re.search(pattern, text, re.IGNORECASE)
                 if match:
-                    value_str = match.group(1).replace(',', '.').replace(' ', '')
-                    try:
-                        value = float(value_str)
-                        results[field_name] = value
-                    except ValueError:
-                        results[field_name] = None
+                    # Check if pattern has 2 groups (number + unit)
+                    if match.lastindex and match.lastindex >= 2:
+                        value_str = match.group(1)
+                        unit_str = match.group(2) if match.lastindex >= 2 else None
+                        value = ValueExtractor.parse_number_with_unit(value_str, unit_str)
+                    else:
+                        # Single group: just number
+                        value_str = match.group(1).replace(',', '.').replace(' ', '')
+                        try:
+                            value = float(value_str)
+                        except ValueError:
+                            value = None
+                    
+                    results[field_name] = value
                 else:
                     results[field_name] = None
             except Exception as e:
@@ -676,24 +842,28 @@ class SmartExtractor:
         text: str,
         indicator_key: str,
         indicator_def: Dict,
-        patterns: Dict[str, str]
+        patterns: Dict[str, str],
+        use_llm: bool = True
     ) -> Dict[str, Any]:
         """
         Extract values using LLM (smart) + Regex (fallback)
         
         Strategy:
-        1. Try LLM first if available - hiểu context phức tạp
+        1. Try LLM first if available and use_llm=True - hiểu context phức tạp
         2. Always try Regex as backup
         3. Merge results: LLM values override Regex if not null
+        
+        Args:
+            use_llm: If False, skip LLM and use Regex only
         
         Returns:
             Dict of field_name -> extracted_value (or None)
         """
         results = {}
         
-        # Step 1: Try LLM extraction (context-aware)
+        # Step 1: Try LLM extraction (context-aware) if enabled
         llm_results = {}
-        if self.llm_available and self.client:
+        if use_llm and self.llm_available and self.client:
             try:
                 llm_results = self._extract_with_llm(text, indicator_key, indicator_def, patterns)
                 logger.debug(f"LLM extracted {sum(1 for v in llm_results.values() if v is not None)}/{len(patterns)} fields")
@@ -732,37 +902,85 @@ class SmartExtractor:
         if not self.client:
             return {}
         
-        # Build field descriptions
+        # Build field descriptions with detailed context
         field_descriptions = []
         for field_name in patterns.keys():
             field_label = field_name.replace('_', ' ').title()
+            # Add specific guidance for common confusing fields
+            if field_name == 'total_candidates':
+                field_label += " (Tổng số thí sinh DỰ THI/THAM GIA, KHÔNG PHẢI 'đạt điểm 10' hay 'đỗ tốt nghiệp')"
+            elif field_name == 'passed_candidates':
+                field_label += " (Số thí sinh ĐỖ TỐT NGHIỆP/ĐẠT TỐT NGHIỆP, KHÔNG PHẢI 'đạt điểm 10 một môn')"
+            elif field_name == 'graduation_rate':
+                field_label += " (Tỷ lệ % ĐỖ TỐT NGHIỆP của toàn bộ thí sinh, KHÔNG PHẢI tỷ lệ đạt điểm cao)"
             field_descriptions.append(f"- {field_name}: {field_label}")
         
         fields_text = "\n".join(field_descriptions)
         
-        prompt = f"""Trích xuất SỐ LIỆU CHÍNH XÁC từ văn bản sau.
+        # Get unit expectations for validation
+        units = indicator_def.get('units', {})
+        units_text = "\n".join([f"- {field}: đơn vị '{unit}'" for field, unit in units.items()]) if units else "Không có ràng buộc đơn vị"
+        
+        # Get province from field definition
+        province = indicator_def.get('province', 'Hưng Yên')
+        
+        prompt = f"""Trích xuất SỐ LIỆU CHÍNH XÁC từ văn bản dưới đây. Đọc KỸ toàn bộ văn bản để hiểu context.
 
-VĂN BẢN:
-{text[:3000]}
+========== VĂN BẢN ==========
+{text[:5000]}
+========== HẾT VĂN BẢN ==========
 
 CHỈ SỐ CẦN TRÍCH XUẤT: {indicator_def['name']}
+TỈNH/THÀNH PHỐ: {province}
 
 CÁC TRƯỜNG DỮ LIỆU:
 {fields_text}
 
-QUI TẮC:
-1. CHỈ trích xuất số có trong văn bản gốc
-2. KHÔNG bịa, KHÔNG suy đoán
-3. Nếu không tìm thấy → null
-4. Chuyển đổi đơn vị về số thực:
-   - "123,5 tỷ" → 123500000000
-   - "45.6%" → 45.6
-   - "2.500 người" → 2500
-5. Hiểu context: "giảm 30%" vs "đạt 70%" là khác nhau
-6. Phân biệt: số kế hoạch vs số thực hiện (ưu tiên số thực hiện)
-7. Nếu có nhiều số cùng loại, lấy số CHÍNH THỨC/MỚI NHẤT
+ĐƠN VỊ MONG ĐỢI:
+{units_text}
 
-Trả về JSON (chỉ JSON, không giải thích):
+QUI TẮC BẮT BUỘC:
+1. CHỈ trích xuất số XUẤT HIỆN TRONG VĂN BẢN - TUYỆT ĐỐI KHÔNG SINH SỐ, KHÔNG BỊA
+2. **CHỈ extract nếu số liệu về tỉnh {province}** - KHÔNG extract số liệu của tỉnh khác hoặc toàn quốc
+3. Nếu văn bản KHÔNG đề cập đến {province} hoặc chỉ đề cập chung chung → TẤT CẢ TRƯỜNG ĐỂ NULL
+4. Nếu không tìm thấy số liệu cụ thể cho {province} → ĐỂ NULL - không đoán, không tính toán, không suy luận
+5. PHẢI kiểm tra đơn vị: nếu số có đơn vị khác đơn vị mong đợi → ĐỂ NULL
+4. Chuyển đổi đơn vị về số thực:
+   - "gần 6500" hoặc "6.485" → 6485 (bỏ dấu phân cách)
+   - "hơn 2.000 người" → 2000 (nếu đơn vị mong đợi là 'người')
+   - "123,5 tỷ" → 123.5 (GIỮ NGUYÊN số, KHÔNG nhân 1 tỷ)
+   - "45.6%" → 45.6 (bỏ ký hiệu %)
+   - "950 nghìn người" → 950000 (nhân 1000)
+   - "1.2 triệu lượt" → 1200000 (nhân 1 triệu)
+5. Cụm từ gần đúng: "gần", "hơn", "khoảng", "trên", "dưới" → vẫn lấy số đó
+6. Phân biệt context:
+   - "giảm 30%" ≠ "đạt 70%" ≠ "tăng 50%" → Chỉ lấy số phù hợp với trường
+   - "kế hoạch 1000" ≠ "thực hiện 800" → Ưu tiên số THỰC HIỆN
+   - "năm trước 500" ≠ "năm nay 600" → Ưu tiên số MỚI NHẤT
+   - "Thái Bình: 95%" ≠ "Hưng Yên: 92%" → CHỈ lấy số của Hưng Yên
+7. Nhiều số cùng loại: lấy số MỚI NHẤT/CHÍNH THỨC/THỰC HIỆN (không lấy kế hoạch/dự kiến)
+8. Số âm: Nếu là "giảm X" hoặc "âm X" → không lấy (để null), trừ khi trường yêu cầu số âm
+
+VÍ DỤ ĐÚNG (Context-aware):
+- Văn bản: "Hưng Yên tạm giao gần 6500 biên chế cho năm 2025"
+  → total_authorized: 6500 (số thực hiện, về Hưng Yên)
+  
+- Văn bản: "Tỉnh {province}: tỷ lệ tốt nghiệp THPT đạt 95.2%, có 18.500 thí sinh dự thi, 17.600 em đỗ"
+  → graduation_rate: 95.2 , total_candidates: 18500 , passed_candidates: 17600 - Văn bản: "{province} có 628 thí sinh đạt điểm 10 môn Toán"
+  → total_candidates: NULL ✗ (đây là số thí sinh đạt điểm 10 MỘT MÔN, không phải tổng số dự thi)
+  
+- Văn bản: "Năm 2024, trên địa bàn {province} phát hiện 125 vụ ma túy, bắt giữ 240 đối tượng"
+  → drug_cases: 125 , drug_offenders: 240 (rõ ràng về {province})
+
+VÍ DỤ SAI - PHẢI TRẢ VỀ NULL:
+- Văn bản: "Toàn quốc có 850.000 thí sinh dự thi THPT" → TẤT CẢ NULL ✗ (toàn quốc, không phải {province})
+- Văn bản: "Thái Bình có tỷ lệ tốt nghiệp 97.5%" → TẤT CẢ NULL ✗ (tỉnh khác)
+- Văn bản: "{province} có 100 thí sinh đạt điểm 10" → total_candidates: NULL ✗ (đạt điểm 10 ≠ tổng số dự thi)
+- Văn bản: "Điểm sàn đại học năm 2017 là..." → TẤT CẢ NULL ✗ (không phải thống kê {province})
+- Văn bản chỉ đề cập "đạt chuẩn", "chất lượng" mà không có số cụ thể → NULL ✗
+- Văn bản không có số → trả về 1000 → SAI, phải null ✗
+
+Trả về JSON (chỉ JSON thuần, không markdown, không giải thích):
 {{
   "field_name_1": số hoặc null,
   "field_name_2": số hoặc null,
@@ -772,7 +990,7 @@ Trả về JSON (chỉ JSON, không giải thích):
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": "Bạn là chuyên gia trích xuất dữ liệu số. Chỉ trả về JSON với số chính xác từ văn bản."},
+                {"role": "system", "content": f"Bạn là chuyên gia trích xuất dữ liệu. CHỈ trích xuất số liệu về tỉnh {province}. TUYỆT ĐỐI KHÔNG extract số của tỉnh khác hoặc toàn quốc. Nếu không có số cụ thể về {province} → TẤT CẢ trả null. Chỉ trả về JSON."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0,
@@ -857,7 +1075,8 @@ class SocialIndicatorService:
         limit: int = 100,
         year_filter: Optional[int] = None,
         province_filter: Optional[str] = None,
-        use_category_filter: bool = True
+        use_category_filter: bool = True,
+        use_llm: bool = False
     ) -> Dict[str, Any]:
         """
         Process articles for a specific field and fill indicator tables
@@ -868,6 +1087,7 @@ class SocialIndicatorService:
             year_filter: Filter articles by year
             province_filter: Filter by province
             use_category_filter: If True, filter by category column first (faster)
+            use_llm: If True, use LLM (GPT) for indicator extraction
         
         Returns:
             Summary of processing results
@@ -933,9 +1153,11 @@ class SocialIndicatorService:
         }
         
         for article in articles:
+            # Save article_id before processing to avoid lazy loading issues after exception
+            article_id = getattr(article, 'id', 'unknown')
             try:
                 article_result = self._process_article_for_field(
-                    article, field_key, field_def
+                    article, field_key, field_def, use_llm=use_llm
                 )
                 if article_result.get("records_created", 0) > 0:
                     results["articles_processed"] += 1
@@ -943,8 +1165,10 @@ class SocialIndicatorService:
                     for ind_key, count in article_result.get("by_indicator", {}).items():
                         results["indicators_filled"][ind_key] = results["indicators_filled"].get(ind_key, 0) + count
             except Exception as e:
-                logger.error(f"Error processing article {article.id}: {e}")
-                results["errors"].append(f"Article {article.id}: {str(e)}")
+                # Rollback on error to clear invalid transaction
+                self.db.rollback()
+                logger.error(f"Error processing article {article_id}: {e}")
+                results["errors"].append(f"Article {article_id}: {str(e)}")
         
         return results
     
@@ -971,16 +1195,18 @@ class SocialIndicatorService:
         self,
         article,
         field_key: str,
-        field_def: Dict
+        field_def: Dict,
+        use_llm: bool = False
     ) -> Dict[str, Any]:
         """Process a single article for a field"""
         result = {"records_created": 0, "by_indicator": {}}
         
-        # Classify article
+        # Classify article (with URL for pre-filtering)
         classification = self.classifier.classify_article(
             article.title or "",
             article.content or "",
-            field_key
+            field_key,
+            url=article.url or ""
         )
         
         if not classification.get("is_relevant"):
@@ -990,7 +1216,8 @@ class SocialIndicatorService:
         year = classification.get("year") or datetime.now().year
         quarter = classification.get("quarter")
         month = classification.get("month")
-        province = classification.get("province") or article.province or "Hưng Yên"
+        # Province: từ classification (hard-coded), KHÔNG dùng article.province
+        province = classification.get("province", "Hưng Yên")
         
         # Process each relevant indicator
         for ind_key in classification.get("relevant_indicators", []):
@@ -1003,7 +1230,8 @@ class SocialIndicatorService:
                 article.content or "",
                 ind_key,
                 ind_def,
-                ind_def.get('patterns', {})
+                ind_def.get('patterns', {}),
+                use_llm=use_llm
             )
             
             # Check if we got any values
@@ -1032,7 +1260,7 @@ class SocialIndicatorService:
                         setattr(existing, field_name, value)
                         updated = True
                 if updated:
-                    existing.data_source = article.url
+                    existing.data_source = article.url[:255] if article.url else None
                     existing.updated_at = datetime.now()
                     self.db.commit()
             else:
@@ -1042,7 +1270,7 @@ class SocialIndicatorService:
                     "year": year,
                     "quarter": quarter,
                     "month": month,
-                    "data_source": article.url,
+                    "data_source": article.url[:255] if article.url else None,
                     "data_status": "official",
                     **non_null_values
                 }

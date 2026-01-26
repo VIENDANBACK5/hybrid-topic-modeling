@@ -43,6 +43,7 @@ class ExtractionRequest(BaseModel):
     year_filter: Optional[int] = Field(None, description="Lọc theo năm")
     province_filter: Optional[str] = Field(None, description="Lọc theo tỉnh/thành")
     use_category_filter: bool = Field(True, description="Lọc theo category của article (nhanh hơn nếu category đã được set)")
+    use_llm: bool = Field(False, description="Sử dụng LLM (GPT) để extract indicators")
 
 
 class ExtractionResponse(BaseModel):
@@ -173,6 +174,9 @@ def extract_field_data(
     - Chỉ trích xuất số liệu có trong văn bản gốc (không bịa)
     - Nếu không tìm thấy số liệu, để NULL
     """
+    # Convert dash to underscore (API uses dash, code uses underscore)
+    field_key = field_key.replace('-', '_')
+    
     if field_key not in FIELD_DEFINITIONS:
         raise HTTPException(status_code=404, detail=f"Field not found: {field_key}")
     
@@ -184,7 +188,8 @@ def extract_field_data(
         limit=request.limit,
         year_filter=request.year_filter,
         province_filter=request.province_filter,
-        use_category_filter=request.use_category_filter
+        use_category_filter=request.use_category_filter,
+        use_llm=request.use_llm
     )
     
     duration = (datetime.now() - start_time).total_seconds()
@@ -213,6 +218,9 @@ def get_field_summary(
     - Số lượng records trong mỗi bảng chỉ số
     - Năm/quý mới nhất có dữ liệu
     """
+    # Convert dash to underscore
+    field_key = field_key.replace('-', '_')
+    
     if field_key not in FIELD_DEFINITIONS:
         raise HTTPException(status_code=404, detail=f"Field not found: {field_key}")
     
@@ -238,6 +246,10 @@ def get_indicator_data(
     """
     Lấy dữ liệu của 1 chỉ số cụ thể
     """
+    # Convert dash to underscore
+    field_key = field_key.replace('-', '_')
+    indicator_key = indicator_key.replace('-', '_')
+    
     if field_key not in FIELD_DEFINITIONS:
         raise HTTPException(status_code=404, detail=f"Field not found: {field_key}")
     
@@ -311,7 +323,8 @@ def extract_all_fields(
                 limit=request.limit,
                 year_filter=request.year_filter,
                 province_filter=request.province_filter,
-                use_category_filter=request.use_category_filter
+                use_category_filter=request.use_category_filter,
+                use_llm=request.use_llm
             )
             
             all_results["total_articles_found"] += result.get("articles_found", 0)

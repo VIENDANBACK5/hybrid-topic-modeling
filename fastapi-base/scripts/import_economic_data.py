@@ -20,7 +20,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models.model_economic_indicators import EconomicIndicator
 
-print("🚀 Economic Indicators Import Tool")
+print("Economic Indicators Import Tool")
 print("=" * 60)
 
 # Create database connection
@@ -33,7 +33,7 @@ def import_from_csv(csv_file: str):
     print(f"\n📥 Importing from CSV: {csv_file}")
     
     if not os.path.exists(csv_file):
-        print(f"❌ File not found: {csv_file}")
+        print(f"File not found: {csv_file}")
         return
     
     with open(csv_file, 'r', encoding='utf-8') as f:
@@ -93,20 +93,20 @@ def import_from_csv(csv_file: str):
                 
                 if count % 10 == 0:
                     db.commit()
-                    print(f"  ✅ Imported {count} records...")
+                    print(f"  Imported {count} records...")
                     
             except Exception as e:
-                print(f"  ❌ Error importing row: {e}")
+                print(f"  Error importing row: {e}")
                 print(f"     Row data: {row}")
                 continue
         
         db.commit()
-        print(f"\n✅ Successfully imported {count} economic indicators!")
+        print(f"\nSuccessfully imported {count} economic indicators!")
 
 
 def create_sample_data():
     """Tạo dữ liệu mẫu cho demo - Dữ liệu kinh tế Việt Nam 2024-2025"""
-    print("\n📊 Creating sample economic data for Vietnam...")
+    print("\nCreating sample economic data for Vietnam...")
     
     sample_data = [
         # Dữ liệu quý 4/2024 - Cả nước
@@ -232,7 +232,7 @@ def create_sample_data():
             'import_value': 342000,
             'trade_balance': 29500,
             'total_investment': 1980.5,
-            'fdi_registered': 38000,
+            'fdi_registered': 38548,
             'fdi_disbursed': 24200,
             'domestic_investment': 1560.0,
             'investment_growth_rate': 8.5,
@@ -259,13 +259,13 @@ def create_sample_data():
             indicator = EconomicIndicator(**data)
             db.add(indicator)
             count += 1
-            print(f"  ✅ Added: {data['period_label']} - {data.get('province', 'Cả nước')}")
+            print(f"  Added: {data['period_label']} - {data.get('province', 'Cả nước')}")
         except Exception as e:
-            print(f"  ❌ Error: {e}")
+            print(f"  Error: {e}")
             print(f"     Data: {data}")
     
     db.commit()
-    print(f"\n✅ Created {count} sample economic indicators!")
+    print(f"\nCreated {count} sample economic indicators!")
 
 
 def main():
@@ -273,12 +273,12 @@ def main():
         csv_file = sys.argv[1]
         import_from_csv(csv_file)
     else:
-        print("\n⚠️  No CSV file provided. Creating sample data instead...")
+        print("\nNo CSV file provided. Creating sample data instead...")
         print("   Usage: python scripts/import_economic_data.py [csv_file]")
         create_sample_data()
     
     # Show summary
-    print("\n📊 Current data summary:")
+    print("\nCurrent data summary:")
     from sqlalchemy import text
     with engine.connect() as conn:
         result = conn.execute(text('SELECT COUNT(*) FROM economic_indicators'))
@@ -307,7 +307,7 @@ def main():
             print(f"     - {row[0]}: {row[1]} records")
     
     db.close()
-    print("\n✅ Done!")
+    print("\nDone!")
 
 
 if __name__ == "__main__":

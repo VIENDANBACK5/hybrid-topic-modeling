@@ -14,13 +14,13 @@ from collections import Counter
 import json
 
 db = SessionLocal()
-print("\n🔧 Populating all statistics tables...")
+print("\nPopulating all statistics tables...")
 
 try:
     articles = db.query(Article).all()
     sentiments = db.query(SentimentAnalysis).all()
     
-    print(f"📊 Data: {len(articles)} articles, {len(sentiments)} sentiments\n")
+    print(f"Data: {len(articles)} articles, {len(sentiments)} sentiments\n")
     
     # Aggregations
     categories = Counter([s.category for s in sentiments if s.category])
@@ -44,7 +44,7 @@ try:
         trending_down=json.dumps([])
     )
     db.add(snapshot)
-    print("✅ 1. daily_snapshots")
+    print("1. daily_snapshots")
     
     # 2. Hot Topics
     today = datetime.now().date()
@@ -67,7 +67,7 @@ try:
             rank=i,
             is_hot=i <= 3
         ))
-    print(f"✅ 2. hot_topics ({len(categories)} topics)")
+    print(f"2. hot_topics ({len(categories)} topics)")
     
     # 3. Topic Mentions
     for i, (cat, count) in enumerate(categories.items(), 1):
@@ -87,7 +87,7 @@ try:
             neutral_mentions=len(cat_sents) - pos - neg,
             rank_by_mention=i
         ))
-    print(f"✅ 3. topic_mentions ({len(categories)} topics)")
+    print(f"3. topic_mentions ({len(categories)} topics)")
     
     # 4. Website Stats
     for domain, count in domains.items():
@@ -106,7 +106,7 @@ try:
             negative_count=neg,
             neutral_count=len(domain_sents) - pos - neg
         ))
-    print(f"✅ 4. website_stats ({len(domains)} domains)")
+    print(f"4. website_stats ({len(domains)} domains)")
     
     # 5. Category Trends
     for i, (cat, count) in enumerate(categories.items(), 1):
@@ -126,7 +126,7 @@ try:
             neutral_count=len(cat_sents) - pos - neg,
             rank_by_mention=i
         ))
-    print(f"✅ 5. category_trends ({len(categories)} categories)")
+    print(f"5. category_trends ({len(categories)} categories)")
     
     # 6. Hashtag Stats
     hashtags = Counter()
@@ -147,9 +147,9 @@ try:
                 mention_count=count,
                 rank=i
             ))
-        print(f"✅ 6. hashtag_stats ({len(hashtags)} hashtags)")
+        print(f"6. hashtag_stats ({len(hashtags)} hashtags)")
     else:
-        print("⚠️  6. hashtag_stats (0 hashtags - no # in content)")
+        print("6. hashtag_stats (0 hashtags - no # in content)")
     
     # 7. Trend Alerts
     alert_count = 0
@@ -169,7 +169,7 @@ try:
                 description=f'Đã phát hiện {neg} bài viết có cảm xúc tiêu cực trong danh mục {cat_name}'
             ))
             alert_count += 1
-    print(f"✅ 7. trend_alerts ({alert_count} alerts)")
+    print(f"7. trend_alerts ({alert_count} alerts)")
     
     # 8. Viral Content
     viral_arts = sorted(
@@ -196,16 +196,16 @@ try:
                 emotion_vi=art_sent.emotion_vi if art_sent else None,
                 category=art_sent.category if art_sent else None
             ))
-        print(f"✅ 8. viral_content ({len(viral_arts)} posts)")
+        print(f"8. viral_content ({len(viral_arts)} posts)")
     else:
-        print("⚠️  8. viral_content (0 posts - no engagement data)")
+        print("8. viral_content (0 posts - no engagement data)")
     
     db.commit()
     print("\n🎉 ALL TABLES POPULATED!\n")
     
 except Exception as e:
     db.rollback()
-    print(f"\n❌ Error: {e}")
+    print(f"\nError: {e}")
     import traceback
     traceback.print_exc()
 finally:

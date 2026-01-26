@@ -375,7 +375,7 @@ class TopicGPTEnhancer:
             if topic.description and len(topic.description) > 50:
                 return {"status": "skipped", "reason": "Already has description"}
             
-            logger.info(f"🤖 Generating description for: {topic.name}")
+            logger.info(f"Generating description for: {topic.name}")
             
             # Get sample articles for this topic
             sample_query = text("""
@@ -400,7 +400,7 @@ class TopicGPTEnhancer:
                 topic.description = new_description
                 self.db.commit()
                 
-                logger.info(f"✅ Enhanced topic {topic_id}: {topic.name}")
+                logger.info(f"Enhanced topic {topic_id}: {topic.name}")
                 return {
                     "status": "success",
                     "topic_id": topic_id,

@@ -6,6 +6,7 @@ x-common: &common
 x-common-volumes: &common-volumes
   volumes:
     - ./app:/app/app
+    - ./call_llm:/app/call_llm
     - ./alembic:/app/alembic
     - ./requirements.txt:/app/requirements.txt
     - ./.env:/app/.env

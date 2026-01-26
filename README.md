@@ -121,17 +121,17 @@ nano config/topicgpt_config.yaml
 
 ```bash
 # Development
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8548
 
 # Production
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn app.main:app --host 0.0.0.0 --port 8548 --workers 4
 ```
 
 ### 4. Truy cập
 
-- **API Docs**: http://localhost:8000/docs
-- **Dashboard**: http://localhost:8000/dashboard
-- **Test Interface**: http://localhost:8000/static/test_dashboard.html
+- **API Docs**: http://localhost:8548/docs
+- **Dashboard**: http://localhost:8548/dashboard
+- **Test Interface**: http://localhost:8548/static/test_dashboard.html
 
 ---
 
@@ -190,17 +190,17 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 ```bash
 # Crawl nhanh
-curl -X POST http://localhost:8000/api/crawl \
+curl -X POST http://localhost:8548/api/crawl \
   -H "Content-Type: application/json" \
   -d '{"url": "https://vnexpress.net", "mode": "quick"}'
 
 # Crawl max (5000 pages, depth 5)
-curl -X POST http://localhost:8000/api/crawl \
+curl -X POST http://localhost:8548/api/crawl \
   -H "Content-Type: application/json" \
   -d '{"url": "https://baohungyen.vn", "mode": "max"}'
 
 # Preview trước khi crawl
-curl -X POST http://localhost:8000/api/crawl \
+curl -X POST http://localhost:8548/api/crawl \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com", "mode": "preview"}'
 ```
@@ -209,7 +209,7 @@ curl -X POST http://localhost:8000/api/crawl \
 
 ```bash
 # Balanced mode (khuyến nghị - 30% docs được enrich)
-curl -X POST http://localhost:8000/api/crawl/smart \
+curl -X POST http://localhost:8548/api/crawl/smart \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://vnexpress.net",
@@ -223,7 +223,7 @@ curl -X POST http://localhost:8000/api/crawl/smart \
   }'
 
 # Low cost mode (10% enrich - tiết kiệm)
-curl -X POST http://localhost:8000/api/crawl/smart \
+curl -X POST http://localhost:8548/api/crawl/smart \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://example.com",
@@ -231,7 +231,7 @@ curl -X POST http://localhost:8000/api/crawl/smart \
   }'
 
 # High quality mode (80% enrich - chất lượng cao)
-curl -X POST http://localhost:8000/api/crawl/smart \
+curl -X POST http://localhost:8548/api/crawl/smart \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://important-source.com",
@@ -243,7 +243,7 @@ curl -X POST http://localhost:8000/api/crawl/smart \
 
 ```bash
 # Train model từ database
-curl -X POST http://localhost:8000/api/topics/ \
+curl -X POST http://localhost:8548/api/topics/ \
   -H "Content-Type: application/json" \
   -d '{
     "action": "train",
@@ -253,7 +253,7 @@ curl -X POST http://localhost:8000/api/topics/ \
   }'
 
 # Transform new documents
-curl -X POST http://localhost:8000/api/topics/transform \
+curl -X POST http://localhost:8548/api/topics/transform \
   -H "Content-Type: application/json" \
   -d '{
     "documents": [
@@ -263,7 +263,7 @@ curl -X POST http://localhost:8000/api/topics/transform \
   }'
 
 # Search similar documents
-curl -X POST http://localhost:8000/api/topics/search \
+curl -X POST http://localhost:8548/api/topics/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "công nghệ trí tuệ nhân tạo",
@@ -275,15 +275,15 @@ curl -X POST http://localhost:8000/api/topics/search \
 
 ```bash
 # Xem báo cáo chi phí
-curl http://localhost:8000/api/crawl/cost/report
+curl http://localhost:8548/api/crawl/cost/report
 
 # Đặt budget
-curl -X POST http://localhost:8000/api/crawl/cost/set-budget \
+curl -X POST http://localhost:8548/api/crawl/cost/set-budget \
   -H "Content-Type: application/json" \
   -d '{"budget": 20.0}'
 
 # Ước tính chi phí
-curl -X POST http://localhost:8000/api/crawl/cost/estimate \
+curl -X POST http://localhost:8548/api/crawl/cost/estimate \
   -H "Content-Type: application/json" \
   -d '{"url": "https://vnexpress.net", "max_pages": 100}'
 ```
@@ -528,8 +528,8 @@ python test_topicgpt.py balanced https://vnexpress.net
 
 ## 📚 Documentation
 
-- **API Docs**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **API Docs**: http://localhost:8548/docs
+- **ReDoc**: http://localhost:8548/redoc
 - **Source code**: Fully documented với docstrings
 
 ---
@@ -547,7 +547,7 @@ python test_topicgpt.py balanced https://vnexpress.net
 2. **Model not found**
    ```bash
    # Train new model
-   curl -X POST http://localhost:8000/api/topics/ -d '{"action":"train"}'
+   curl -X POST http://localhost:8548/api/topics/ -d '{"action":"train"}'
    ```
 
 3. **Out of memory**
@@ -562,7 +562,7 @@ python test_topicgpt.py balanced https://vnexpress.net
    echo $OPENAI_API_KEY
    
    # Check budget
-   curl http://localhost:8000/api/crawl/cost/report
+   curl http://localhost:8548/api/crawl/cost/report
    ```
 
 ---
@@ -580,7 +580,7 @@ docker-compose up -d
 ```bash
 # Use production ASGI server
 gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:8000 \
+  --bind 0.0.0.0:8548 \
   --access-logfile - \
   --error-logfile -
 ```
@@ -603,7 +603,7 @@ AI Team - Lab Pipeline MXH
 
 - **Issues**: GitHub Issues
 - **Email**: support@example.com
-- **Docs**: http://localhost:8000/docs
+- **Docs**: http://localhost:8548/docs
 
 ---
 

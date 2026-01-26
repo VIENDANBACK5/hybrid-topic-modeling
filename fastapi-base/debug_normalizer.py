@@ -13,7 +13,7 @@ with open('data/raw/raw_facebook_20260104_202744.json', 'r') as f:
     raw_data = json.load(f)
 
 posts = raw_data['data']
-print(f"\n📊 Total posts: {len(posts)}\n")
+print(f"\nTotal posts: {len(posts)}\n")
 
 normalizer = DataNormalizer()
 
@@ -41,15 +41,15 @@ for i, post in enumerate(posts[:50]):  # Test first 50
     else:
         success += 1
 
-print(f"✅ Success: {success}")
-print(f"❌ Errors: {len(posts[:50]) - success}\n")
+print(f"Success: {success}")
+print(f"Errors: {len(posts[:50]) - success}\n")
 
 print("📋 Error types:")
 for error_type, count in sorted(errors_by_type.items(), key=lambda x: -x[1]):
     print(f"   {count:3d}x {error_type}")
 
 if error_samples:
-    print("\n🔍 Error samples:")
+    print("\nError samples:")
     for sample in error_samples:
         print(f"\n   #{sample['index']} (ID: {sample['id']}):")
         print(f"      Error: {sample['error']}")

@@ -174,10 +174,15 @@ def _load_single_file(processed_file: Path, config: LoadConfig, db: Session) -> 
                     stats['updated'] += 1
             else:
                 # Create new article
+                # Truncate source to 512 chars to avoid DB error
+                source_val = record.get('source', record.get('url', ''))
+                if len(source_val) > 512:
+                    source_val = source_val[:512]
+                
                 article = Article(
                     url=record.get('url'),
                     source_type=record.get('source_type', 'api'),
-                    source=record.get('source', record.get('url')),
+                    source=source_val,
                     domain=record.get('source_name') or record.get('domain'),  # Use source_name if available
                     title=record.get('title'),
                     content=record.get('content'),

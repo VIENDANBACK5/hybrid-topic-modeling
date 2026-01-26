@@ -101,7 +101,7 @@ dashboard_card_example = """
         
         <!-- TÓM TẮT NGẮN - HIỂN THỊ NỔI BẬT -->
         <div class="summary-section">
-            <h4>📊 Đánh giá tổng quan</h4>
+            <h4>Đánh giá tổng quan</h4>
             <p class="summary-text">{{ indicator.summary }}</p>
         </div>
     </div>
@@ -119,7 +119,7 @@ dashboard_card_example = """
 
 curl_create = """
 # Tạo mới chỉ số kinh tế với summary
-curl -X POST "http://localhost:8000/api/v1/economic-indicators/" \\
+curl -X POST "http://localhost:8548/api/v1/economic-indicators/" \\
   -H "Content-Type: application/json" \\
   -d '{
     "period_type": "quarterly",
@@ -137,7 +137,7 @@ curl -X POST "http://localhost:8000/api/v1/economic-indicators/" \\
 
 curl_update = """
 # Cập nhật summary cho chỉ số có sẵn
-curl -X PUT "http://localhost:8000/api/v1/economic-indicators/1" \\
+curl -X PUT "http://localhost:8548/api/v1/economic-indicators/1" \\
   -H "Content-Type: application/json" \\
   -d '{
     "summary": "Kinh tế Hà Nội Quý 4/2025 tăng trưởng ấn tượng với GRDP đạt 7.8%..."
@@ -146,7 +146,7 @@ curl -X PUT "http://localhost:8000/api/v1/economic-indicators/1" \\
 
 curl_query = """
 # Query chỉ số kinh tế (kết quả sẽ bao gồm summary)
-curl -X GET "http://localhost:8000/api/v1/economic-indicators/?province=Hưng Yên&year=2025"
+curl -X GET "http://localhost:8548/api/v1/economic-indicators/?province=Hưng Yên&year=2025"
 """
 
 # ============================================
@@ -158,7 +158,7 @@ import requests
 
 # Tạo mới indicator với summary
 def create_indicator_with_summary():
-    url = "http://localhost:8000/api/v1/economic-indicators/"
+    url = "http://localhost:8548/api/v1/economic-indicators/"
     data = {
         "period_type": "quarterly",
         "period_start": "2025-01-01",
@@ -175,7 +175,7 @@ def create_indicator_with_summary():
 
 # Lấy và hiển thị summary
 def display_indicators():
-    url = "http://localhost:8000/api/v1/economic-indicators/"
+    url = "http://localhost:8548/api/v1/economic-indicators/"
     params = {"province": "Hưng Yên", "year": 2025}
     response = requests.get(url, params=params)
     data = response.json()
@@ -222,14 +222,14 @@ Ví dụ mẫu:
    [Triển vọng/kết luận về tương lai]."
 """
 
-print("✅ File ví dụ đã được tạo thành công!")
-print("📝 Các thay đổi đã thực hiện:")
+print("File ví dụ đã được tạo thành công!")
+print("Các thay đổi đã thực hiện:")
 print("  1. Model: Đã thêm trường 'summary' (Text, nullable=True)")
 print("  2. Schema: Đã thêm 'summary' vào Base, Update, Response schemas")
 print("  3. Migration: Đã tạo file migration để thêm cột vào database")
 print("  4. API: Trường summary sẽ tự động được xử lý bởi các endpoint hiện có")
 print("")
-print("🚀 Để áp dụng migration:")
+print("Để áp dụng migration:")
 print("   cd /home/ai_team/lab/pipeline_mxh/fastapi-base")
 print("   alembic upgrade head")
 print("")

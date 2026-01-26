@@ -11,7 +11,7 @@ import time
 # ============================================
 # CONFIG
 # ============================================
-EXTERNAL_API = "http://192.168.30.28:8000"
+EXTERNAL_API = "http://192.168.30.28:8548"
 DATA_TYPE = "facebook"
 PAGE_SIZE = 100  # Lấy 100 posts mỗi lần
 LOCAL_API = "http://localhost:7777"
@@ -54,7 +54,7 @@ while True:
         all_posts.extend(posts)
         total_fetched += len(posts)
         
-        print(f"   ✅ Got {len(posts)} posts (total: {total_fetched})")
+        print(f"   Got {len(posts)} posts (total: {total_fetched})")
         
         # Check if this is the last page
         metadata = data.get('metadata', {})
@@ -73,13 +73,13 @@ while True:
         time.sleep(0.1)  # Rate limiting
         
     except Exception as e:
-        print(f"   ❌ Error on page {page}: {e}")
+        print(f"   Error on page {page}: {e}")
         break
 
-print(f"\n✅ Total fetched: {total_fetched} Facebook posts")
+print(f"\nTotal fetched: {total_fetched} Facebook posts")
 
 if total_fetched == 0:
-    print("❌ No data fetched. Exiting.")
+    print("No data fetched. Exiting.")
     exit(1)
 
 # ============================================
@@ -107,14 +107,14 @@ raw_data = {
 with open(raw_file, 'w', encoding='utf-8') as f:
     json.dump(raw_data, f, ensure_ascii=False, indent=2)
 
-print(f"✅ Saved to: {raw_file}")
+print(f"Saved to: {raw_file}")
 print(f"   Size: {raw_file.stat().st_size / 1024:.2f} KB")
 
 # ============================================
 # STEP 3: PROCESS DATA
 # ============================================
 print("\n" + "="*70)
-print("🔧 STEP 3: PROCESSING DATA")
+print("STEP 3: PROCESSING DATA")
 print("="*70)
 
 try:
@@ -131,7 +131,7 @@ try:
     
     result = response.json()
     
-    print(f"✅ Processing completed!")
+    print(f"Processing completed!")
     print(f"   Valid records: {result.get('valid_count', 0)}")
     print(f"   Invalid records: {result.get('invalid_count', 0)}")
     print(f"   Processed file: {result.get('processed_file', 'N/A')}")
@@ -139,7 +139,7 @@ try:
     processed_file = result.get('processed_file')
     
 except Exception as e:
-    print(f"❌ Processing failed: {e}")
+    print(f"Processing failed: {e}")
     print(f"   You can manually process later:")
     print(f"   curl -X POST '{LOCAL_API}/api/data/process' \\")
     print(f"     -H 'Content-Type: application/json' \\")
@@ -167,13 +167,13 @@ if processed_file:
         
         result = response.json()
         
-        print(f"✅ Loading completed!")
+        print(f"Loading completed!")
         print(f"   Inserted: {result.get('inserted', 0)}")
         print(f"   Updated: {result.get('updated', 0)}")
         print(f"   Skipped: {result.get('skipped', 0)}")
         
     except Exception as e:
-        print(f"❌ Loading failed: {e}")
+        print(f"Loading failed: {e}")
         print(f"   You can manually load later:")
         print(f"   curl -X POST '{LOCAL_API}/api/data/load-to-db' \\")
         print(f"     -H 'Content-Type: application/json' \\")
@@ -183,16 +183,16 @@ if processed_file:
 # SUMMARY
 # ============================================
 print("\n" + "="*70)
-print("✅ COMPLETED!")
+print("COMPLETED!")
 print("="*70)
 
 print(f"""
-📊 SUMMARY:
+SUMMARY:
    • Fetched: {total_fetched} Facebook posts
    • Raw file: {raw_file}
    • Processed file: {processed_file or 'N/A'}
 
-🎯 NEXT STEPS:
+NEXT STEPS:
    1. Run orchestrator pipeline to analyze:
       POST {LOCAL_API}/api/orchestrator/run-full-pipeline
    

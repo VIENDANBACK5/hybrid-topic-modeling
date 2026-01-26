@@ -10,7 +10,7 @@ from typing import Optional
 
 # API Configuration
 API_BASE_URL = "http://localhost:7777"
-EXTERNAL_API_URL = "http://192.168.30.28:8000/api/v1/posts/by-type/newspaper"
+EXTERNAL_API_URL = "http://192.168.30.28:8548/api/v1/posts/by-type/newspaper"
 
 
 def fetch_newspaper_raw_all(
@@ -30,7 +30,7 @@ def fetch_newspaper_raw_all(
         "order": "desc"
     }
     
-    print("📰 Fetching ALL newspaper data (no deduplication)...")
+    print("Fetching ALL newspaper data (no deduplication)...")
     print(f"   API: {EXTERNAL_API_URL}")
     print(f"   Page size: {page_size}")
     print(f"   Max pages: {max_pages or 'unlimited'}")
@@ -59,7 +59,7 @@ def fetch_newspaper_only(
         "order": "desc"
     }
     
-    print("📰 Fetching newspaper data...")
+    print("Fetching newspaper data...")
     print(f"   API: {EXTERNAL_API_URL}")
     print(f"   Page size: {page_size}")
     print(f"   Max pages: {max_pages or 'unlimited'}")
@@ -111,7 +111,7 @@ def print_results(result: dict):
     print(f"Message: {result.get('message', 'N/A')}")
     
     if 'statistics' in result:
-        print("\n📊 Statistics:")
+        print("\nStatistics:")
         stats = result['statistics']
         for key, value in stats.items():
             print(f"   {key}: {value}")
@@ -186,10 +186,10 @@ if __name__ == "__main__":
             sys.exit(1)
             
     except requests.exceptions.RequestException as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
+        print(f"\nUnexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

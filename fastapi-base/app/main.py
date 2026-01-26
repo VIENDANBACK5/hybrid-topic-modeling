@@ -11,7 +11,7 @@ from app.core.router import router
 from app.api import api_router
 from app.models import Base
 from app.api.routers import topic_service, sync_service, custom_topics, field_classification, superset_sync, economic_indicators
-from app.api import orchestrator, data_fetch_api, data_process_api, api_grdp_detail, api_economic_extraction, api_social_indicators, api_aqi
+from app.api import orchestrator, data_fetch_api, data_process_api, api_grdp_detail, api_economic_extraction, api_social_indicators, api_aqi, api_important_posts, api_statistics, api_xay_dung_dang, api_llm_extraction, api_digital_economy, api_fdi, api_digital_transformation, api_pii
 from app.core.database import get_engine
 from app.core.config import settings
 from app.core.rate_limit import RateLimitMiddleware
@@ -99,6 +99,12 @@ def get_application() -> FastAPI:
     # GRDP Detail API
     application.include_router(api_grdp_detail.router)
     
+    # Economic Indicator Detail APIs (4 new tables)
+    application.include_router(api_digital_economy.router)
+    application.include_router(api_fdi.router)
+    application.include_router(api_digital_transformation.router)
+    application.include_router(api_pii.router)
+    
     # ============================================
     # SOCIAL INDICATORS (9 Lĩnh vực × 3 Chỉ số = 27 bảng)
     # ============================================
@@ -108,6 +114,27 @@ def get_application() -> FastAPI:
     
     # AQI Data - Air Quality Index from external API
     application.include_router(api_aqi.router)
+    
+    # ============================================
+    # IMPORTANT POSTS (Bài viết quan trọng)
+    # ============================================
+    
+    # Important Posts - Lưu trữ các bài viết đặc biệt quan trọng
+    application.include_router(api_important_posts.router)
+    
+    # ============================================
+    # STATISTICS (Thống kê từ bài viết quan trọng)
+    # ============================================
+    
+    # Statistics API - Economic and Political statistics extracted from posts
+    application.include_router(api_statistics.router, prefix="/api/statistics", tags=["Statistics"])
+    
+    # ============================================
+    # LLM EXTRACTION (Pure LLM - Không dùng Regex)
+    # ============================================
+    
+    # Unified LLM Extraction API - Tất cả lĩnh vực
+    application.include_router(api_llm_extraction.router, prefix="/api/llm", tags=["LLM Extraction"])
     
     # ============================================
     # SERVICES & UTILITIES

@@ -82,7 +82,7 @@ class ValueRangeValidator:
         'retail': (2000, 150000, 'tỷ VND', 'Bán lẻ hàng hóa dịch vụ'),  # Monthly: 2k+, Quarterly: 5k-40k, Annual: 100k+
         'export': (50, 1000, 'triệu USD', 'Kim ngạch xuất khẩu'),
         'investment': (1000, 100000, 'tỷ VND', 'Vốn đầu tư'),  # Expanded for VND values
-        'budget': (1000, 80000, 'tỷ VND', 'Thu ngân sách'),  # Monthly: 1k+, Quarterly: 5k+, Annual: 40k+
+        'budget': (1000, 85480, 'tỷ VND', 'Thu ngân sách'),  # Monthly: 1k+, Quarterly: 5k+, Annual: 40k+
         'cpi': (95, 120, 'index', 'Chỉ số giá tiêu dùng')
     }
     

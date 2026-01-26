@@ -14,7 +14,7 @@ def process_raw_file(raw_file: str, update_existing: bool = False) -> dict:
     """
     Process raw file và load vào database
     """
-    print(f"🔧 Processing raw file: {raw_file}")
+    print(f"Processing raw file: {raw_file}")
     print(f"   Update existing: {update_existing}")
     print()
     
@@ -28,12 +28,12 @@ def process_raw_file(raw_file: str, update_existing: bool = False) -> dict:
     process_result = response.json()
     
     if process_result.get("status") != "success":
-        print(f"❌ Process failed: {process_result.get('error')}")
+        print(f"Process failed: {process_result.get('error')}")
         return process_result
     
     # Get statistics from result structure
     stats = process_result.get('result', {}).get('statistics', process_result.get('statistics', {}))
-    print(f"✅ Processed: {stats}")
+    print(f"Processed: {stats}")
     
     processed_file = process_result.get('result', {}).get('processed_file', process_result.get('processed_file'))
     
@@ -50,12 +50,12 @@ def process_raw_file(raw_file: str, update_existing: bool = False) -> dict:
     load_result = response.json()
     
     if load_result.get("status") != "success":
-        print(f"❌ Load failed: {load_result.get('error')}")
+        print(f"Load failed: {load_result.get('error')}")
         return load_result
     
     # Get statistics from result structure
     load_stats = load_result.get('result', {}).get('statistics', load_result.get('statistics', {}))
-    print(f"✅ Loaded: {load_stats}")
+    print(f"Loaded: {load_stats}")
     
     return {
         "status": "success",
@@ -106,7 +106,7 @@ if __name__ == "__main__":
             raw_dir = Path("data/raw")
             files = sorted(raw_dir.glob("raw_newspaper_*.json"), reverse=True)
             if not files:
-                print("❌ No raw files found")
+                print("No raw files found")
                 sys.exit(1)
             raw_file = str(files[0])
             print(f"Using latest file: {raw_file}\n")
@@ -124,7 +124,7 @@ if __name__ == "__main__":
         
         if result['status'] == 'success':
             print("\n" + "="*60)
-            print("✅ SUCCESS!")
+            print("SUCCESS!")
             proc_stats = result['process_result'].get('result', {}).get('statistics', result['process_result'].get('statistics', {}))
             load_stats = result['load_result'].get('result', {}).get('statistics', result['load_result'].get('statistics', {}))
             print(f"Process: {proc_stats}")
@@ -135,10 +135,10 @@ if __name__ == "__main__":
             sys.exit(1)
             
     except requests.exceptions.RequestException as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
+        print(f"\nUnexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

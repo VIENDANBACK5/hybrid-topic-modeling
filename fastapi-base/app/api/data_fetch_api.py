@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/fetch", tags=["Data Fetch"])
 
 # Base URL for external API
-EXTERNAL_API_BASE = "http://192.168.30.28:8000/api/v1/posts/by-type"
+EXTERNAL_API_BASE = "http://192.168.30.28:8548/api/v1/posts/by-type"
 
 # Directory structure
 RAW_DATA_DIR = Path("data/raw")
@@ -37,6 +37,7 @@ class FetchConfig(BaseModel):
     max_pages: Optional[int] = Field(default=None, description="None = fetch all pages")
     sort_by: str = "id"
     order: str = "desc"
+    type_newspaper: Optional[str] = Field(default=None, description="Filter by type_newspaper (education, medical, etc.). None = fetch all types")
 
 
 class FetchResult(BaseModel):
@@ -154,7 +155,13 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
     """
     logger.info(f"Starting fetch for {data_type}...")
     
-    api_url = f"{EXTERNAL_API_BASE}/{data_type}"
+    # Use specific endpoint if type_newspaper filter is specified
+    if config.type_newspaper and data_type == "newspaper":
+        api_url = f"http://192.168.30.28:8548/api/v1/posts/by-type-newspaper/{config.type_newspaper}"
+        logger.info(f"Using targeted endpoint for type_newspaper={config.type_newspaper}")
+    else:
+        api_url = f"{EXTERNAL_API_BASE}/{data_type}"
+    
     save_dir = RAW_DATA_DIR / data_type
     save_dir.mkdir(parents=True, exist_ok=True)
     
@@ -177,6 +184,8 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
             "sort_by": config.sort_by,
             "order": config.order
         }
+        
+        # Note: type_newspaper filter is handled via endpoint URL, not params
         
         logger.info(f"Fetching {data_type} page {page}...")
         

@@ -99,7 +99,7 @@ def seed_fields():
                 )
                 db.add(field)
                 created_count += 1
-                print(f"   ✅ Tạo mới: {field_data['name']}")
+                print(f"   Tạo mới: {field_data['name']}")
         
         db.commit()
         
@@ -112,7 +112,7 @@ def seed_fields():
         return True
         
     except Exception as e:
-        print(f"❌ Lỗi khi seed dữ liệu: {e}")
+        print(f"Lỗi khi seed dữ liệu: {e}")
         db.rollback()
         return False
     finally:
@@ -124,7 +124,7 @@ def classify_all_articles(limit: int = None):
     db = SessionLocal()
     
     try:
-        print("🔍 Bắt đầu phân loại bài viết...")
+        print("Bắt đầu phân loại bài viết...")
         
         service = FieldClassificationService(db)
         
@@ -133,10 +133,10 @@ def classify_all_articles(limit: int = None):
         total_articles = db.query(Article).count()
         
         if total_articles == 0:
-            print("⚠️  Không có bài viết nào trong database!")
+            print("Không có bài viết nào trong database!")
             return False
         
-        print(f"   📊 Tổng số bài viết: {total_articles}")
+        print(f"   Tổng số bài viết: {total_articles}")
         
         # Phân loại
         result = service.classify_articles_batch(limit=limit, force=False)
@@ -148,7 +148,7 @@ def classify_all_articles(limit: int = None):
         print(f"   - Thời gian xử lý: {result['processing_time']:.2f}s")
         
         if result['field_distribution']:
-            print(f"\n📊 Phân bố theo lĩnh vực:")
+            print(f"\nPhân bố theo lĩnh vực:")
             for field_name, count in sorted(
                 result['field_distribution'].items(), 
                 key=lambda x: x[1], 
@@ -157,14 +157,14 @@ def classify_all_articles(limit: int = None):
                 print(f"   - {field_name}: {count} bài")
         
         # Cập nhật thống kê
-        print(f"\n📊 Cập nhật thống kê...")
+        print(f"\nCập nhật thống kê...")
         service.update_field_statistics()
-        print(f"   ✅ Đã cập nhật thống kê!")
+        print(f"   Đã cập nhật thống kê!")
         
         return True
         
     except Exception as e:
-        print(f"❌ Lỗi khi phân loại: {e}")
+        print(f"Lỗi khi phân loại: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -177,7 +177,7 @@ def show_statistics():
     db = SessionLocal()
     
     try:
-        print("\n📊 THỐNG KÊ PHÂN LOẠI BÀI VIẾT\n")
+        print("\nTHỐNG KÊ PHÂN LOẠI BÀI VIẾT\n")
         print("=" * 80)
         
         # Lấy tổng quan
@@ -185,8 +185,8 @@ def show_statistics():
         total_articles = db.query(Article).count()
         classified_count = db.query(ArticleFieldClassification).count()
         
-        print(f"📰 Tổng số bài viết: {total_articles}")
-        print(f"✅ Đã phân loại: {classified_count}")
+        print(f"Tổng số bài viết: {total_articles}")
+        print(f"Đã phân loại: {classified_count}")
         print(f"⏳ Chưa phân loại: {total_articles - classified_count}")
         
         if classified_count > 0:
@@ -215,12 +215,12 @@ def show_statistics():
                         reverse=True
                     )[:3]
                     provinces_str = ", ".join([f"{p}: {c}" for p, c in top_provinces])
-                    print(f"   📍 Top tỉnh: {provinces_str}")
+                    print(f"   Top tỉnh: {provinces_str}")
         
         print("\n" + "=" * 80)
         
     except Exception as e:
-        print(f"❌ Lỗi khi hiển thị thống kê: {e}")
+        print(f"Lỗi khi hiển thị thống kê: {e}")
     finally:
         db.close()
 
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     
     if args.all or (not args.seed and not args.classify and not args.stats):
         # Mặc định chạy tất cả
-        print("🚀 Chạy toàn bộ quy trình...\n")
+        print("Chạy toàn bộ quy trình...\n")
         success = seed_fields()
         if success:
             classify_all_articles(limit=args.limit)

@@ -174,13 +174,13 @@ class EconomicArticleCrawler:
                             }
                     
                     self.stats['total_listing_pages'] += 1
-                    print(f"   ✅ Retry succeeded, found {len(article_links)} items")
+                    print(f"   Retry succeeded, found {len(article_links)} items")
                 except Exception as e2:
-                    print(f"   ❌ Retry failed: {e2}")
+                    print(f"   Retry failed: {e2}")
                     continue
                 
             except Exception as e:
-                print(f"   ❌ Error crawling page {page}: {e}")
+                print(f"   Error crawling page {page}: {e}")
                 continue
         
         # Filter out articles with too short titles
@@ -191,7 +191,7 @@ class EconomicArticleCrawler:
         
         self.stats['total_articles_found'] = len(articles)
         
-        print(f"\n✅ Found {len(articles)} unique articles (after dedup and filter)")
+        print(f"\nFound {len(articles)} unique articles (after dedup and filter)")
         return articles
     
     def crawl_article_content(self, article: Dict[str, str]) -> Optional[Dict[str, str]]:
@@ -219,12 +219,12 @@ class EconomicArticleCrawler:
                 # Repeat extraction...
                 return self._extract_article_from_response(resp, article)
             except Exception as e2:
-                print(f"   ❌ Retry failed: {str(e2)[:50]}")
+                print(f"   Retry failed: {str(e2)[:50]}")
                 self.stats['articles_failed'] += 1
                 return None
                 
         except Exception as e:
-            print(f"   ❌ Error: {str(e)[:100]}")
+            print(f"   Error: {str(e)[:100]}")
             self.stats['articles_failed'] += 1
             return None
     
@@ -319,7 +319,7 @@ class EconomicArticleCrawler:
         articles = self.crawl_article_list(max_pages)
         
         if not articles:
-            print("\n❌ No articles found!")
+            print("\nNo articles found!")
             return
         
         # Save article list
@@ -340,7 +340,7 @@ class EconomicArticleCrawler:
             
             if full_article:
                 full_articles.append(full_article)
-                print(f"   ✅ {full_article['content_length']:,} chars")
+                print(f"   {full_article['content_length']:,} chars")
                 
                 # Save individual file with title-based filename
                 if save_mode in ['individual', 'both']:
@@ -364,8 +364,8 @@ class EconomicArticleCrawler:
         print(f"{'='*80}")
         print(f"Listing pages crawled: {self.stats['total_listing_pages']}")
         print(f"Articles found:        {self.stats['total_articles_found']}")
-        print(f"Articles crawled:      {self.stats['articles_crawled']} ✅")
-        print(f"Articles failed:       {self.stats['articles_failed']} ❌")
+        print(f"Articles crawled:      {self.stats['articles_crawled']} ")
+        print(f"Articles failed:       {self.stats['articles_failed']} ")
         print(f"Duration:              {duration:.1f}s")
         print(f"Output directory:      {self.output_dir.absolute()}")
         print(f"{'='*80}\n")
@@ -384,7 +384,7 @@ class EconomicArticleCrawler:
         with open(summary_file, 'w', encoding='utf-8') as f:
             json.dump(summary, f, ensure_ascii=False, indent=2, default=str)
         
-        print(f"📊 Summary saved to: {summary_file}")
+        print(f"Summary saved to: {summary_file}")
 
 
 def main():

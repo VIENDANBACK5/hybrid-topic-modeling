@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-EXTERNAL_API = "http://192.168.30.28:8000"
+EXTERNAL_API = "http://192.168.30.28:8548"
 LOCAL_API = "http://localhost:7777"
 
 def fetch_by_type(post_type, description):
@@ -26,7 +26,7 @@ def fetch_by_type(post_type, description):
         response = requests.get(url, timeout=30)
         
         if response.status_code != 200:
-            print(f"❌ Error: {response.status_code}")
+            print(f"Error: {response.status_code}")
             break
             
         data = response.json()
@@ -45,12 +45,12 @@ def fetch_by_type(post_type, description):
             
         page += 1
     
-    print(f"\n✅ Fetched: {len(all_posts)} {description} posts")
+    print(f"\nFetched: {len(all_posts)} {description} posts")
     return all_posts
 
 def main():
     print("\n" + "="*70)
-    print("🎯 FETCH ALL SOCIAL MEDIA DATA")
+    print("FETCH ALL SOCIAL MEDIA DATA")
     print("="*70)
     
     # Fetch all types
@@ -71,7 +71,7 @@ def main():
     # Summary
     total = len(fb_posts) + len(threads_posts) + len(tiktok_posts)
     print(f"\n{'='*70}")
-    print(f"📊 SUMMARY")
+    print(f"SUMMARY")
     print(f"{'='*70}")
     print(f"   Facebook: {len(fb_posts)} posts")
     print(f"   Threads:  {len(threads_posts)} posts")
@@ -98,7 +98,7 @@ def main():
     
     # Process all data
     print(f"\n{'='*70}")
-    print(f"🔧 PROCESSING DATA")
+    print(f"PROCESSING DATA")
     print(f"{'='*70}")
     
     process_url = f"{LOCAL_API}/api/data/process"
@@ -114,7 +114,7 @@ def main():
         stats = result.get('statistics', {})
         processed_file = result.get('processed_file', '')
         
-        print(f"✅ Processed: {stats.get('processed', 0)}/{stats.get('total', 0)}")
+        print(f"Processed: {stats.get('processed', 0)}/{stats.get('total', 0)}")
         print(f"   Skipped: {stats.get('skipped', 0)} (content too short)")
         print(f"   Errors: {stats.get('errors', 0)}")
         print(f"   File: {processed_file}")
@@ -139,17 +139,17 @@ def main():
             load_result = load_response.json()
             load_stats = load_result.get('result', {}).get('statistics', {})
             
-            print(f"✅ Loaded to database!")
+            print(f"Loaded to database!")
             print(f"   Inserted: {load_stats.get('inserted', 0)} records")
             print(f"   Updated: {load_stats.get('updated', 0)} records")
             print(f"   Skipped: {load_stats.get('skipped', 0)} (duplicates)")
             
             # Final summary
             print(f"\n{'='*70}")
-            print(f"✅ COMPLETED!")
+            print(f"COMPLETED!")
             print(f"{'='*70}")
             print(f"""
-📊 FINAL SUMMARY:
+FINAL SUMMARY:
    • Fetched: {total} posts (FB: {len(fb_posts)}, Threads: {len(threads_posts)}, TikTok: {len(tiktok_posts)})
    • Processed: {stats.get('processed', 0)} valid posts
    • Loaded to DB: {load_stats.get('inserted', 0)} new + {load_stats.get('updated', 0)} updated
@@ -158,15 +158,15 @@ def main():
    • Raw: {raw_file}
    • Processed: {processed_file}
    
-🎯 Next: Train BERTopic với tất cả data
+Next: Train BERTopic với tất cả data
    curl -X POST http://localhost:7777/api/topics/train \\
      -H 'Content-Type: application/json' \\
      -d '{{"limit": null, "min_topic_size": 5, "use_vietnamese_tokenizer": true}}'
 """)
         else:
-            print(f"❌ Failed to load: {load_response.text}")
+            print(f"Failed to load: {load_response.text}")
     else:
-        print(f"❌ Processing failed: {response.text}")
+        print(f"Processing failed: {response.text}")
 
 if __name__ == "__main__":
     main()

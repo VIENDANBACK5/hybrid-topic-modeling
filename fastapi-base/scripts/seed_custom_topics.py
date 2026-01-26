@@ -252,7 +252,7 @@ def seed_news_topics():
         # Check if exists
         existing = db.query(CustomTopic).filter(CustomTopic.name == topic_data['name']).first()
         if existing:
-            print(f"⚠️  Skipped: {topic_data['name']} (already exists)")
+            print(f"Skipped: {topic_data['name']} (already exists)")
             skipped_count += 1
             continue
         
@@ -260,14 +260,14 @@ def seed_news_topics():
         topic = CustomTopic(**topic_data)
         db.add(topic)
         created_count += 1
-        print(f"✅ Created: {topic_data['name']}")
+        print(f"Created: {topic_data['name']}")
     
     db.commit()
     db.close()
     
     print(f"\n{'='*60}")
-    print(f"✅ Seeded {created_count} topics")
-    print(f"⚠️  Skipped {skipped_count} topics (already exist)")
+    print(f"Seeded {created_count} topics")
+    print(f"Skipped {skipped_count} topics (already exist)")
     print(f"{'='*60}")
 
 
@@ -325,9 +325,9 @@ def seed_templates():
     if not existing:
         db.add(template1)
         db.commit()
-        print(f"✅ Created template: {template1.name}")
+        print(f"Created template: {template1.name}")
     else:
-        print(f"⚠️  Template already exists: {template1.name}")
+        print(f"Template already exists: {template1.name}")
     
     db.close()
 
@@ -343,4 +343,4 @@ if __name__ == "__main__":
     print("\n📋 Seeding templates...")
     seed_templates()
     
-    print("\n✅ SEEDING COMPLETED!\n")
+    print("\nSEEDING COMPLETED!\n")
