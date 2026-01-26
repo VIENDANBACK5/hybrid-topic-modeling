@@ -16,26 +16,26 @@ engine = create_engine(settings.DATABASE_URL)
 with engine.connect() as conn:
     # Check articles
     result = conn.execute(text('SELECT COUNT(*) as count FROM articles'))
-    print(f"\n✅ Total articles: {result.scalar()}")
+    print(f"\nTotal articles: {result.scalar()}")
     
     # Check custom topics
     result = conn.execute(text('SELECT COUNT(*) as count FROM custom_topics'))
-    print(f"✅ Total custom topics: {result.scalar()}")
+    print(f"Total custom topics: {result.scalar()}")
     
     # Check fields
     result = conn.execute(text('SELECT COUNT(*) as count FROM fields'))
-    print(f"✅ Total fields: {result.scalar()}")
+    print(f"Total fields: {result.scalar()}")
     
     # Check if economic indicators table exists
     result = conn.execute(text("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'economic_indicators'"))
     if result.scalar() > 0:
         result = conn.execute(text('SELECT COUNT(*) as count FROM economic_indicators'))
-        print(f"✅ Total economic indicators: {result.scalar()}")
+        print(f"Total economic indicators: {result.scalar()}")
     else:
-        print("⚠️  Economic indicators table not found")
+        print("Economic indicators table not found")
     
     # Sample articles with field classification
-    print("\n📊 Sample articles by field:")
+    print("\nSample articles by field:")
     result = conn.execute(text("""
         SELECT f.name, COUNT(DISTINCT afc.article_id) as count
         FROM fields f
@@ -47,4 +47,4 @@ with engine.connect() as conn:
     for row in result:
         print(f"  - {row[0]}: {row[1]} articles")
 
-print("\n✅ Done!")
+print("\nDone!")

@@ -99,7 +99,7 @@ async def create_topic(
     db.commit()
     db.refresh(db_topic)
     
-    logger.info(f"✅ Created topic: {db_topic.name} (ID: {db_topic.id})")
+    logger.info(f"Created topic: {db_topic.name} (ID: {db_topic.id})")
     
     # Auto-enhance with TopicGPT if no description
     if not db_topic.description or len(db_topic.description.strip()) < 10:
@@ -109,9 +109,9 @@ async def create_topic(
             result = enhancer.enhance_single_topic(db_topic.id)
             if result.get("status") == "success":
                 db.refresh(db_topic)
-                logger.info(f"🤖 TopicGPT auto-enhanced: {db_topic.name}")
+                logger.info(f"TopicGPT auto-enhanced: {db_topic.name}")
         except Exception as e:
-            logger.warning(f"⚠️ TopicGPT enhancement failed (skipped): {e}")
+            logger.warning(f"TopicGPT enhancement failed (skipped): {e}")
     
     # Clear classifier cache
     get_classifier().clear_cache()

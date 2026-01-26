@@ -256,7 +256,7 @@ class GRDPLLMExtractor:
     
     def extract(self, text: str) -> Optional[Dict]:
         try:
-            prompt = EXTRACTION_PROMPT.format(text=text[:8000])
+            prompt = EXTRACTION_PROMPT.format(text=text[:8548])
             result = self.llm.invoke(prompt)
             json_match = re.search(r'\{[^{}]*\}', result.content, re.DOTALL)
             if json_match:

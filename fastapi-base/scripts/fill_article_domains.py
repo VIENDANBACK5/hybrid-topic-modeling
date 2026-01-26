@@ -119,15 +119,15 @@ def fill_domains():
                     )
                     conn.commit()
                     updated += 1
-                    logger.info(f"  ✅ Updated article {article_id}: domain = {domain}")
+                    logger.info(f"  Updated article {article_id}: domain = {domain}")
                 except Exception as e:
-                    logger.error(f"  ❌ Failed to update article {article_id}: {e}")
+                    logger.error(f"  Failed to update article {article_id}: {e}")
                     failed += 1
             else:
-                logger.warning(f"  ⚠️  Could not determine domain for article {article_id} (url={url[:50]}, source={source})")
+                logger.warning(f"  Could not determine domain for article {article_id} (url={url[:50]}, source={source})")
                 failed += 1
         
-        logger.info(f"\n✅ Completed: Updated {updated}, Failed {failed}")
+        logger.info(f"\nCompleted: Updated {updated}, Failed {failed}")
 
 
 if __name__ == "__main__":

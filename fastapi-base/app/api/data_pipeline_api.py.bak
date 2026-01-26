@@ -68,7 +68,7 @@ def fetch_and_load(
     curl -X POST http://localhost:7777/api/data/fetch-and-load \\
       -H "Content-Type: application/json" \\
       -d '{
-        "base_api_url": "http://192.168.30.28:8000/api/v1/posts/by-type/newspaper",
+        "base_api_url": "http://192.168.30.28:8548/api/v1/posts/by-type/newspaper",
         "data_type": "newspaper",
         "page_size": 100,
         "max_pages": null

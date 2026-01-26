@@ -110,61 +110,39 @@ class PartyDisciplineDetail(IndicatorDetailMixin, Base):
     )
 
 
+class CadreStatisticsDetail(IndicatorDetailMixin, Base):
+    """Thống kê số lượng cán bộ - NEW"""
+    __tablename__ = "cadre_statistics_detail"
+    
+    total_authorized = Column(Integer, nullable=True, comment='Tổng số biên chế')
+    provincial_level = Column(Integer, nullable=True, comment='Tổng số cấp tỉnh')
+    commune_level = Column(Integer, nullable=True, comment='Tổng số cấp xã phường')
+    contract_workers = Column(Integer, nullable=True, comment='Tổng số lao động hợp đồng')
+    
+    __table_args__ = (
+        Index('ix_cadre_statistics_detail_province', 'province'),
+        Index('ix_cadre_statistics_detail_year', 'year'),
+    )
+
+
 # ========================================
 # LĨNH VỰC 2: VĂN HÓA, THỂ THAO & ĐỜI SỐNG TINH THẦN
 # ========================================
 
-class CultureSportAccessDetail(IndicatorDetailMixin, Base):
-    """ACSS - Tiếp cận dịch vụ văn hóa thể thao - Quyền hưởng thụ"""
-    __tablename__ = "culture_sport_access_detail"
+class CultureLifestyleStatsDetail(IndicatorDetailMixin, Base):
+    """Thống kê văn hóa và đời sống tinh thần - Di tích, du lịch, dân số"""
+    __tablename__ = "culture_lifestyle_stats_detail"
     
-    acss_score = Column(Float, nullable=True, comment='Điểm ACSS tổng hợp (0-100)')
-    cultural_facilities_per_capita = Column(Float, nullable=True, comment='Số cơ sở văn hóa/10.000 dân')
-    sport_facilities_per_capita = Column(Float, nullable=True, comment='Số cơ sở thể thao/10.000 dân')
-    participation_rate = Column(Float, nullable=True, comment='Tỷ lệ tham gia hoạt động (%)')
-    access_distance_km = Column(Float, nullable=True, comment='Khoảng cách tiếp cận trung bình (km)')
-    affordability_score = Column(Float, nullable=True, comment='Điểm khả năng chi trả (0-100)')
-    
-    __table_args__ = (
-        Index('ix_culture_sport_access_detail_province', 'province'),
-        Index('ix_culture_sport_access_detail_year', 'year'),
-    )
-
-
-class CulturalInfrastructureDetail(IndicatorDetailMixin, Base):
-    """Số lượng & chất lượng công trình văn hóa - Hạ tầng tinh thần"""
-    __tablename__ = "cultural_infrastructure_detail"
-    
-    total_facilities = Column(Integer, nullable=True, comment='Tổng số công trình văn hóa')
-    libraries = Column(Integer, nullable=True, comment='Số thư viện')
-    museums = Column(Integer, nullable=True, comment='Số bảo tàng')
-    theaters = Column(Integer, nullable=True, comment='Số nhà hát')
-    cultural_houses = Column(Integer, nullable=True, comment='Số nhà văn hóa')
-    heritage_sites = Column(Integer, nullable=True, comment='Số di tích lịch sử')
-    quality_score = Column(Float, nullable=True, comment='Điểm chất lượng tổng hợp (0-100)')
-    utilization_rate = Column(Float, nullable=True, comment='Tỷ lệ sử dụng (%)')
+    total_heritage_sites = Column(Integer, nullable=True, comment='Tổng số di tích văn hóa')
+    tourist_visitors = Column(Float, nullable=True, comment='Số lượt khách tham quan (triệu/nghìn)')
+    tourism_revenue_billion = Column(Float, nullable=True, comment='Doanh thu du lịch (tỷ VNĐ)')
+    natural_population_growth_rate = Column(Float, nullable=True, comment='Tốc độ tăng dân số tự nhiên (%)')
+    elderly_health_checkup_rate = Column(Float, nullable=True, comment='Tỷ lệ người cao tuổi khám sức khỏe định kỳ (%)')
+    sex_ratio_at_birth = Column(Float, nullable=True, comment='Tỷ số giới tính khi sinh (nam/100 nữ)')
     
     __table_args__ = (
-        Index('ix_cultural_infrastructure_detail_province', 'province'),
-        Index('ix_cultural_infrastructure_detail_year', 'year'),
-    )
-
-
-class CultureSocializationDetail(IndicatorDetailMixin, Base):
-    """Tỷ lệ xã hội hóa hoạt động văn hóa thể thao - Độ bền & sáng tạo"""
-    __tablename__ = "culture_socialization_detail"
-    
-    socialization_rate = Column(Float, nullable=True, comment='Tỷ lệ xã hội hóa (%)')
-    private_investment_billion = Column(Float, nullable=True, comment='Đầu tư tư nhân (tỷ VNĐ)')
-    public_private_ratio = Column(Float, nullable=True, comment='Tỷ lệ công-tư')
-    private_facilities = Column(Integer, nullable=True, comment='Số cơ sở tư nhân')
-    community_events = Column(Integer, nullable=True, comment='Số sự kiện cộng đồng')
-    volunteer_participation = Column(Integer, nullable=True, comment='Số người tham gia tình nguyện')
-    sustainability_score = Column(Float, nullable=True, comment='Điểm bền vững (0-100)')
-    
-    __table_args__ = (
-        Index('ix_culture_socialization_detail_province', 'province'),
-        Index('ix_culture_socialization_detail_year', 'year'),
+        Index('ix_culture_lifestyle_stats_detail_province', 'province'),
+        Index('ix_culture_lifestyle_stats_detail_year', 'year'),
     )
 
 
@@ -292,40 +270,20 @@ class SocialBudgetDetail(IndicatorDetailMixin, Base):
 # LĨNH VỰC 5: AN NINH, TRẬT TỰ & QUỐC PHÒNG
 # ========================================
 
-class PublicOrderDetail(IndicatorDetailMixin, Base):
-    """Mức độ bảo đảm an ninh trật tự xã hội - Chỉ số tổng hợp quan trọng nhất"""
-    __tablename__ = "public_order_detail"
+class SecurityDetail(IndicatorDetailMixin, Base):
+    """An ninh trật tự - Tập trung vào ma túy và giảm tội phạm"""
+    __tablename__ = "security_detail"
     
-    public_order_score = Column(Float, nullable=True, comment='Điểm an ninh trật tự tổng hợp (0-100)')
-    safety_perception_score = Column(Float, nullable=True, comment='Điểm cảm nhận an toàn (0-100)')
-    crime_rate_per_100k = Column(Float, nullable=True, comment='Tỷ lệ tội phạm/100.000 dân')
-    violent_crime_rate = Column(Float, nullable=True, comment='Tỷ lệ tội phạm bạo lực')
-    property_crime_rate = Column(Float, nullable=True, comment='Tỷ lệ tội phạm tài sản')
-    police_per_capita = Column(Float, nullable=True, comment='Số công an/10.000 dân')
-    response_time_minutes = Column(Float, nullable=True, comment='Thời gian phản ứng trung bình (phút)')
+    # Ma túy
+    drug_cases = Column(Integer, nullable=True, comment='Số vụ vi phạm ma túy')
+    drug_offenders = Column(Integer, nullable=True, comment='Số người vi phạm ma túy')
     
-    __table_args__ = (
-        Index('ix_public_order_detail_province', 'province'),
-        Index('ix_public_order_detail_year', 'year'),
-    )
-
-
-class CrimePreventionDetail(IndicatorDetailMixin, Base):
-    """Tỷ lệ phòng chống & giảm tội phạm - Đo hiệu quả thực thi"""
-    __tablename__ = "crime_prevention_detail"
-    
+    # Giảm tội phạm
     crime_reduction_rate = Column(Float, nullable=True, comment='Tỷ lệ giảm tội phạm (%)')
-    case_clearance_rate = Column(Float, nullable=True, comment='Tỷ lệ phá án (%)')
-    total_cases = Column(Integer, nullable=True, comment='Tổng số vụ án')
-    solved_cases = Column(Integer, nullable=True, comment='Số vụ án được giải quyết')
-    prevention_programs = Column(Integer, nullable=True, comment='Số chương trình phòng ngừa')
-    community_watch_groups = Column(Integer, nullable=True, comment='Số tổ dân phòng')
-    drug_crime_reduction = Column(Float, nullable=True, comment='Giảm tội phạm ma túy (%)')
-    effectiveness_score = Column(Float, nullable=True, comment='Điểm hiệu quả (0-100)')
     
     __table_args__ = (
-        Index('ix_crime_prevention_detail_province', 'province'),
-        Index('ix_crime_prevention_detail_year', 'year'),
+        Index('ix_security_detail_province', 'province'),
+        Index('ix_security_detail_year', 'year'),
     )
 
 
@@ -365,6 +323,8 @@ class PARIndexDetail(IndicatorDetailMixin, Base):
     public_finance_reform_score = Column(Float, nullable=True, comment='Điểm cải cách tài chính công')
     egovernment_reform_score = Column(Float, nullable=True, comment='Điểm cải cách CPĐT')
     citizen_impact_score = Column(Float, nullable=True, comment='Điểm tác động đến người dân')
+    onestop_processing_rate = Column(Float, nullable=True, comment='Tỷ lệ giải quyết đúng hạn (%)')
+    simplified_procedures_count = Column(Integer, nullable=True, comment='Số thủ tục được đơn giản hóa')
     
     __table_args__ = (
         Index('ix_par_index_detail_province', 'province'),
@@ -386,6 +346,7 @@ class SIPASDetail(IndicatorDetailMixin, Base):
     complaint_resolution_score = Column(Float, nullable=True, comment='Điểm giải quyết khiếu nại')
     surveys_conducted = Column(Integer, nullable=True, comment='Số khảo sát thực hiện')
     respondents_count = Column(Integer, nullable=True, comment='Số người phản hồi')
+    satisfaction_rate = Column(Float, nullable=True, comment='Tỷ lệ hài lòng (%)')
     
     __table_args__ = (
         Index('ix_sipas_detail_province', 'province'),
@@ -417,22 +378,20 @@ class EGovernmentDetail(IndicatorDetailMixin, Base):
 # LĨNH VỰC 7: Y TẾ & CHĂM SÓC SỨC KHỎE
 # ========================================
 
-class HealthInsuranceDetail(IndicatorDetailMixin, Base):
-    """BHYT Coverage Rate - Tỷ lệ bao phủ bảo hiểm y tế"""
-    __tablename__ = "health_insurance_detail"
+class HealthStatisticsDetail(IndicatorDetailMixin, Base):
+    """Thống kê Y tế & Dân số - BHYT, Dân số, Cao tuổi"""
+    __tablename__ = "health_statistics_detail"
     
     bhyt_coverage_rate = Column(Float, nullable=True, comment='Tỷ lệ bao phủ BHYT (%)')
-    total_insured = Column(Integer, nullable=True, comment='Tổng số người có BHYT')
-    voluntary_insured = Column(Integer, nullable=True, comment='Số người tham gia tự nguyện')
-    mandatory_insured = Column(Integer, nullable=True, comment='Số người tham gia bắt buộc')
-    poor_near_poor_coverage = Column(Float, nullable=True, comment='Bao phủ hộ nghèo/cận nghèo (%)')
-    children_coverage = Column(Float, nullable=True, comment='Bao phủ trẻ em (%)')
-    elderly_coverage = Column(Float, nullable=True, comment='Bao phủ người cao tuổi (%)')
-    claims_amount_billion = Column(Float, nullable=True, comment='Chi trả BHYT (tỷ VNĐ)')
+    total_insured = Column(Integer, nullable=True, comment='Số người tham gia BHYT')
+    voluntary_insured = Column(Integer, nullable=True, comment='Số người tham gia BHYT tự nguyện')
+    natural_population_growth_rate = Column(Float, nullable=True, comment='Tốc độ tăng dân số tự nhiên (%)')
+    elderly_health_checkup_rate = Column(Float, nullable=True, comment='Tỷ lệ người cao tuổi khám sức khỏe định kỳ (%)')
+    sex_ratio_at_birth = Column(Float, nullable=True, comment='Tỷ số giới tính khi sinh (nam/100 nữ)')
     
     __table_args__ = (
-        Index('ix_health_insurance_detail_province', 'province'),
-        Index('ix_health_insurance_detail_year', 'year'),
+        Index('ix_health_statistics_detail_province', 'province'),
+        Index('ix_health_statistics_detail_year', 'year'),
     )
 
 
@@ -453,26 +412,6 @@ class HAQIndexDetail(IndicatorDetailMixin, Base):
     __table_args__ = (
         Index('ix_haq_index_detail_province', 'province'),
         Index('ix_haq_index_detail_year', 'year'),
-    )
-
-
-class PreventiveHealthDetail(IndicatorDetailMixin, Base):
-    """Năng lực y tế dự phòng / Ứng phó dịch bệnh"""
-    __tablename__ = "preventive_health_detail"
-    
-    preventive_health_score = Column(Float, nullable=True, comment='Điểm y tế dự phòng (0-100)')
-    vaccination_coverage = Column(Float, nullable=True, comment='Tỷ lệ tiêm chủng (%)')
-    health_screening_rate = Column(Float, nullable=True, comment='Tỷ lệ khám sàng lọc (%)')
-    disease_surveillance_score = Column(Float, nullable=True, comment='Điểm giám sát dịch bệnh')
-    epidemic_response_score = Column(Float, nullable=True, comment='Điểm ứng phó dịch bệnh')
-    preventive_facilities = Column(Integer, nullable=True, comment='Số cơ sở y tế dự phòng')
-    health_education_programs = Column(Integer, nullable=True, comment='Số chương trình giáo dục sức khỏe')
-    clean_water_access_rate = Column(Float, nullable=True, comment='Tỷ lệ tiếp cận nước sạch (%)')
-    sanitation_access_rate = Column(Float, nullable=True, comment='Tỷ lệ có công trình vệ sinh (%)')
-    
-    __table_args__ = (
-        Index('ix_preventive_health_detail_province', 'province'),
-        Index('ix_preventive_health_detail_year', 'year'),
     )
 
 
@@ -608,14 +547,10 @@ class PlanningProgressDetail(IndicatorDetailMixin, Base):
 
 INDICATOR_DETAIL_MODELS = {
     # Lĩnh vực 1: Xây dựng Đảng & Hệ thống chính trị
-    'corruption_prevention': CorruptionPreventionDetail,
-    'cadre_quality': CadreQualityDetail,
-    'party_discipline': PartyDisciplineDetail,
+    'cadre_statistics': CadreStatisticsDetail,
     
     # Lĩnh vực 2: Văn hóa, Thể thao & Đời sống tinh thần
-    'culture_sport_access': CultureSportAccessDetail,
-    'cultural_infrastructure': CulturalInfrastructureDetail,
-    'culture_socialization': CultureSocializationDetail,
+    'culture_lifestyle_stats': CultureLifestyleStatsDetail,
     
     # Lĩnh vực 3: Môi trường & Biến đổi khí hậu
     'air_quality': AirQualityDetail,
@@ -628,9 +563,7 @@ INDICATOR_DETAIL_MODELS = {
     'social_budget': SocialBudgetDetail,
     
     # Lĩnh vực 5: An ninh, Trật tự & Quốc phòng
-    'public_order': PublicOrderDetail,
-    'crime_prevention': CrimePreventionDetail,
-    'traffic_safety': TrafficSafetyDetail,
+    'security': SecurityDetail,
     
     # Lĩnh vực 6: Hành chính công & Quản lý Nhà nước
     'par_index': PARIndexDetail,
@@ -638,9 +571,8 @@ INDICATOR_DETAIL_MODELS = {
     'egovernment': EGovernmentDetail,
     
     # Lĩnh vực 7: Y tế & Chăm sóc sức khỏe
-    'health_insurance': HealthInsuranceDetail,
+    'health_statistics': HealthStatisticsDetail,
     'haq_index': HAQIndexDetail,
-    'preventive_health': PreventiveHealthDetail,
     
     # Lĩnh vực 8: Giáo dục & Đào tạo
     'eqi': EQIDetail,
@@ -648,20 +580,18 @@ INDICATOR_DETAIL_MODELS = {
     'tvet_employment': TVETEmploymentDetail,
     
     # Lĩnh vực 9: Hạ tầng & Giao thông
-    'transport_infrastructure': TransportInfrastructureDetail,
-    'traffic_congestion': TrafficCongestionDetail,
-    'planning_progress': PlanningProgressDetail,
+    'traffic_safety': TrafficSafetyDetail,
 }
 
 # Field mapping for reference
 FIELD_INDICATORS = {
-    'xay_dung_dang': ['corruption_prevention', 'cadre_quality', 'party_discipline'],
-    'van_hoa_the_thao': ['culture_sport_access', 'cultural_infrastructure', 'culture_socialization'],
+    'xay_dung_dang': ['cadre_statistics'],
+    'van_hoa_the_thao': ['culture_lifestyle_stats'],
     'moi_truong': ['air_quality', 'climate_resilience', 'waste_management'],
     'an_sinh_xa_hoi': ['hdi', 'social_security_coverage', 'social_budget'],
-    'an_ninh_trat_tu': ['public_order', 'crime_prevention', 'traffic_safety'],
+    'an_ninh_trat_tu': ['security'],
     'hanh_chinh_cong': ['par_index', 'sipas', 'egovernment'],
-    'y_te': ['health_insurance', 'haq_index', 'preventive_health'],
+    'y_te': ['health_statistics', 'haq_index'],
     'giao_duc': ['eqi', 'highschool_graduation', 'tvet_employment'],
-    'ha_tang_giao_thong': ['transport_infrastructure', 'traffic_congestion', 'planning_progress'],
+    'ha_tang_giao_thong': ['traffic_safety'],
 }

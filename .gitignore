@@ -1,1 +1,2 @@
 fastapi-base/data/db/
+fastapi-base/data/processed/**/*.json

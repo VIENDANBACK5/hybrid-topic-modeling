@@ -38,7 +38,7 @@ class SyncStatus(str, Enum):
 
 class SyncTriggerRequest(BaseModel):
     """Request de trigger sync thu cong"""
-    source_api_base: str = Field(..., description="Base URL (VD: http://192.168.30.28:8000)")
+    source_api_base: str = Field(..., description="Base URL (VD: http://192.168.30.28:8548)")
     endpoint: str = Field(default="/api/articles", description="Endpoint de lay data")
     limit: Optional[int] = Field(None, description="Gioi han so docs (None = all)")
     batch_size: int = Field(default=20, ge=1, le=100)
@@ -478,7 +478,7 @@ async def trigger_sync(
     Example:
     ```json
     {
-      "source_api_base": "http://192.168.30.28:8000",
+      "source_api_base": "http://192.168.30.28:8548",
       "endpoint": "/api/articles",
       "limit": 100,
       "batch_size": 20

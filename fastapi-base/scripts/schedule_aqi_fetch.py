@@ -34,17 +34,17 @@ async def fetch_aqi_data():
             store_mode="historical"
         )
         
-        print(f"✅ AQI Fetch completed:")
+        print(f"AQI Fetch completed:")
         print(f"   Province: {result['province']}")
         print(f"   Stations processed: {result['stations_processed']}")
         print(f"   Records created: {result['records_created']}")
         print(f"   Records updated: {result['records_updated']}")
         
         if result['errors']:
-            print(f"⚠️  Errors: {result['errors']}")
+            print(f"Errors: {result['errors']}")
             
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         raise
     finally:
         db.close()

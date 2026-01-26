@@ -7,7 +7,7 @@ set -e
 
 API_BASE="http://localhost:7777/api/v1/sync"
 API_KEY="dev-key-12345"
-SOURCE_API="http://192.168.30.28:8000"
+SOURCE_API="http://192.168.30.28:8548"
 TOTAL_EXPECTED=7692
 
 echo "╔══════════════════════════════════════════════════════════════╗"

@@ -1,6 +1,7 @@
 from app.models.model_base import Base
 from app.models.model_article import Article
 from app.models.model_sentiment import SentimentAnalysis
+from app.models.model_important_post import ImportantPost
 from app.models.model_custom_topic import (
     CustomTopic,
     ArticleCustomTopic,
@@ -43,13 +44,9 @@ from app.models.model_grdp_detail import GRDPDetail
 # 27 Indicator Detail Models (9 lĩnh vực × 3 chỉ số)
 from app.models.model_indicator_details import (
     # Lĩnh vực 1: Xây dựng Đảng & Hệ thống chính trị
-    CorruptionPreventionDetail,
-    CadreQualityDetail,
-    PartyDisciplineDetail,
+    CadreStatisticsDetail,
     # Lĩnh vực 2: Văn hóa, Thể thao & Đời sống tinh thần
-    CultureSportAccessDetail,
-    CulturalInfrastructureDetail,
-    CultureSocializationDetail,
+    CultureLifestyleStatsDetail,
     # Lĩnh vực 3: Môi trường & Biến đổi khí hậu
     AirQualityDetail,
     ClimateResilienceDetail,
@@ -59,25 +56,20 @@ from app.models.model_indicator_details import (
     SocialSecurityCoverageDetail,
     SocialBudgetDetail,
     # Lĩnh vực 5: An ninh, Trật tự & Quốc phòng
-    PublicOrderDetail,
-    CrimePreventionDetail,
-    TrafficSafetyDetail,
+    SecurityDetail,
     # Lĩnh vực 6: Hành chính công & Quản lý Nhà nước
     PARIndexDetail,
     SIPASDetail,
     EGovernmentDetail,
     # Lĩnh vực 7: Y tế & Chăm sóc sức khỏe
-    HealthInsuranceDetail,
+    HealthStatisticsDetail,
     HAQIndexDetail,
-    PreventiveHealthDetail,
     # Lĩnh vực 8: Giáo dục & Đào tạo
     EQIDetail,
     HighschoolGraduationDetail,
     TVETEmploymentDetail,
     # Lĩnh vực 9: Hạ tầng & Giao thông
-    TransportInfrastructureDetail,
-    TrafficCongestionDetail,
-    PlanningProgressDetail,
+    TrafficSafetyDetail,
     # Registry
     INDICATOR_DETAIL_MODELS,
     FIELD_INDICATORS,

@@ -154,12 +154,12 @@ def seed_grdp_data():
             ).first()
             
             if existing:
-                print(f"⏭️  Đã tồn tại: {data['province']} - {data['quarter'] or 'Cả năm'}/{data['year']}")
+                print(f"Đã tồn tại: {data['province']} - {data['quarter'] or 'Cả năm'}/{data['year']}")
                 count_existed += 1
             else:
                 grdp = GRDPDetail(**data)
                 session.add(grdp)
-                print(f"✅ Tạo mới: {data['province']} - {data['quarter'] or 'Cả năm'}/{data['year']} - GRDP: {data['grdp_current_price']} tỷ VNĐ")
+                print(f"Tạo mới: {data['province']} - {data['quarter'] or 'Cả năm'}/{data['year']} - GRDP: {data['grdp_current_price']} tỷ VNĐ")
                 count_created += 1
         
         session.commit()
@@ -175,19 +175,19 @@ def seed_grdp_data():
         total_records = session.query(GRDPDetail).count()
         provinces = session.query(GRDPDetail.province).distinct().count()
         
-        print(f"\n📊 Thống kê bảng grdp_detail:")
+        print(f"\nThống kê bảng grdp_detail:")
         print(f"   - Tổng số records: {total_records}")
         print(f"   - Số tỉnh/thành: {provinces}")
         
     except Exception as e:
         session.rollback()
-        print(f"❌ Lỗi: {str(e)}")
+        print(f"Lỗi: {str(e)}")
         raise
     finally:
         session.close()
 
 
 if __name__ == "__main__":
-    print("🚀 Bắt đầu seed dữ liệu GRDP...")
+    print("Bắt đầu seed dữ liệu GRDP...")
     print()
     seed_grdp_data()

@@ -43,14 +43,14 @@ def seed_vietnam_2024_data():
                 "province": "Hà Nội",
                 "region": "Miền Bắc",
                 
-                "grdp": 698000.0,  # tỷ VNĐ (2024)
+                "grdp": 698548.0,  # tỷ VNĐ (2024)
                 "grdp_growth_rate": 7.24,  # % (Q4/2024 Hà Nội)
                 "grdp_per_capita": 165.3,  # triệu VNĐ
                 
                 "iip": 113.2,
                 "iip_growth_rate": 8.9,
                 
-                "retail_services_total": 178000.0,
+                "retail_services_total": 178548.0,
                 "retail_services_growth": 9.8,
                 
                 "export_value": 2850.0,  # triệu USD
@@ -129,7 +129,7 @@ def seed_vietnam_2024_data():
                 "agricultural_production_index": 103.8,
                 "agricultural_growth_rate": 3.8,
                 
-                "retail_services_total": 1680000.0,
+                "retail_services_total": 1685480.0,
                 "retail_services_growth": 10.8,
                 
                 "export_value": 33500.0,  # triệu USD (Q4/2024)
@@ -273,7 +273,7 @@ def seed_vietnam_2024_data():
                 "cpi_growth_rate": 3.0,
                 "export_value": 3450.0,
                 "fdi_disbursed": 1820.0,
-                "state_budget_revenue": 58000.0,
+                "state_budget_revenue": 58548.0,
                 
                 "data_source": "GSO Vietnam - Estimate",
                 "notes": "Dữ liệu ước tính tháng 12/2025",
@@ -349,15 +349,15 @@ def seed_vietnam_2024_data():
                 created_count += 1
                 label = data['period_label']
                 location = data.get('province') or 'Toàn quốc'
-                print(f"  ✅ {label:<20} {location:<15} GRDP: {data.get('grdp_growth_rate', 'N/A')}%")
+                print(f"  {label:<20} {location:<15} GRDP: {data.get('grdp_growth_rate', 'N/A')}%")
             else:
-                print(f"  ⏭️  {data['period_label']} - {data.get('province', 'Toàn quốc')} (exists)")
+                print(f"  {data['period_label']} - {data.get('province', 'Toàn quốc')} (exists)")
         
         db.commit()
         
         total = db.query(EconomicIndicator).count()
-        print(f"\n✅ Successfully seeded {created_count} new records!")
-        print(f"📊 Total indicators in database: {total}")
+        print(f"\nSuccessfully seeded {created_count} new records!")
+        print(f"Total indicators in database: {total}")
         
         # Show summary
         print("\n📈 Summary by period type:")
@@ -372,7 +372,7 @@ def seed_vietnam_2024_data():
         
     except Exception as e:
         db.rollback()
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         import traceback
         traceback.print_exc()
         raise

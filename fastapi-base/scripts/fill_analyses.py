@@ -36,7 +36,7 @@ def fill_analyses_for_all_indicators(limit=10):
         
         for indicator in indicators:
             try:
-                logger.info(f"\n📊 Processing indicator {indicator.id} - {indicator.period_label}")
+                logger.info(f"\nProcessing indicator {indicator.id} - {indicator.period_label}")
                 
                 # Convert to dict
                 indicator_dict = {
@@ -54,53 +54,53 @@ def fill_analyses_for_all_indicators(limit=10):
                     # Update các trường
                     if "grdp_analysis" in analyses:
                         indicator.grdp_analysis = analyses["grdp_analysis"]
-                        logger.info(f"  ✅ GRDP analysis: {len(analyses['grdp_analysis'])} chars")
+                        logger.info(f"  GRDP analysis: {len(analyses['grdp_analysis'])} chars")
                     
                     if "iip_analysis" in analyses:
                         indicator.iip_analysis = analyses["iip_analysis"]
-                        logger.info(f"  ✅ IIP analysis: {len(analyses['iip_analysis'])} chars")
+                        logger.info(f"  IIP analysis: {len(analyses['iip_analysis'])} chars")
                     
                     if "agricultural_analysis" in analyses:
                         indicator.agricultural_analysis = analyses["agricultural_analysis"]
-                        logger.info(f"  ✅ Agricultural analysis: {len(analyses['agricultural_analysis'])} chars")
+                        logger.info(f"  Agricultural analysis: {len(analyses['agricultural_analysis'])} chars")
                     
                     if "retail_services_analysis" in analyses:
                         indicator.retail_services_analysis = analyses["retail_services_analysis"]
-                        logger.info(f"  ✅ Retail/Services analysis: {len(analyses['retail_services_analysis'])} chars")
+                        logger.info(f"  Retail/Services analysis: {len(analyses['retail_services_analysis'])} chars")
                     
                     if "export_import_analysis" in analyses:
                         indicator.export_import_analysis = analyses["export_import_analysis"]
-                        logger.info(f"  ✅ Export/Import analysis: {len(analyses['export_import_analysis'])} chars")
+                        logger.info(f"  Export/Import analysis: {len(analyses['export_import_analysis'])} chars")
                     
                     if "investment_analysis" in analyses:
                         indicator.investment_analysis = analyses["investment_analysis"]
-                        logger.info(f"  ✅ Investment analysis: {len(analyses['investment_analysis'])} chars")
+                        logger.info(f"  Investment analysis: {len(analyses['investment_analysis'])} chars")
                     
                     if "budget_analysis" in analyses:
                         indicator.budget_analysis = analyses["budget_analysis"]
-                        logger.info(f"  ✅ Budget analysis: {len(analyses['budget_analysis'])} chars")
+                        logger.info(f"  Budget analysis: {len(analyses['budget_analysis'])} chars")
                     
                     if "labor_analysis" in analyses:
                         indicator.labor_analysis = analyses["labor_analysis"]
-                        logger.info(f"  ✅ Labor analysis: {len(analyses['labor_analysis'])} chars")
+                        logger.info(f"  Labor analysis: {len(analyses['labor_analysis'])} chars")
                     
                     results["success"] += 1
-                    logger.info(f"  ✅ Generated {len(analyses)} analyses")
+                    logger.info(f"  Generated {len(analyses)} analyses")
                 else:
                     results["failed"] += 1
                     results["errors"].append(f"Indicator {indicator.id}: No analyses generated")
-                    logger.warning(f"  ⚠️ No analyses generated")
+                    logger.warning(f"  No analyses generated")
                 
             except Exception as e:
                 results["failed"] += 1
                 results["errors"].append(f"Indicator {indicator.id}: {str(e)}")
-                logger.error(f"  ❌ Error: {e}")
+                logger.error(f"  Error: {e}")
         
         # Commit changes
         db.commit()
         
         logger.info(f"\n{'='*60}")
-        logger.info(f"✅ Completed!")
+        logger.info(f"Completed!")
         logger.info(f"Success: {results['success']}/{len(indicators)}")
         logger.info(f"Failed: {results['failed']}/{len(indicators)}")
         
@@ -115,7 +115,7 @@ def fill_analyses_for_all_indicators(limit=10):
         
     except Exception as e:
         db.rollback()
-        logger.error(f"❌ Fatal error: {e}")
+        logger.error(f"Fatal error: {e}")
         raise
     finally:
         db.close()

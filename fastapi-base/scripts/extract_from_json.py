@@ -41,7 +41,7 @@ def extract_from_json(json_file: str, year: int = 2024, indicator_types: list = 
     with open(json_file, 'r', encoding='utf-8') as f:
         articles = json.load(f)
     
-    print(f"✅ Loaded {len(articles)} articles\n")
+    print(f"Loaded {len(articles)} articles\n")
     
     # Get DB session
     db = next(get_db())
@@ -61,11 +61,11 @@ def extract_from_json(json_file: str, year: int = 2024, indicator_types: list = 
         full_content = crawler.get_article_content(article['url'])
         
         if not full_content:
-            print(f"   ⚠️ Could not fetch content, using cached content")
+            print(f"   Could not fetch content, using cached content")
             full_content = article.get('content', '')
         
         if not full_content or len(full_content) < 100:
-            print(f"   ⚠️ Content too short ({len(full_content)} chars), skipping")
+            print(f"   Content too short ({len(full_content)} chars), skipping")
             skipped += 1
             continue
         
@@ -81,11 +81,11 @@ def extract_from_json(json_file: str, year: int = 2024, indicator_types: list = 
             ]
         
         if not detected_indicators:
-            print(f"   ⏭️ No relevant indicators detected, skipping")
+            print(f"   No relevant indicators detected, skipping")
             skipped += 1
             continue
         
-        print(f"   📊 Detected: {', '.join(detected_indicators)}")
+        print(f"   Detected: {', '.join(detected_indicators)}")
         
         # Extract period from title
         period_year, month, quarter = extract_period_from_title(article['title'], year)
@@ -116,10 +116,10 @@ def extract_from_json(json_file: str, year: int = 2024, indicator_types: list = 
                 len(ind_result.get('values', []))
                 for ind_result in result.values()
             )
-            print(f"   ✅ Extracted {total_extracted} values\n")
+            print(f"   Extracted {total_extracted} values\n")
             
         except Exception as e:
-            print(f"   ❌ Error: {str(e)[:100]}\n")
+            print(f"   Error: {str(e)[:100]}\n")
             skipped += 1
             continue
     
@@ -128,8 +128,8 @@ def extract_from_json(json_file: str, year: int = 2024, indicator_types: list = 
     print("EXTRACTION SUMMARY")
     print(f"{'='*80}")
     print(f"Total articles:      {len(articles)}")
-    print(f"Processed:           {processed} ✅")
-    print(f"Skipped:             {skipped} ⏭️")
+    print(f"Processed:           {processed} ")
+    print(f"Skipped:             {skipped} ")
     print(f"Success rate:        {processed/len(articles)*100:.1f}%")
     print(f"{'='*80}\n")
     
@@ -152,7 +152,7 @@ def extract_from_json(json_file: str, year: int = 2024, indicator_types: list = 
     with open(report_file, 'w', encoding='utf-8') as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     
-    print(f"📊 Report saved to: {report_file}\n")
+    print(f"Report saved to: {report_file}\n")
 
 
 def main():
@@ -181,7 +181,7 @@ def main():
     args = parser.parse_args()
     
     if not Path(args.input).exists():
-        print(f"❌ Error: File not found: {args.input}")
+        print(f"Error: File not found: {args.input}")
         sys.exit(1)
     
     extract_from_json(

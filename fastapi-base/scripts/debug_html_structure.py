@@ -21,7 +21,7 @@ try:
     # Lưu HTML ra file
     with open('/tmp/page.html', 'w', encoding='utf-8') as f:
         f.write(soup.prettify())
-    print(f"✅ Saved HTML to /tmp/page.html ({len(resp.content):,} bytes)")
+    print(f"Saved HTML to /tmp/page.html ({len(resp.content):,} bytes)")
     
     # Phân tích cấu trúc
     print("\n" + "=" * 80)
@@ -61,9 +61,9 @@ try:
             print(f"Text at keyword: {all_text[idx:idx+100]}...")
             break
     
-    print("\n✅ Done!")
+    print("\nDone!")
     
 except Exception as e:
-    print(f"❌ Error: {e}")
+    print(f"Error: {e}")
     import traceback
     traceback.print_exc()
