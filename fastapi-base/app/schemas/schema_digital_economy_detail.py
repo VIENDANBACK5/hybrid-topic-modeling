@@ -1,11 +1,11 @@
-"""PII (Provincial Industrial Index) Schema - Pydantic models"""
+"""Digital Economy Schema - Pydantic models"""
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 
-class PIICreate(BaseModel):
-    """Schema tạo PII"""
+class DigitalEconomyDetailCreate(BaseModel):
+    """Schema tạo Digital Economy Detail"""
     province: str = 'Hưng Yên'
     period_type: str = 'quarter'
     year: int
@@ -19,29 +19,21 @@ class PIICreate(BaseModel):
     change_qoq: Optional[float] = None
     change_mom: Optional[float] = None
     
-    # PII specific fields
-    pii_overall: Optional[float] = None
-    pii_growth_rate: Optional[float] = None
-    industrial_output_value: Optional[float] = None
-    mining_index: Optional[float] = None
-    manufacturing_index: Optional[float] = None
-    electricity_index: Optional[float] = None
-    food_processing_index: Optional[float] = None
-    textile_index: Optional[float] = None
-    electronics_index: Optional[float] = None
-    state_owned_pii: Optional[float] = None
-    private_pii: Optional[float] = None
-    fdi_pii: Optional[float] = None
-    labor_productivity: Optional[float] = None
-    industrial_enterprises: Optional[int] = None
-    industrial_workers: Optional[int] = None
+    # Digital Economy specific fields
+    digital_economy_gdp: Optional[float] = None
+    digital_economy_gdp_share: Optional[float] = None
+    ecommerce_revenue: Optional[float] = None
+    ecommerce_users: Optional[int] = None
+    digital_payment_volume: Optional[float] = None
+    digital_companies: Optional[int] = None
+    internet_penetration: Optional[float] = None
     
     data_status: str = 'estimated'
     data_source: Optional[str] = None
 
 
-class PIIResponse(BaseModel):
-    """Schema response PII"""
+class DigitalEconomyDetailResponse(BaseModel):
+    """Schema response Digital Economy Detail"""
     id: int
     province: str
     period_type: str
@@ -54,10 +46,11 @@ class PIIResponse(BaseModel):
     change_yoy: Optional[float] = None
     change_qoq: Optional[float] = None
     
-    pii_overall: Optional[float] = None
-    pii_growth_rate: Optional[float] = None
-    industrial_output_value: Optional[float] = None
-    manufacturing_index: Optional[float] = None
+    digital_economy_gdp: Optional[float] = None
+    digital_economy_gdp_share: Optional[float] = None
+    ecommerce_revenue: Optional[float] = None
+    ecommerce_users: Optional[int] = None
+    digital_payment_volume: Optional[float] = None
     
     data_status: Optional[str] = None
     data_source: Optional[str] = None
@@ -67,10 +60,10 @@ class PIIResponse(BaseModel):
         from_attributes = True
 
 
-class PIIListResponse(BaseModel):
+class DigitalEconomyDetailListResponse(BaseModel):
     """Schema list response"""
     total: int
     page: int = 1
     page_size: int = 50
     total_pages: int = 1
-    data: list[PIIResponse]
+    data: list[DigitalEconomyDetailResponse]

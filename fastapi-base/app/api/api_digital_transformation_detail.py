@@ -9,16 +9,16 @@ from sqlalchemy import desc
 
 from app.core.database import get_db
 from app.models.model_digital_transformation_detail import DigitalTransformationDetail
-from app.schemas.schema_digital_transformation import (
-    DigitalTransformationCreate,
-    DigitalTransformationResponse,
-    DigitalTransformationListResponse
+from app.schemas.schema_digital_transformation_detail import (
+    DigitalTransformationDetailCreate,
+    DigitalTransformationDetailResponse,
+    DigitalTransformationDetailListResponse
 )
 
-router = APIRouter(prefix="/api/digital-transformation", tags=["Digital Transformation"])
+router = APIRouter(prefix="/api/digital-transformation", tags=["digital_transformation_detail"])
 
 
-@router.get("", response_model=DigitalTransformationListResponse)
+@router.get("", response_model=DigitalTransformationDetailListResponse)
 def list_digital_transformation(
     year: Optional[int] = None,
     quarter: Optional[int] = None,
@@ -49,7 +49,7 @@ def list_digital_transformation(
     }
 
 
-@router.get("/{id}", response_model=DigitalTransformationResponse)
+@router.get("/{id}", response_model=DigitalTransformationDetailResponse)
 def get_digital_transformation(id: int, db: Session = Depends(get_db)):
     """Get Digital Transformation by ID"""
     record = db.query(DigitalTransformationDetail).filter(DigitalTransformationDetail.id == id).first()
@@ -58,8 +58,8 @@ def get_digital_transformation(id: int, db: Session = Depends(get_db)):
     return record
 
 
-@router.post("", response_model=DigitalTransformationResponse)
-def create_or_update_digital_transformation(data: DigitalTransformationCreate, db: Session = Depends(get_db)):
+@router.post("", response_model=DigitalTransformationDetailResponse)
+def create_or_update_digital_transformation(data: DigitalTransformationDetailCreate, db: Session = Depends(get_db)):
     """Create or update Digital Transformation data (upsert)"""
     query = db.query(DigitalTransformationDetail).filter(
         DigitalTransformationDetail.province == data.province,

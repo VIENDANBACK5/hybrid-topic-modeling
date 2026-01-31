@@ -1,11 +1,11 @@
-"""Digital Economy Schema - Pydantic models"""
+"""FDI Schema - Pydantic models"""
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 
-class DigitalEconomyCreate(BaseModel):
-    """Schema tạo Digital Economy"""
+class FDIDetailCreate(BaseModel):
+    """Schema tạo FDI Detail"""
     province: str = 'Hưng Yên'
     period_type: str = 'quarter'
     year: int
@@ -19,21 +19,24 @@ class DigitalEconomyCreate(BaseModel):
     change_qoq: Optional[float] = None
     change_mom: Optional[float] = None
     
-    # Digital Economy specific fields
-    digital_economy_gdp: Optional[float] = None
-    digital_economy_gdp_share: Optional[float] = None
-    ecommerce_revenue: Optional[float] = None
-    ecommerce_users: Optional[int] = None
-    digital_payment_volume: Optional[float] = None
-    digital_companies: Optional[int] = None
-    internet_penetration: Optional[float] = None
+    # FDI specific fields
+    registered_capital: Optional[float] = None
+    new_projects_capital: Optional[float] = None
+    disbursed_capital: Optional[float] = None
+    disbursement_rate: Optional[float] = None
+    total_projects: Optional[int] = None
+    new_projects: Optional[int] = None
+    manufacturing_fdi: Optional[float] = None
+    japan_fdi: Optional[float] = None
+    korea_fdi: Optional[float] = None
+    fdi_employment: Optional[int] = None
     
     data_status: str = 'estimated'
     data_source: Optional[str] = None
 
 
-class DigitalEconomyResponse(BaseModel):
-    """Schema response Digital Economy"""
+class FDIDetailResponse(BaseModel):
+    """Schema response FDI Detail"""
     id: int
     province: str
     period_type: str
@@ -46,11 +49,12 @@ class DigitalEconomyResponse(BaseModel):
     change_yoy: Optional[float] = None
     change_qoq: Optional[float] = None
     
-    digital_economy_gdp: Optional[float] = None
-    digital_economy_gdp_share: Optional[float] = None
-    ecommerce_revenue: Optional[float] = None
-    ecommerce_users: Optional[int] = None
-    digital_payment_volume: Optional[float] = None
+    registered_capital: Optional[float] = None
+    new_projects_capital: Optional[float] = None
+    disbursed_capital: Optional[float] = None
+    disbursement_rate: Optional[float] = None
+    total_projects: Optional[int] = None
+    new_projects: Optional[int] = None
     
     data_status: Optional[str] = None
     data_source: Optional[str] = None
@@ -60,10 +64,10 @@ class DigitalEconomyResponse(BaseModel):
         from_attributes = True
 
 
-class DigitalEconomyListResponse(BaseModel):
+class FDIDetailListResponse(BaseModel):
     """Schema list response"""
     total: int
     page: int = 1
     page_size: int = 50
     total_pages: int = 1
-    data: list[DigitalEconomyResponse]
+    data: list[FDIDetailResponse]

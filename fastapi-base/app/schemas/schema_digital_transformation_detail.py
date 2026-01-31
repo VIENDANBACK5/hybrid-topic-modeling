@@ -4,8 +4,8 @@ from typing import Optional
 from datetime import datetime
 
 
-class DigitalTransformationCreate(BaseModel):
-    """Schema tạo Digital Transformation"""
+class DigitalTransformationDetailCreate(BaseModel):
+    """Schema tạo Digital Transformation Detail"""
     province: str = 'Hưng Yên'
     period_type: str = 'quarter'
     year: int
@@ -36,8 +36,8 @@ class DigitalTransformationCreate(BaseModel):
     data_source: Optional[str] = None
 
 
-class DigitalTransformationResponse(BaseModel):
-    """Schema response Digital Transformation"""
+class DigitalTransformationDetailResponse(BaseModel):
+    """Schema response Digital Transformation Detail"""
     id: int
     province: str
     period_type: str
@@ -65,10 +65,10 @@ class DigitalTransformationResponse(BaseModel):
         from_attributes = True
 
 
-class DigitalTransformationListResponse(BaseModel):
+class DigitalTransformationDetailListResponse(BaseModel):
     """Schema list response"""
     total: int
     page: int = 1
     page_size: int = 50
     total_pages: int = 1
-    data: list[DigitalTransformationResponse]
+    data: list[DigitalTransformationDetailResponse]

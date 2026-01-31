@@ -11,7 +11,7 @@ from datetime import datetime
 
 # OpenRouter API Configuration
 LLM_API_URL = os.getenv("LLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen/qwen-2.5-72b-instruct")
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
 LLM_API_KEY = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
 
 TARGET_API_BASE = "http://localhost:7777"

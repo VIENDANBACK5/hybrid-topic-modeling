@@ -40,6 +40,10 @@ from app.models.model_economic_indicators import (
     EconomicIndicatorGPT
 )
 from app.models.model_grdp_detail import GRDPDetail
+from app.models.model_fdi_detail import FDIDetail
+from app.models.model_digital_economy_detail import DigitalEconomyDetail
+from app.models.model_digital_transformation_detail import DigitalTransformationDetail
+from app.models.model_pii_detail import PIIDetail
 
 # 27 Indicator Detail Models (9 lĩnh vực × 3 chỉ số)
 from app.models.model_indicator_details import (

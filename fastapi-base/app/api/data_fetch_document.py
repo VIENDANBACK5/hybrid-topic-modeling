@@ -1,13 +1,13 @@
 """
-Data Fetch API - Endpoints de lay data tu external API theo tung loai
+Data Fetch API - Documents (Internal/External)
+Endpoints để lấy tài liệu từ external API
 
 Endpoints:
-- POST /fetch/facebook - Lay data Facebook
-- POST /fetch/tiktok - Lay data TikTok  
-- POST /fetch/threads - Lay data Threads
-- POST /fetch/newspaper - Lay data Newspaper
-- GET /fetch/status - Xem trang thai fetch
-- GET /fetch/files/{data_type} - List files da fetch
+- POST /api/fetch/document/internal - Fetch tài liệu nội bộ
+- POST /api/fetch/document/external - Fetch tài liệu bên ngoài
+- POST /api/fetch/document/all - Fetch tất cả documents
+- GET /api/fetch/document/status - Xem trạng thái
+- GET /api/fetch/document/files/{document_type} - List files đã fetch
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,28 +22,30 @@ from datetime import datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/fetch", tags=["Data Fetch"])
+router = APIRouter(prefix="/api/fetch/document", tags=["Data Fetch - Document"])
 
-# Base URL for external API
-EXTERNAL_API_BASE = "http://192.168.30.28:8548/api/v1/posts/by-type"
+# Base URL for external API (posts-v2)
+EXTERNAL_API_BASE = "http://192.168.30.28:8548/api/v1/posts-v2/by-document-type"
 
 # Directory structure
-RAW_DATA_DIR = Path("data/raw")
+RAW_DATA_DIR = Path("data/raw/document")
+
+# Valid document types
+VALID_DOCUMENT_TYPES = ["internal", "external"]
 
 
-class FetchConfig(BaseModel):
-    """Config chung cho fetch"""
-    page_size: Optional[int] = Field(default=500, ge=1, le=500, description="Default 500 (max) for fastest fetch. Set lower to reduce memory.")
+class DocumentFetchConfig(BaseModel):
+    """Config cho fetch documents"""
+    page_size: Optional[int] = Field(default=500, ge=1, le=500, description="Default 500 (max) for fastest fetch.")
     max_pages: Optional[int] = Field(default=None, description="None = fetch all pages")
     sort_by: str = "id"
     order: str = "desc"
-    type_newspaper: Optional[str] = Field(default=None, description="Filter by type_newspaper (education, medical, etc.). None = fetch all types")
 
 
-class FetchResult(BaseModel):
-    """Ket qua fetch"""
+class DocumentFetchResult(BaseModel):
+    """Kết quả fetch documents"""
     status: str
-    data_type: str
+    document_type: str
     total_fetched: int
     unique_records: int
     duplicates_in_api: int
@@ -53,38 +55,38 @@ class FetchResult(BaseModel):
 
 
 # ============================================
-# FETCH ALL TYPES (Must be BEFORE dynamic route)
+# FETCH ALL DOCUMENT TYPES
 # ============================================
 
 @router.post("/all")
-def fetch_all_types(
-    config: FetchConfig = FetchConfig(),
+def fetch_all_document_types(
+    config: DocumentFetchConfig = DocumentFetchConfig(),
     db: Session = Depends(get_db)
 ):
     """
-    Fetch tat ca cac data types
+    Fetch tất cả các loại documents (internal + external)
     
     Example:
     ```bash
-    curl -X POST http://localhost:7777/api/fetch/all \\
+    curl -X POST http://localhost:7777/api/fetch/document/all \\
       -H "Content-Type: application/json" \\
       -d '{"page_size": 100, "max_pages": 5}'
     ```
     """
     results = {}
     
-    for data_type in ["facebook", "tiktok", "threads", "newspaper"]:
+    for doc_type in VALID_DOCUMENT_TYPES:
         try:
-            result = _fetch_data_type(data_type, config)
-            results[data_type] = {
+            result = _fetch_document_data(doc_type, config)
+            results[doc_type] = {
                 "status": result.status,
                 "unique_records": result.unique_records,
                 "duplicates": result.duplicates_in_api,
                 "raw_file": result.raw_file
             }
         except Exception as e:
-            logger.error(f"Failed to fetch {data_type}: {e}")
-            results[data_type] = {
+            logger.error(f"Failed to fetch document/{doc_type}: {e}")
+            results[doc_type] = {
                 "status": "error",
                 "error": str(e)
             }
@@ -93,76 +95,68 @@ def fetch_all_types(
     
     return {
         "status": "success",
-        "message": f"Fetched {total_records} total records across all types",
+        "message": f"Fetched {total_records} total documents across all types",
         "results": results
     }
 
 
 # ============================================
-# DYNAMIC FETCH ENDPOINT (CONSOLIDATED)
+# DYNAMIC FETCH ENDPOINT
 # ============================================
 
-@router.post("/{data_type}", response_model=FetchResult)
-def fetch_data(
-    data_type: str,
-    config: FetchConfig = FetchConfig(),
+@router.post("/{document_type}", response_model=DocumentFetchResult)
+def fetch_document_data(
+    document_type: str,
+    config: DocumentFetchConfig = DocumentFetchConfig(),
     db: Session = Depends(get_db)
 ):
     """
-    Fetch data tu external API (Consolidated endpoint for all data types)
+    Fetch documents từ external API
     
-    Supported data_type:
-    - facebook: Facebook posts
-    - tiktok: TikTok videos
-    - threads: Threads posts
-    - newspaper: News articles
+    Supported document_type:
+    - internal: Tài liệu nội bộ (PDF, Word, etc.)
+    - external: Tài liệu bên ngoài
     
-    Response format varies by type:
-    - Facebook: {url, title, content, meta_data: {post_id, reactions_count, ...}}
-    - TikTok: {url, title, content, meta_data: {url_video, views, hashtags, ...}}
-    - Threads: {url, title, content, meta_data: {username, likes, replies, ...}}
-    - Newspaper: {url, title, content, meta_data: {type_newspaper, publish_date, ...}}
+    Response format:
+    - url: Path to document file
+    - title: Document title
+    - content: Extracted content/description
+    - meta_data: {original_filename, file_size, content_type, upload_date, type_newspaper, description}
+    - document_type: internal | external
     
     Example:
     ```bash
-    curl -X POST http://localhost:7777/api/fetch/facebook \\
+    curl -X POST http://localhost:7777/api/fetch/document/internal \\
       -H "Content-Type: application/json" \\
       -d '{"page_size": 100, "max_pages": 10}'
     
-    curl -X POST http://localhost:7777/api/fetch/newspaper \\
+    curl -X POST http://localhost:7777/api/fetch/document/external \\
       -H "Content-Type: application/json" \\
-      -d '{"page_size": 100, "max_pages": null}'
+      -d '{"page_size": 50}'
     ```
     """
-    # Validate data_type
-    valid_types = ["facebook", "tiktok", "threads", "newspaper"]
-    if data_type not in valid_types:
+    if document_type not in VALID_DOCUMENT_TYPES:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid data_type '{data_type}'. Supported types: {', '.join(valid_types)}"
+            detail=f"Invalid document_type '{document_type}'. Supported types: {', '.join(VALID_DOCUMENT_TYPES)}"
         )
     
-    return _fetch_data_type(data_type, config)
+    return _fetch_document_data(document_type, config)
 
 
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
 
-def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
+def _fetch_document_data(document_type: str, config: DocumentFetchConfig) -> DocumentFetchResult:
     """
-    Core function de fetch data theo type
+    Core function để fetch document data
     """
-    logger.info(f"Starting fetch for {data_type}...")
+    logger.info(f"Starting fetch for document/{document_type}...")
     
-    # Use specific endpoint if type_newspaper filter is specified
-    if config.type_newspaper and data_type == "newspaper":
-        api_url = f"http://192.168.30.28:8548/api/v1/posts/by-type-newspaper/{config.type_newspaper}"
-        logger.info(f"Using targeted endpoint for type_newspaper={config.type_newspaper}")
-    else:
-        api_url = f"{EXTERNAL_API_BASE}/{data_type}"
+    api_url = f"{EXTERNAL_API_BASE}/{document_type}"
     
-    save_dir = RAW_DATA_DIR / data_type
+    save_dir = RAW_DATA_DIR / document_type
     save_dir.mkdir(parents=True, exist_ok=True)
     
     # Use default page_size if None
@@ -185,9 +179,7 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
             "order": config.order
         }
         
-        # Note: type_newspaper filter is handled via endpoint URL, not params
-        
-        logger.info(f"Fetching {data_type} page {page}...")
+        logger.info(f"Fetching document/{document_type} page {page}...")
         
         try:
             response = requests.get(api_url, params=params, timeout=60)
@@ -204,7 +196,7 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
                 logger.info(f"No more records on page {page}")
                 break
             
-            # Track duplicates within API response
+            # Track duplicates and transform records
             for record in records:
                 url = record.get("url")
                 if url:
@@ -212,13 +204,25 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
                         duplicates += 1
                     else:
                         seen_urls.add(url)
-                        all_records.append(record)
+                        
+                        # Transform record for important_posts compatibility
+                        transformed = {
+                            "id": record.get("id"),
+                            "url": url,
+                            "title": record.get("title"),
+                            "content": record.get("content"),
+                            "data_type": "document",  # Key difference from social
+                            "document_type": document_type,  # internal or external
+                            "type_newspaper": record.get("meta_data", {}).get("type_newspaper"),
+                            "meta_data": record.get("meta_data", {}),
+                            "created_at": record.get("created_at"),
+                            "updated_at": record.get("updated_at")
+                        }
+                        all_records.append(transformed)
             
-            new_records = len(all_records) - len([r for r in all_records[:-len(records)] if r.get('url') in seen_urls])
-            logger.info(f"Page {page}: {len(records)} total, {len(records) - duplicates + len(all_records) - new_records} new (cumulative: {len(all_records)} unique)")
+            logger.info(f"Page {page}: {len(records)} records (cumulative: {len(all_records)} unique)")
             
-            # Check if last page - only break if no records returned or less than page_size
-            # Don't rely on total_pages from API as it may be wrong
+            # Check if last page
             if len(records) < page_size:
                 logger.info(f"Last page reached (got {len(records)} < {page_size})")
                 break
@@ -235,12 +239,14 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
     # Save to file
     if all_records:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{data_type}_{timestamp}.json"
+        filename = f"{document_type}_{timestamp}.json"
         filepath = save_dir / filename
         
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump({
-                "data_type": data_type,
+                "data_type": "document",
+                "document_type": document_type,
+                "source": "document",
                 "fetched_at": datetime.now().isoformat(),
                 "total_records": len(all_records),
                 "unique_urls": len(seen_urls),
@@ -248,28 +254,28 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
                 "records": all_records
             }, f, ensure_ascii=False, indent=2)
         
-        logger.info(f"Saved {len(all_records)} {data_type} records to {filepath}")
+        logger.info(f"Saved {len(all_records)} document/{document_type} records to {filepath}")
         
-        return FetchResult(
+        return DocumentFetchResult(
             status="success",
-            data_type=data_type,
+            document_type=document_type,
             total_fetched=len(all_records) + duplicates,
             unique_records=len(all_records),
             duplicates_in_api=duplicates,
             pages_processed=page - 1 if page > 1 else page,
             raw_file=str(filepath),
-            message=f"Fetched {len(all_records)} unique {data_type} records"
+            message=f"Fetched {len(all_records)} unique {document_type} documents"
         )
     else:
-        return FetchResult(
+        return DocumentFetchResult(
             status="empty",
-            data_type=data_type,
+            document_type=document_type,
             total_fetched=0,
             unique_records=0,
             duplicates_in_api=0,
             pages_processed=page - 1 if page > 1 else 0,
             raw_file="",
-            message=f"No {data_type} records found"
+            message=f"No {document_type} documents found"
         )
 
 
@@ -278,19 +284,19 @@ def _fetch_data_type(data_type: str, config: FetchConfig) -> FetchResult:
 # ============================================
 
 @router.get("/status")
-def get_fetch_status():
+def get_document_fetch_status():
     """
-    Xem trang thai fetch hien tai
+    Xem trạng thái fetch documents
     
-    Returns: Thong ke ve so file va records cua moi data type
+    Returns: Thống kê về số file và records của mỗi document type
     """
     status = {}
     
-    for data_type in ["facebook", "tiktok", "threads", "newspaper"]:
-        type_dir = RAW_DATA_DIR / data_type
+    for doc_type in VALID_DOCUMENT_TYPES:
+        type_dir = RAW_DATA_DIR / doc_type
         
         if not type_dir.exists():
-            status[data_type] = {
+            status[doc_type] = {
                 "files": 0,
                 "latest": None
             }
@@ -298,7 +304,7 @@ def get_fetch_status():
         
         files = list(type_dir.glob("*.json"))
         if not files:
-            status[data_type] = {
+            status[doc_type] = {
                 "files": 0,
                 "latest": None
             }
@@ -316,7 +322,7 @@ def get_fetch_status():
         except:
             pass
         
-        status[data_type] = {
+        status[doc_type] = {
             "files": len(files),
             "latest": {
                 "filename": latest_file.name,
@@ -328,28 +334,28 @@ def get_fetch_status():
     
     return {
         "status": "ok",
+        "source": "document",
         "types": status
     }
 
 
-@router.get("/files/{data_type}")
-def list_files_by_type(data_type: str):
+@router.get("/files/{document_type}")
+def list_document_files_by_type(document_type: str):
     """
-    List cac file da fetch theo data_type
+    List các file đã fetch theo document_type
     
     Args:
-    - data_type: facebook | tiktok | threads | newspaper
+    - document_type: internal | external
     """
-    valid_types = ["facebook", "tiktok", "threads", "newspaper"]
-    if data_type not in valid_types:
-        raise HTTPException(400, f"Invalid data_type. Must be one of: {valid_types}")
+    if document_type not in VALID_DOCUMENT_TYPES:
+        raise HTTPException(400, f"Invalid document_type. Must be one of: {VALID_DOCUMENT_TYPES}")
     
-    type_dir = RAW_DATA_DIR / data_type
+    type_dir = RAW_DATA_DIR / document_type
     
     if not type_dir.exists():
         return {
             "status": "ok",
-            "data_type": data_type,
+            "document_type": document_type,
             "count": 0,
             "files": []
         }
@@ -377,11 +383,7 @@ def list_files_by_type(data_type: str):
     
     return {
         "status": "ok",
-        "data_type": data_type,
+        "document_type": document_type,
         "count": len(files),
         "files": files[:50]  # Latest 50
     }
-# ============================================
-# STATUS & FILES
-# ============================================
-

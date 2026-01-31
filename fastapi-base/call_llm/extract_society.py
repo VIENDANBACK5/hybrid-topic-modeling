@@ -199,9 +199,9 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
         session = Session()
         
         query = text("""
-            SELECT id, title, content, url, dvhc, published_date
-            FROM important_posts
+            SELECT id, title, content, url, dvhc, published_date, document_type FROM important_posts
             WHERE type_newspaper = 'society'
+              AND (document_type IS NULL OR document_type != 'internal')
             ORDER BY id DESC
             LIMIT :limit
         """)
@@ -215,7 +215,8 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
                 "title": row[1],
                 "content": row[2],
                 "province": row[3] or "Unknown",
-                "published_date": row[4]
+                "published_date": row[4],
+                "document_type": row[5] or "external"
             })
         
         session.close()
@@ -555,6 +556,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 1. Culture Lifestyle Stats
     culture_life = extract_culture_lifestyle_stats(content, url, province)
     if culture_life:
+        culture_life["document_type"] = document_type
         if save_to_culture_lifestyle_stats(db, culture_life):
             logger.info(f"Saved to culture_lifestyle_stats_detail")
             results["culture_lifestyle"] = 1
@@ -566,6 +568,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 2. Cultural Infrastructure
     culture_infra = extract_cultural_infrastructure(content, url, province)
     if culture_infra:
+        culture_infra["document_type"] = document_type
         if save_to_cultural_infrastructure(db, culture_infra):
             logger.info(f"Saved to cultural_infrastructure_detail")
             results["cultural_infrastructure"] = 1
@@ -577,6 +580,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 3. Culture Sport Access
     sport_access = extract_culture_sport_access(content, url, province)
     if sport_access:
+        sport_access["document_type"] = document_type
         if save_to_culture_sport_access(db, sport_access):
             logger.info(f"Saved to culture_sport_access_detail")
             results["culture_sport_access"] = 1
@@ -588,6 +592,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 4. Social Security Coverage
     social_sec = extract_social_security_coverage(content, url, province)
     if social_sec:
+        social_sec["document_type"] = document_type
         if save_to_social_security_coverage(db, social_sec):
             logger.info(f"Saved to social_security_coverage_detail")
             results["social_security"] = 1

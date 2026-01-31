@@ -171,9 +171,9 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
         session = Session()
         
         query = text("""
-            SELECT id, title, content, url, dvhc, published_date
-            FROM important_posts
+            SELECT id, title, content, url, dvhc, published_date, document_type FROM important_posts
             WHERE type_newspaper = 'medical'
+              AND (document_type IS NULL OR document_type != 'internal')
             ORDER BY id DESC
             LIMIT :limit
         """)
@@ -187,7 +187,8 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
                 "title": row[1],
                 "content": row[2],
                 "province": row[3] or "Unknown",
-                "published_date": row[4]
+                "published_date": row[4],
+                "document_type": row[5] or "external"
             })
         
         session.close()
@@ -457,6 +458,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 1. Health Statistics
     health_stats = extract_health_statistics(content, url, province)
     if health_stats:
+        health_stats["document_type"] = document_type
         if save_to_health_statistics(db, health_stats):
             logger.info(f"Saved to health_statistics_detail")
             results["health_statistics"] = 1
@@ -468,6 +470,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 2. Health Insurance
     health_insurance = extract_health_insurance(content, url, province)
     if health_insurance:
+        health_insurance["document_type"] = document_type
         if save_to_health_insurance(db, health_insurance):
             logger.info(f"Saved to health_insurance_detail")
             results["health_insurance"] = 1
@@ -479,6 +482,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 3. Preventive Health
     preventive_health = extract_preventive_health(content, url, province)
     if preventive_health:
+        preventive_health["document_type"] = document_type
         if save_to_preventive_health(db, preventive_health):
             logger.info(f"Saved to preventive_health_detail")
             results["preventive_health"] = 1

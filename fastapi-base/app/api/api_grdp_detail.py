@@ -13,13 +13,11 @@ from app.models.model_grdp_detail import GRDPDetail
 from app.schemas.schema_grdp_detail import (
     GRDPDetailCreate, 
     GRDPDetailResponse, 
-    GRDPDetailListResponse,
-    GRDPCrawlRequest,
-    GRDPExtractRequest
+    GRDPDetailListResponse
 )
 from app.services.grdp.grdp_service import GRDPDataExtractor
 
-router = APIRouter(prefix="/api/grdp", tags=["GRDP"])
+router = APIRouter(prefix="/api/grdp", tags=["grdp_detail"])
 
 
 # ==========================================
@@ -116,126 +114,162 @@ def delete_grdp(id: int, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# 5. AUTO EXTRACT FROM ARTICLES (DEPRECATED - use /extract-from-text instead)
+# 5. LLM EXTRACT FROM DATABASE SOURCES
 # ==========================================
-@router.post("/extract-from-articles", response_model=GRDPDetailResponse)
-def extract_grdp_from_articles(
-    year: int = Query(..., description="Year to extract"),
-    quarter: Optional[int] = Query(None, description="Quarter (1-4)"),
-    use_llm: bool = Query(True, description="Use LLM or regex"),
+@router.post("/extract-from-db")
+def extract_grdp_from_database_sources(
+    source: str = Query("important_posts", description="Source table: 'articles' or 'important_posts' or 'both'"),
+    year: Optional[int] = Query(None, description="Filter by year"),
+    quarter: Optional[int] = Query(None, description="Filter by quarter (1-4)"),
+    limit: int = Query(10, description="Max records to process per source"),
     force_update: bool = Query(True, description="Update if exists"),
     db: Session = Depends(get_db)
 ):
-    """Auto-extract GRDP from articles (OLD METHOD - extracts from stored articles table)"""
-    extractor = GRDPDataExtractor(db)
-    result = extractor.get_or_extract_grdp(
-        year=year,
-        quarter=quarter,
-        use_llm=use_llm,
-        force_update=force_update
-    )
-    
-    if not result:
-        raise HTTPException(
-            status_code=404, 
-            detail=f"No GRDP data found for {year}"
-        )
-    
-    return result
-
-
-# ==========================================
-# 6. EXTRACT FROM TEXT (NEW SIMPLE API)
-# ==========================================
-@router.post("/extract", response_model=GRDPDetailResponse)
-def extract_grdp_from_text(
-    request: GRDPExtractRequest,
-    db: Session = Depends(get_db)
-):
     """
-    Extract GRDP từ text content (đơn giản nhất)
+    Extract GRDP từ BẢNG DATABASE (articles hoặc important_posts) sử dụng LLM
     
-    Chỉ cần paste đoạn text chứa thông tin GRDP:
-    - "GRDP 9 tháng năm 2025 ước đạt 114.792 tỷ đồng, tăng 8,01%..."
-    - "Quý I tăng 8,80%; quý II tăng 7,40%..."
-    - "Quy mô kinh tế 219.846 tỷ đồng..."
+    ⚠️ NOTE: Extract TẤT CẢ records (cả internal + external documents)
+    Document type được giữ nguyên từ source record.
     
-    Hệ thống sẽ tự động:
-    1. Extract GRDP value, growth rates
-    2. Detect period (9 tháng → Q3, 6 tháng → Q2, etc.)
-    3. Extract quarterly breakdown (Q1, Q2, Q3, Q4)
-    4. Extract nominal GRDP
-    5. Validate data
-    6. Save to database
+    Sources:
+    - 'articles': Bảng articles (external news/content)
+    - 'important_posts': Bảng important_posts (gov.vn + external sources)
+    - 'both': Extract từ cả 2 bảng
+    
+    Process:
+    1. Query table(s) based on source param
+    2. Filter: type_newspaper='economic', year, quarter
+    3. For each record: LLM extract GRDP
+    4. Save to grdp_detail (preserving document_type from source)
+    
+    Returns: Aggregated results from all sources
     """
-    extractor = GRDPDataExtractor(db)
-    
-    # Extract data from text
-    data = extractor.extract_from_text(
-        text=request.text,
-        year=request.year,
-        quarter=request.quarter,
-        use_llm=request.use_llm
-    )
-    
-    if not data:
-        raise HTTPException(
-            status_code=404,
-            detail="Could not extract GRDP data from text"
-        )
-    
-    # Check if data has actual values
-    if not data.get('actual_value') and not data.get('change_yoy'):
-        raise HTTPException(
-            status_code=422,
-            detail="No GRDP values found in text. Please check the content."
-        )
-    
-    # Add data source
-    if request.data_source:
-        data['data_source'] = request.data_source
-    else:
-        data['data_source'] = 'User provided text'
-    
-    # Save to database
-    result = extractor.save(data, force_update=request.force_update)
-    
-    return result
-
-
-# ==========================================
-# 7. CRAWL FROM USER URL (DEPRECATED)
-# ==========================================
-@router.post("/crawl", response_model=GRDPDetailResponse, deprecated=True)
-def crawl_grdp_from_url(
-    request: GRDPCrawlRequest,
-    db: Session = Depends(get_db)
-):
-    """
-    DEPRECATED: Use /extract endpoint instead
-    
-    Legacy endpoint - sử dụng text_content nếu được cung cấp
-    """
-    if request.text_content:
-        # Convert to extract request
-        extract_req = GRDPExtractRequest(
-            text=request.text_content,
-            year=request.year,
-            quarter=request.quarter,
-            data_source=request.url,
-            use_llm=request.use_llm,
-            force_update=request.force_update
-        )
-        return extract_grdp_from_text(extract_req, db)
-    else:
+    if source not in ['articles', 'important_posts', 'both']:
         raise HTTPException(
             status_code=400,
-            detail="This endpoint is deprecated. Please use /extract with text parameter."
+            detail="Invalid source. Must be 'articles', 'important_posts', or 'both'"
         )
+    
+    extractor = GRDPDataExtractor(db)
+    all_results = {
+        'total_records': 0,
+        'extracted': 0,
+        'failed': 0,
+        'sources': {}
+    }
+    
+    # Process Articles
+    if source in ['articles', 'both']:
+        from app.models.article import Article
+        
+        query = db.query(Article).filter(Article.type_newspaper == 'economy')
+        articles = query.limit(limit).all()
+        
+        articles_results = []
+        for article in articles:
+            try:
+                data = extractor.extract_from_text(
+                    text=article.content,
+                    year=year or article.year if hasattr(article, 'year') else year,
+                    quarter=quarter,
+                    use_llm=True
+                )
+                
+                if data and (data.get('actual_value') or data.get('change_yoy')):
+                    data['data_source'] = f"articles:{article.id}"
+                    # articles table doesn't have document_type, infer from source_type or default to external
+                    data['document_type'] = getattr(article, 'document_type', 'external')
+                    record = extractor.save(data, force_update=force_update)
+                    articles_results.append({
+                        "source_id": article.id,
+                        "record_id": record.id,
+                        "year": record.year,
+                        "quarter": record.quarter
+                    })
+                    all_results['extracted'] += 1
+            except Exception as e:
+                articles_results.append({
+                    "source_id": article.id,
+                    "error": str(e)
+                })
+                all_results['failed'] += 1
+        
+        all_results['sources']['articles'] = {
+            'total': len(articles),
+            'extracted': len([r for r in articles_results if 'record_id' in r]),
+            'failed': len([r for r in articles_results if 'error' in r]),
+            'results': articles_results
+        }
+        all_results['total_records'] += len(articles)
+    
+    # Process Important Posts
+    if source in ['important_posts', 'both']:
+        from app.models.model_important_post import ImportantPost
+        from app.utils.date_parser import parse_year_quarter_from_date
+        
+        # Get all economic posts (can't filter year/quarter in SQL as they're not columns)
+        query = db.query(ImportantPost).filter(ImportantPost.type_newspaper == 'economy')
+        posts = query.limit(limit * 3).all()  # Get more to account for filtering
+        
+        posts_results = []
+        for post in posts:
+            try:
+                # Parse year/quarter from published_date string
+                post_year, post_quarter = parse_year_quarter_from_date(post.published_date)
+                
+                # Filter by year/quarter if specified
+                if year and post_year != year:
+                    continue
+                if quarter and post_quarter != quarter:
+                    continue
+                
+                # Stop if we've processed enough
+                if len(posts_results) >= limit:
+                    break
+                
+                data = extractor.extract_from_text(
+                    text=post.content,
+                    year=post_year or year,
+                    quarter=post_quarter or quarter,
+                    use_llm=True
+                )
+                
+                if data and (data.get('actual_value') or data.get('change_yoy')):
+                    data['data_source'] = f"important_posts:{post.id}"
+                    # Use actual document_type from important_post record (internal/external/null)
+                    # Only default to 'external' if document_type is None or empty string
+                    data['document_type'] = post.document_type if post.document_type else 'external'
+                    record = extractor.save(data, force_update=force_update)
+                    posts_results.append({
+                        "source_id": post.id,
+                        "record_id": record.id,
+                        "year": record.year,
+                        "quarter": record.quarter,
+                        "url": post.url
+                    })
+                    all_results['extracted'] += 1
+            except Exception as e:
+                posts_results.append({
+                    "source_id": post.id,
+                    "error": str(e)
+                })
+                all_results['failed'] += 1
+        
+        all_results['sources']['important_posts'] = {
+            'total': len(posts),
+            'extracted': len([r for r in posts_results if 'record_id' in r]),
+            'failed': len([r for r in posts_results if 'error' in r]),
+            'results': posts_results
+        }
+        all_results['total_records'] += len(posts)
+    
+    return all_results
+
+
 
 
 # ==========================================
-# 8. BATCH CRAWL FROM OFFICIAL SOURCES (REMOVED)
+# 6. BATCH CRAWL FROM OFFICIAL SOURCES
 # ==========================================
 @router.post("/crawl-official")
 def crawl_all_official_sources(

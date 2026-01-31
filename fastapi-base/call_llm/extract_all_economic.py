@@ -584,13 +584,14 @@ Trả về JSON:
 
 
 def get_posts_from_db(limit: int = 100) -> List[Dict]:
-    """Lấy important_posts có type_newspaper = 'economy'"""
+    """Lấy important_posts có type_newspaper = 'economy' AND document_type != 'internal'"""
     try:
         db = SessionLocal()
         query = text("""
             SELECT id, title, content, url, dvhc as province, published_date
             FROM important_posts
             WHERE type_newspaper = 'economy'
+              AND (document_type IS NULL OR document_type != 'internal')
             ORDER BY id DESC
             LIMIT :limit
         """)

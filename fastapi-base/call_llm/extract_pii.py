@@ -188,9 +188,9 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
     try:
         db = SessionLocal()
         query = text("""
-            SELECT id, title, content, url, dvhc as province, published_date, type_newspaper
-            FROM important_posts
+            SELECT id, title, content, url, dvhc as province, published_date, type_newspaper, document_type FROM important_posts
             WHERE type_newspaper = 'economy'
+               AND (document_type IS NULL OR document_type != 'internal')
                AND (
                 content ILIKE '%sản xuất công nghiệp%' OR
                 content ILIKE '%công nghiệp%' OR
@@ -415,6 +415,7 @@ def process_post(post: Dict, db) -> int:
     
     data = extract_pii_data(content, url, post_id, province)
     if data:
+        data["document_type"] = document_type
         if save_to_pii(db, data):
             logger.info(f"Saved to pii_detail")
             return 1

@@ -15,8 +15,9 @@ class ImportantPost(BareBaseModel):
     content = Column(Text, nullable=False, comment="Nội dung đầy đủ bài viết")
     
     # Phân loại
-    data_type = Column(String(50), nullable=False, index=True, default="newspaper", comment="Loại dữ liệu: newspaper, social, etc.")
+    data_type = Column(String(50), nullable=False, index=True, default="newspaper", comment="Loại dữ liệu: newspaper, document, social, etc.")
     type_newspaper = Column(String(100), index=True, comment="Phân loại báo: medical, economic, social, etc.")
+    document_type = Column(String(50), index=True, comment="Loại tài liệu: internal, external (null = newspaper/social)")
     
     # Metadata từ nguồn gốc
     original_id = Column(Integer, comment="ID từ hệ thống nguồn")

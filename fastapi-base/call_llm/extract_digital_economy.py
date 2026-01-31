@@ -147,9 +147,10 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
     try:
         db = SessionLocal()
         query = text("""
-            SELECT id, title, content, url, dvhc as province, published_date, type_newspaper
+            SELECT id, title, content, url, dvhc as province, published_date, type_newspaper, document_type
             FROM important_posts
             WHERE type_newspaper = 'economy'
+               AND (document_type IS NULL OR document_type != 'internal')
                AND (
                 content ILIKE '%kinh tế số%' OR
                 content ILIKE '%thương mại điện tử%' OR
@@ -176,7 +177,8 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
                 "url": row[3],
                 "province": row[4],
                 "published_date": row[5],
-                "type_newspaper": row[6]
+                "type_newspaper": row[6],
+                "document_type": row[7] or "external"
             })
         
         db.close()
@@ -333,6 +335,7 @@ def process_post(post: Dict, db) -> int:
     title = post.get("title", "")
     province = post.get("province", "Hưng Yên")
     url = post.get("url") or None
+    document_type = post.get("document_type", "external")  # Get document_type from post
     
     logger.info(f"\n{'='*60}")
     logger.info(f"Post ID: {post_id}")
@@ -340,6 +343,8 @@ def process_post(post: Dict, db) -> int:
     
     data = extract_digital_economy_data(content, url, post_id, province)
     if data:
+        # Add document_type to data
+        data["document_type"] = document_type
         if save_to_digital_economy(db, data):
             logger.info(f"Saved to digital_economy_detail")
             return 1

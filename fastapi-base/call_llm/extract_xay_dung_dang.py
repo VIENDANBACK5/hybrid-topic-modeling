@@ -341,11 +341,12 @@ def get_politics_posts_from_db(limit: int = 100) -> List[Dict]:
         Session = sessionmaker(bind=engine)
         session = Session()
         
-        # Query important_posts
+        # Query important_posts WITH document_type
         query = text("""
-            SELECT id, title, content, url, dvhc, published_date
+            SELECT id, title, content, url, dvhc, published_date, document_type
             FROM important_posts
             WHERE type_newspaper = 'politics'
+              AND (document_type IS NULL OR document_type != 'internal')
             ORDER BY id DESC
             LIMIT :limit
         """)
@@ -360,7 +361,8 @@ def get_politics_posts_from_db(limit: int = 100) -> List[Dict]:
                 "content": row[2],
                 "url": row[3],
                 "province": row[4] or "Hưng Yên",
-                "published_date": row[5]
+                "published_date": row[5],
+                "document_type": row[6] or "external"
             })
         
         session.close()
@@ -416,6 +418,7 @@ def process_article(article: Dict) -> Dict[str, int]:
     content = article.get("content", "")
     title = article.get("title", "")
     province = article.get("province", "Hưng Yên")
+    document_type = article.get("document_type", "external")
     
     logger.info(f"\n{'='*60}")
     logger.info(f"URL ID: {url}")
@@ -433,6 +436,7 @@ def process_article(article: Dict) -> Dict[str, int]:
     logger.info("💼 Extracting cadre statistics...")
     cadre_stats = extract_cadre_statistics(content, url, province)
     if cadre_stats:
+        cadre_stats["document_type"] = document_type
         if save_to_detail_table(cadre_stats, "cadre_statistics_detail"):
             results["cadre_statistics"] = 1
     time.sleep(DELAY_BETWEEN_CALLS)
@@ -441,6 +445,7 @@ def process_article(article: Dict) -> Dict[str, int]:
     logger.info("⚖️  Extracting party discipline...")
     party_disc = extract_party_discipline(content, url, province)
     if party_disc:
+        party_disc["document_type"] = document_type
         if save_to_detail_table(party_disc, "party_discipline_detail"):
             results["party_discipline"] = 1
     time.sleep(DELAY_BETWEEN_CALLS)
@@ -449,6 +454,7 @@ def process_article(article: Dict) -> Dict[str, int]:
     logger.info("⭐ Extracting cadre quality...")
     cadre_qual = extract_cadre_quality(content, url, province)
     if cadre_qual:
+        cadre_qual["document_type"] = document_type
         if save_to_detail_table(cadre_qual, "cadre_quality_detail"):
             results["cadre_quality"] = 1
     time.sleep(DELAY_BETWEEN_CALLS)

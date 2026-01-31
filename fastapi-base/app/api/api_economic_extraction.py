@@ -14,7 +14,11 @@ from app.services.universal_economic_extractor import (
     UniversalEconomicExtractor
 )
 
-router = APIRouter(prefix="/api/economic", tags=["Economic Data Extraction"])
+router = APIRouter(
+    prefix="/api/economic",
+    tags=["economic_extraction_service"],
+    include_in_schema=False  # Hide from Swagger - specialized crawling tool
+)
 
 
 def extract_period_from_title(title: str, default_year: int) -> tuple:

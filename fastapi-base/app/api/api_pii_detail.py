@@ -9,16 +9,16 @@ from sqlalchemy import desc
 
 from app.core.database import get_db
 from app.models.model_pii_detail import PIIDetail
-from app.schemas.schema_pii import (
-    PIICreate,
-    PIIResponse,
-    PIIListResponse
+from app.schemas.schema_pii_detail import (
+    PIIDetailCreate,
+    PIIDetailResponse,
+    PIIDetailListResponse
 )
 
-router = APIRouter(prefix="/api/pii", tags=["PII"])
+router = APIRouter(prefix="/api/pii", tags=["pii_detail"])
 
 
-@router.get("", response_model=PIIListResponse)
+@router.get("", response_model=PIIDetailListResponse)
 def list_pii(
     year: Optional[int] = None,
     quarter: Optional[int] = None,
@@ -49,7 +49,7 @@ def list_pii(
     }
 
 
-@router.get("/{id}", response_model=PIIResponse)
+@router.get("/{id}", response_model=PIIDetailResponse)
 def get_pii(id: int, db: Session = Depends(get_db)):
     """Get PII by ID"""
     record = db.query(PIIDetail).filter(PIIDetail.id == id).first()
@@ -58,8 +58,8 @@ def get_pii(id: int, db: Session = Depends(get_db)):
     return record
 
 
-@router.post("", response_model=PIIResponse)
-def create_or_update_pii(data: PIICreate, db: Session = Depends(get_db)):
+@router.post("", response_model=PIIDetailResponse)
+def create_or_update_pii(data: PIIDetailCreate, db: Session = Depends(get_db)):
     """Create or update PII data (upsert)"""
     query = db.query(PIIDetail).filter(
         PIIDetail.province == data.province,

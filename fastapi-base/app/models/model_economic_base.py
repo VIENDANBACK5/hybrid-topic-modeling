@@ -30,6 +30,7 @@ class EconomicIndicatorBase(Base):
     # Metadata
     data_status = Column(String, default='estimated', comment='official, estimated, preliminary')
     data_source = Column(String, comment='Source URL or reference')
+    document_type = Column(String, default='external', comment='internal or external source')
     last_updated = Column(DateTime, default=func.now(), onupdate=func.now())
     
     @property

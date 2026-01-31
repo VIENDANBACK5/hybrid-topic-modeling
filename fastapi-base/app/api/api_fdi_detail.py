@@ -9,16 +9,16 @@ from sqlalchemy import desc
 
 from app.core.database import get_db
 from app.models.model_fdi_detail import FDIDetail
-from app.schemas.schema_fdi import (
-    FDICreate,
-    FDIResponse,
-    FDIListResponse
+from app.schemas.schema_fdi_detail import (
+    FDIDetailCreate,
+    FDIDetailResponse,
+    FDIDetailListResponse
 )
 
-router = APIRouter(prefix="/api/fdi", tags=["FDI"])
+router = APIRouter(prefix="/api/fdi", tags=["fdi_detail"])
 
 
-@router.get("", response_model=FDIListResponse)
+@router.get("", response_model=FDIDetailListResponse)
 def list_fdi(
     year: Optional[int] = None,
     quarter: Optional[int] = None,
@@ -49,7 +49,7 @@ def list_fdi(
     }
 
 
-@router.get("/{id}", response_model=FDIResponse)
+@router.get("/{id}", response_model=FDIDetailResponse)
 def get_fdi(id: int, db: Session = Depends(get_db)):
     """Get FDI by ID"""
     record = db.query(FDIDetail).filter(FDIDetail.id == id).first()
@@ -58,8 +58,8 @@ def get_fdi(id: int, db: Session = Depends(get_db)):
     return record
 
 
-@router.post("", response_model=FDIResponse)
-def create_or_update_fdi(data: FDICreate, db: Session = Depends(get_db)):
+@router.post("", response_model=FDIDetailResponse)
+def create_or_update_fdi(data: FDIDetailCreate, db: Session = Depends(get_db)):
     """Create or update FDI data (upsert)"""
     query = db.query(FDIDetail).filter(
         FDIDetail.province == data.province,

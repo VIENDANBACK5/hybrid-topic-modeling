@@ -10,16 +10,16 @@ from sqlalchemy import desc
 
 from app.core.database import get_db
 from app.models.model_digital_economy_detail import DigitalEconomyDetail
-from app.schemas.schema_digital_economy import (
-    DigitalEconomyCreate,
-    DigitalEconomyResponse,
-    DigitalEconomyListResponse
+from app.schemas.schema_digital_economy_detail import (
+    DigitalEconomyDetailCreate,
+    DigitalEconomyDetailResponse,
+    DigitalEconomyDetailListResponse
 )
 
-router = APIRouter(prefix="/api/digital-economy", tags=["Digital Economy"])
+router = APIRouter(prefix="/api/digital-economy", tags=["digital_economy_detail"])
 
 
-@router.get("", response_model=DigitalEconomyListResponse)
+@router.get("", response_model=DigitalEconomyDetailListResponse)
 def list_digital_economy(
     year: Optional[int] = None,
     quarter: Optional[int] = None,
@@ -53,7 +53,7 @@ def list_digital_economy(
     }
 
 
-@router.get("/{id}", response_model=DigitalEconomyResponse)
+@router.get("/{id}", response_model=DigitalEconomyDetailResponse)
 def get_digital_economy(id: int, db: Session = Depends(get_db)):
     """Get Digital Economy by ID"""
     record = db.query(DigitalEconomyDetail).filter(DigitalEconomyDetail.id == id).first()
@@ -62,8 +62,8 @@ def get_digital_economy(id: int, db: Session = Depends(get_db)):
     return record
 
 
-@router.post("", response_model=DigitalEconomyResponse)
-def create_or_update_digital_economy(data: DigitalEconomyCreate, db: Session = Depends(get_db)):
+@router.post("", response_model=DigitalEconomyDetailResponse)
+def create_or_update_digital_economy(data: DigitalEconomyDetailCreate, db: Session = Depends(get_db)):
     """Create or update Digital Economy data (upsert by year+quarter+province)"""
     
     # Find existing

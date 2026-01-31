@@ -5,9 +5,42 @@ import os
 import importlib
 from datetime import datetime
 import logging
+import warnings
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api/llm-extraction",
+    tags=["LLM Extraction (DEPRECATED)"],
+    deprecated=True,
+    include_in_schema=False  # Hide from Swagger UI
+)
 logger = logging.getLogger(__name__)
+
+# ============================================
+# ⚠️ DEPRECATION NOTICE
+# ============================================
+# These endpoints are DEPRECATED. Please use individual detail table APIs instead:
+# 
+# NEW ENDPOINTS (with /extract-from-db):
+# - /api/fdi/extract-from-db
+# - /api/digital-economy/extract-from-db  
+# - /api/digital-transformation/extract-from-db
+# - /api/pii/extract-from-db
+# - /api/cadre-statistics/extract-from-db
+# - /api/highschool-graduation/extract-from-db
+# - /api/tvet-employment/extract-from-db
+# - /api/health-statistics/extract-from-db
+# - /api/culture-lifestyle/extract-from-db
+# - /api/security/extract-from-db
+# - /api/par-index/extract-from-db
+# - /api/sipas/extract-from-db
+# - /api/grdp/extract-from-db
+#
+# Benefits of new endpoints:
+# - Better control per indicator
+# - Query filtering (year, quarter, source)
+# - Document type preservation (internal/external)
+# - More granular error handling
+# ============================================
 
 
 def import_extraction_module(module_name: str):

@@ -1,14 +1,14 @@
 """
-Data Process API - Endpoints de xu ly raw data theo tung loai
+Data Process API - Social Media & News
+Endpoints xử lý raw data cho social media và báo chí
 
 Endpoints:
-- POST /process/facebook - Xu ly raw Facebook data
-- POST /process/tiktok - Xu ly raw TikTok data
-- POST /process/threads - Xu ly raw Threads data
-- POST /process/newspaper - Xu ly raw Newspaper data
-- POST /process/load-to-db - Load processed data vao DB
-- GET /process/status - Xem trang thai xu ly
-- GET /process/files/{data_type} - List processed files
+- POST /api/process/social/{data_type} - Xử lý facebook, tiktok, threads, newspaper
+- POST /api/process/social/all - Xử lý tất cả
+- POST /api/process/social/load-to-db - Load vào DB
+- GET /api/process/social/status - Xem trạng thái
+- GET /api/process/social/files/{data_type} - List files
+- GET /api/process/social/db-stats - Thống kê DB
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,21 +23,24 @@ from datetime import datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/process", tags=["Data Process"])
+router = APIRouter(prefix="/api/process/social", tags=["Data Process - Social"])
 
 # Directory structure
 RAW_DATA_DIR = Path("data/raw")
 PROCESSED_DATA_DIR = Path("data/processed")
 
+# Valid data types for social/news
+VALID_SOCIAL_TYPES = ["facebook", "tiktok", "threads", "newspaper"]
+
 
 class ProcessConfig(BaseModel):
-    """Config cho xu ly"""
+    """Config cho xử lý"""
     raw_file: Optional[str] = Field(None, description="Path to raw file (if not provided, use latest)")
     skip_duplicates: bool = Field(default=True, description="Skip duplicate URLs within file")
 
 
 class ProcessResult(BaseModel):
-    """Ket qua xu ly"""
+    """Kết quả xử lý"""
     status: str
     data_type: str
     raw_file: str
@@ -57,28 +60,32 @@ class LoadConfig(BaseModel):
 
 
 # ============================================
-# PROCESS ALL TYPES (Must be BEFORE dynamic route)
+# PROCESS ALL TYPES
 # ============================================
 
 @router.post("/all")
-def process_all_types(
+def process_all_social_types(
     config: ProcessConfig = ProcessConfig(),
     db: Session = Depends(get_db)
 ):
     """
-    Xu ly tat ca cac data types
+    Xử lý tất cả các social/news data types
+    
+    Example:
+    ```bash
+    curl -X POST http://localhost:7777/api/process/social/all
+    ```
     """
     results = {}
     
-    for data_type in get_supported_types():
+    for data_type in VALID_SOCIAL_TYPES:
         try:
-            # Check if raw files exist
             raw_dir = RAW_DATA_DIR / data_type
             if not raw_dir.exists() or not list(raw_dir.glob("*.json")):
                 results[data_type] = {"status": "skipped", "message": "No raw files"}
                 continue
             
-            result = _process_data_type(data_type, config)
+            result = _process_social_data(data_type, config)
             results[data_type] = {
                 "status": result.status,
                 "processed": result.processed_records,
@@ -96,13 +103,13 @@ def process_all_types(
     
     return {
         "status": "success",
-        "message": f"Processed {total_processed} total records",
+        "message": f"Processed {total_processed} total social records",
         "results": results
     }
 
 
 # ============================================
-# LOAD TO DATABASE (Must be BEFORE dynamic route)
+# LOAD TO DATABASE
 # ============================================
 
 def _get_latest_processed_file(data_type: str) -> Optional[Path]:
@@ -124,7 +131,6 @@ def _load_single_file(processed_file: Path, config: LoadConfig, db: Session) -> 
     
     logger.info(f"Loading to DB: {processed_file}")
     
-    # Load processed data
     with open(processed_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
@@ -134,10 +140,8 @@ def _load_single_file(processed_file: Path, config: LoadConfig, db: Session) -> 
     if not records:
         return {"status": "empty", "data_type": data_type, "message": "No records to load", "inserted": 0, "updated": 0, "skipped": 0}
     
-    # Get existing URLs
     existing_urls = {a.url for a in db.query(Article.url).all()}
     
-    # Initialize sentiment analyzer if needed
     analyzer = None
     if config.analyze_sentiment:
         try:
@@ -160,12 +164,10 @@ def _load_single_file(processed_file: Path, config: LoadConfig, db: Session) -> 
                 stats['skipped'] += 1
                 continue
             
-            # Check existing
             if url in existing_urls:
                 if not config.update_existing:
                     stats['skipped'] += 1
                     continue
-                # Update existing
                 article = db.query(Article).filter(Article.url == url).first()
                 if article:
                     for key, value in record.items():
@@ -173,8 +175,6 @@ def _load_single_file(processed_file: Path, config: LoadConfig, db: Session) -> 
                             setattr(article, key, value)
                     stats['updated'] += 1
             else:
-                # Create new article
-                # Truncate source to 512 chars to avoid DB error
                 source_val = record.get('source', record.get('url', ''))
                 if len(source_val) > 512:
                     source_val = source_val[:512]
@@ -183,7 +183,7 @@ def _load_single_file(processed_file: Path, config: LoadConfig, db: Session) -> 
                     url=record.get('url'),
                     source_type=record.get('source_type', 'api'),
                     source=source_val,
-                    domain=record.get('source_name') or record.get('domain'),  # Use source_name if available
+                    domain=record.get('source_name') or record.get('domain'),
                     title=record.get('title'),
                     content=record.get('content'),
                     summary=record.get('summary'),
@@ -257,16 +257,11 @@ def _load_single_file(processed_file: Path, config: LoadConfig, db: Session) -> 
 
 def _load_all_latest(config: LoadConfig, db: Session) -> dict:
     """Load all latest processed files to database"""
-    from fastapi import HTTPException
+    data_types = config.data_types if config.data_types else VALID_SOCIAL_TYPES
     
-    # Determine which data types to load
-    all_types = ["facebook", "tiktok", "threads", "newspaper"]
-    data_types = config.data_types if config.data_types else all_types
-    
-    # Validate data types
-    invalid_types = [dt for dt in data_types if dt not in all_types]
+    invalid_types = [dt for dt in data_types if dt not in VALID_SOCIAL_TYPES]
     if invalid_types:
-        raise HTTPException(400, f"Invalid data types: {invalid_types}. Valid: {all_types}")
+        raise HTTPException(400, f"Invalid data types: {invalid_types}. Valid: {VALID_SOCIAL_TYPES}")
     
     results = {}
     total_inserted = 0
@@ -289,7 +284,6 @@ def _load_all_latest(config: LoadConfig, db: Session) -> dict:
             logger.error(f"Failed to load {data_type}: {e}")
             results[data_type] = {"status": "error", "error": str(e)}
     
-    # Commit all changes
     try:
         db.commit()
     except Exception as e:
@@ -299,6 +293,7 @@ def _load_all_latest(config: LoadConfig, db: Session) -> dict:
     return {
         "status": "success",
         "mode": "load_all_latest",
+        "source": "social",
         "data_types_loaded": data_types,
         "results": results,
         "summary": {
@@ -311,45 +306,34 @@ def _load_all_latest(config: LoadConfig, db: Session) -> dict:
 
 
 @router.post("/load-to-db")
-def load_to_database(
+def load_social_to_database(
     config: LoadConfig = LoadConfig(),
     db: Session = Depends(get_db)
 ):
     """
-    Load processed data vao database
+    Load processed social data vào database
     
-    Modes:
-    1. Load ALL latest files: POST with empty body or {"data_types": ["facebook", "newspaper"]}
-    2. Load SPECIFIC file: POST with {"processed_file": "facebook_processed_xxx.json"}
-    
-    Examples:
+    Example:
     ```bash
-    # Load all latest files from all data types
-    curl -X POST http://localhost:7777/api/process/load-to-db
+    # Load all latest files
+    curl -X POST http://localhost:7777/api/process/social/load-to-db
     
-    # Load only facebook and newspaper latest files
-    curl -X POST http://localhost:7777/api/process/load-to-db \\
+    # Load chỉ facebook và newspaper
+    curl -X POST http://localhost:7777/api/process/social/load-to-db \\
       -H "Content-Type: application/json" \\
       -d '{"data_types": ["facebook", "newspaper"]}'
-    
-    # Load specific file
-    curl -X POST http://localhost:7777/api/process/load-to-db \\
-      -H "Content-Type: application/json" \\
-      -d '{"processed_file": "facebook_processed_20260116_110117.json"}'
     ```
     """
-    # MODE 1: Load ALL latest files
     if not config.processed_file:
         return _load_all_latest(config, db)
     
-    # MODE 2: Load SPECIFIC file
     processed_file = Path(config.processed_file)
     
     if not processed_file.exists():
         if not processed_file.is_absolute():
             filename = processed_file.name
             data_type = None
-            for dt in ["facebook", "tiktok", "threads", "newspaper"]:
+            for dt in VALID_SOCIAL_TYPES:
                 if filename.startswith(dt):
                     data_type = dt
                     break
@@ -357,7 +341,7 @@ def load_to_database(
             if data_type:
                 processed_file = PROCESSED_DATA_DIR / data_type / filename
             else:
-                for dt in ["facebook", "tiktok", "threads", "newspaper"]:
+                for dt in VALID_SOCIAL_TYPES:
                     candidate = PROCESSED_DATA_DIR / dt / filename
                     if candidate.exists():
                         processed_file = candidate
@@ -377,6 +361,7 @@ def load_to_database(
     return {
         "status": "success",
         "mode": "load_single_file",
+        "source": "social",
         "data_type": result.get('data_type'),
         "processed_file": str(processed_file),
         "statistics": result,
@@ -385,68 +370,57 @@ def load_to_database(
 
 
 # ============================================
-# DYNAMIC PROCESS ENDPOINT (CONSOLIDATED)
+# DYNAMIC PROCESS ENDPOINT
 # ============================================
 
 @router.post("/{data_type}", response_model=ProcessResult)
-def process_data(
+def process_social_data(
     data_type: str,
     config: ProcessConfig = ProcessConfig(),
     db: Session = Depends(get_db)
 ):
     """
-    Xu ly raw data (Consolidated endpoint for all data types)
+    Xử lý raw social/news data
     
     Supported data_type:
-    - facebook: Process Facebook posts
-    - tiktok: Process TikTok videos
-    - threads: Process Threads posts
-    - newspaper: Process news articles
-    
-    Steps:
-    - Doc file tu data/raw/{data_type}/
-    - Chuan hoa cac truong
-    - Clean text
-    - Luu vao data/processed/{data_type}/
+    - facebook: Facebook posts
+    - tiktok: TikTok videos  
+    - threads: Threads posts
+    - newspaper: News articles
     
     Example:
     ```bash
-    curl -X POST http://localhost:7777/api/process/facebook \\
-      -H "Content-Type: application/json" \\
-      -d '{"raw_file": null, "skip_duplicates": true}'
+    curl -X POST http://localhost:7777/api/process/social/facebook
     
-    curl -X POST http://localhost:7777/api/process/newspaper \\
+    curl -X POST http://localhost:7777/api/process/social/newspaper \\
       -H "Content-Type: application/json" \\
       -d '{"skip_duplicates": true}'
     ```
     """
-    # Validate data_type using processor registry
-    if data_type not in get_supported_types():
+    if data_type not in VALID_SOCIAL_TYPES:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid data_type '{data_type}'. Supported types: {', '.join(get_supported_types())}"
+            detail=f"Invalid data_type '{data_type}'. Supported types: {', '.join(VALID_SOCIAL_TYPES)}"
         )
     
-    return _process_data_type(data_type, config)
+    return _process_social_data(data_type, config)
 
 
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
 
-def _process_data_type(data_type: str, config: ProcessConfig) -> ProcessResult:
-    """Core function de xu ly data theo type"""
-    logger.info(f"Starting process for {data_type}...")
+def _process_social_data(data_type: str, config: ProcessConfig) -> ProcessResult:
+    """Core function để xử lý social data theo type"""
+    logger.info(f"Starting process for social/{data_type}...")
     
     raw_dir = RAW_DATA_DIR / data_type
     processed_dir = PROCESSED_DATA_DIR / data_type
     processed_dir.mkdir(parents=True, exist_ok=True)
     
-    # Find raw file
     if config.raw_file:
         raw_file = Path(config.raw_file)
     else:
-        # Get latest raw file
         raw_files = list(raw_dir.glob("*.json"))
         if not raw_files:
             raise HTTPException(404, f"No raw files found for {data_type}")
@@ -457,14 +431,12 @@ def _process_data_type(data_type: str, config: ProcessConfig) -> ProcessResult:
     
     logger.info(f"Processing file: {raw_file}")
     
-    # Load raw data
     try:
         with open(raw_file, 'r', encoding='utf-8') as f:
             raw_data = json.load(f)
     except Exception as e:
         raise HTTPException(400, f"Failed to load raw file: {e}")
     
-    # Extract records
     if isinstance(raw_data, dict):
         records = raw_data.get('records', raw_data.get('data', []))
     elif isinstance(raw_data, list):
@@ -484,11 +456,9 @@ def _process_data_type(data_type: str, config: ProcessConfig) -> ProcessResult:
             message="No records to process"
         )
     
-    # Get processor and process
     processor = get_processor(data_type)
     processed_records, stats = processor.process_batch(records)
     
-    # Save processed data
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     processed_filename = f"{data_type}_processed_{timestamp}.json"
     processed_file = processed_dir / processed_filename
@@ -496,6 +466,7 @@ def _process_data_type(data_type: str, config: ProcessConfig) -> ProcessResult:
     with open(processed_file, 'w', encoding='utf-8') as f:
         json.dump({
             "data_type": data_type,
+            "source": "social",
             "processed_at": datetime.now().isoformat(),
             "source_file": str(raw_file),
             "statistics": stats,
@@ -521,13 +492,13 @@ def _process_data_type(data_type: str, config: ProcessConfig) -> ProcessResult:
 # ============================================
 
 @router.get("/status")
-def get_process_status():
+def get_social_process_status():
     """
-    Xem tong quan files da xu ly theo tung loai
+    Xem tổng quan files đã xử lý cho social/news
     """
     status = {}
     
-    for data_type in get_supported_types():
+    for data_type in VALID_SOCIAL_TYPES:
         processed_dir = PROCESSED_DATA_DIR / data_type
         if processed_dir.exists():
             files = list(processed_dir.glob("*.json"))
@@ -536,7 +507,6 @@ def get_process_status():
             latest = None
             if files:
                 latest_file = max(files, key=lambda f: f.stat().st_mtime)
-                # Get record count
                 try:
                     with open(latest_file, 'r') as fp:
                         data = json.load(fp)
@@ -565,19 +535,19 @@ def get_process_status():
     
     return {
         "status": "ok",
+        "source": "social",
         "data_types": status,
         "processed_dir": str(PROCESSED_DATA_DIR)
     }
 
 
 @router.get("/files/{data_type}")
-def list_processed_files(data_type: str):
+def list_social_processed_files(data_type: str):
     """
-    List cac file da xu ly theo data_type
+    List các file đã xử lý theo data_type
     """
-    valid_types = get_supported_types()
-    if data_type not in valid_types:
-        raise HTTPException(400, f"Invalid data_type. Must be one of: {valid_types}")
+    if data_type not in VALID_SOCIAL_TYPES:
+        raise HTTPException(400, f"Invalid data_type. Must be one of: {VALID_SOCIAL_TYPES}")
     
     processed_dir = PROCESSED_DATA_DIR / data_type
     
@@ -593,7 +563,6 @@ def list_processed_files(data_type: str):
     for f in sorted(processed_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
         stat = f.stat()
         
-        # Try to read statistics
         statistics = None
         try:
             with open(f, 'r', encoding='utf-8') as fp:
@@ -618,55 +587,14 @@ def list_processed_files(data_type: str):
     }
 
 
-@router.post("/all")
-def process_all_types(
-    config: ProcessConfig = ProcessConfig(),
-    db: Session = Depends(get_db)
-):
-    """
-    Xu ly tat ca cac data types
-    """
-    results = {}
-    
-    for data_type in get_supported_types():
-        try:
-            # Check if raw files exist
-            raw_dir = RAW_DATA_DIR / data_type
-            if not raw_dir.exists() or not list(raw_dir.glob("*.json")):
-                results[data_type] = {"status": "skipped", "message": "No raw files"}
-                continue
-            
-            result = _process_data_type(data_type, config)
-            results[data_type] = {
-                "status": result.status,
-                "processed": result.processed_records,
-                "failed": result.failed_records,
-                "processed_file": result.processed_file
-            }
-        except Exception as e:
-            logger.error(f"Failed to process {data_type}: {e}")
-            results[data_type] = {
-                "status": "error",
-                "error": str(e)
-            }
-    
-    total_processed = sum(r.get("processed", 0) for r in results.values() if isinstance(r.get("processed"), int))
-    
-    return {
-        "status": "success",
-        "message": f"Processed {total_processed} total records",
-        "results": results
-    }
-
-
 # ============================================
 # DATABASE STATISTICS
 # ============================================
 
 @router.get("/db-stats")
-def get_database_stats(db: Session = Depends(get_db)) -> Dict:
+def get_social_database_stats(db: Session = Depends(get_db)) -> Dict:
     """
-    Xem so luong data trong cac bang
+    Xem số lượng data trong các bảng (social data)
     """
     from app.models import (
         Article, 
@@ -720,6 +648,7 @@ def get_database_stats(db: Session = Depends(get_db)) -> Dict:
     
     return {
         "status": "success",
+        "source": "social",
         "tables": stats,
         "total_rows": total,
         "table_count": len([v for v in stats.values() if isinstance(v, int)])

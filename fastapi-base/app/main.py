@@ -11,7 +11,7 @@ from app.core.router import router
 from app.api import api_router
 from app.models import Base
 from app.api.routers import topic_service, sync_service, custom_topics, field_classification, superset_sync, economic_indicators
-from app.api import orchestrator, data_fetch_api, data_process_api, api_grdp_detail, api_economic_extraction, api_social_indicators, api_aqi, api_important_posts, api_statistics, api_xay_dung_dang, api_llm_extraction, api_digital_economy, api_fdi, api_digital_transformation, api_pii
+from app.api import orchestrator, data_fetch_social, data_fetch_document, data_process_social, data_process_document, api_grdp_detail, api_economic_extraction, api_social_indicators, api_aqi, api_important_posts, api_statistics, api_xay_dung_dang, api_llm_extraction, api_digital_economy_detail, api_fdi_detail, api_digital_transformation_detail, api_pii_detail, api_iip, api_cpi, api_cadre_statistics, api_highschool_graduation, api_tvet_employment, api_health_statistics, api_culture_lifestyle, api_security, api_par_index, api_sipas
 from app.core.database import get_engine
 from app.core.config import settings
 from app.core.rate_limit import RateLimitMiddleware
@@ -70,11 +70,17 @@ def get_application() -> FastAPI:
     # ETL PIPELINE (Giai đoạn 1: Fetch → Process → Load)
     # ============================================
     
-    # Data Fetch - Lấy data từ external API
-    application.include_router(data_fetch_api.router)
+    # Data Fetch - Social Media & News (facebook, tiktok, threads, newspaper)
+    application.include_router(data_fetch_social.router)
     
-    # Data Process - Xử lý và load vào DB
-    application.include_router(data_process_api.router)
+    # Data Fetch - Documents (internal, external)
+    application.include_router(data_fetch_document.router)
+    
+    # Data Process - Social Media & News
+    application.include_router(data_process_social.router)
+    
+    # Data Process - Documents (Internal/External)
+    application.include_router(data_process_document.router)
     
     # ============================================
     # TOPIC MODELING
@@ -99,11 +105,27 @@ def get_application() -> FastAPI:
     # GRDP Detail API
     application.include_router(api_grdp_detail.router)
     
-    # Economic Indicator Detail APIs (4 new tables)
-    application.include_router(api_digital_economy.router)
-    application.include_router(api_fdi.router)
-    application.include_router(api_digital_transformation.router)
-    application.include_router(api_pii.router)
+    # Economic Indicator Detail APIs
+    application.include_router(api_digital_economy_detail.router)
+    application.include_router(api_fdi_detail.router)
+    application.include_router(api_digital_transformation_detail.router)
+    application.include_router(api_pii_detail.router)
+    application.include_router(api_iip.router)
+    application.include_router(api_cpi.router)
+    
+    # Education Detail APIs
+    application.include_router(api_highschool_graduation.router)
+    application.include_router(api_tvet_employment.router)
+    
+    # Social/Society Detail APIs  
+    application.include_router(api_cadre_statistics.router)
+    application.include_router(api_health_statistics.router)
+    application.include_router(api_culture_lifestyle.router)
+    application.include_router(api_security.router)
+    
+    # Public Administration APIs
+    application.include_router(api_par_index.router)
+    application.include_router(api_sipas.router)
     
     # ============================================
     # SOCIAL INDICATORS (9 Lĩnh vực × 3 Chỉ số = 27 bảng)
