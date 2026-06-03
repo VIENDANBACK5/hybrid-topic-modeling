@@ -1,0 +1,51 @@
+x-common: &common
+  restart: always
+  env_file:
+    - .env
+
+services:
+  db:
+    image: postgres:16
+    <<: *common
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf
+    environment:
+      PGTZ: Asia/Ho_Chi_Minh
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - ./mount-data/db:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    ports:
+      - 5555:5432
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  alembic:
+    image: registry.gitlab.aisoftech.vn/dungdq/back-lnmxh-ai
+    <<: *common
+    volumes:
+      - ./.env:/app/.env
+    command: [ "alembic", "upgrade", "head" ]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    image: registry.gitlab.aisoftech.vn/dungdq/back-lnmxh-ai
+    <<: *common
+    volumes:
+      - ./logs:/app/logs
+      - ./.env:/app/.env
+    ports:
+      - 7777:7777
+    command: [ "/app/entrypoint.sh" ]
+    depends_on:
+      db:
+        condition: service_healthy
+      alembic:
+        condition: service_completed_successfully
