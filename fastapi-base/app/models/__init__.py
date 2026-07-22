@@ -13,6 +13,7 @@ from app.models.model_bertopic_discovered import (
     ArticleBertopicTopic,
     TopicTrainingSession
 )
+from app.models.model_embedding_training import EmbeddingTrainingSession
 from app.models.model_statistics import (
     TrendReport,
     HotTopic,

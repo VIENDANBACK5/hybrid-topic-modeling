@@ -135,4 +135,4 @@ curl -s "$API_BASE/db-stats" | jq
 
 echo ""
 echo "🎯 Next step: Re-run fill_all_tables.py to populate statistics"
-echo "   $ docker exec fastapi-base-app-1 python /app/fill_all_tables.py"
+echo "   $ docker exec pipeline-mxh-app-1 python /app/fill_all_tables.py"

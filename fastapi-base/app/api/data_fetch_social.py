@@ -23,17 +23,116 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/fetch/social", tags=["Data Fetch - Social"])
 
 # Base URL for external API
-EXTERNAL_API_BASE = "http://192.168.30.28:8548/api/v1/posts/by-type"
+EXTERNAL_API_ROOT = os.getenv("EXTERNAL_API_BASE_URL")
+EXTERNAL_API_BASE = EXTERNAL_API_ROOT + "/api/v1/posts/by-type"
 
 # Directory structure
 RAW_DATA_DIR = Path("data/raw")
 
 # Valid data types for social/news
 VALID_SOCIAL_TYPES = ["facebook", "tiktok", "threads", "newspaper"]
+
+# Data types whose freshest source is the newer posts-v2 / BrightData tables
+# on the external crawler, instead of the legacy `posts` table (stale since
+# early 2026). Threads/Instagram BrightData records are profile-nested and
+# not worth adapting yet given very low record counts; left on legacy source.
+BRIGHTDATA_SOCIAL_TYPES = {"facebook", "tiktok"}
+
+
+def _normalize_facebook_brightdata(record: Dict) -> Dict:
+    """Map a facebook_brightdata API record into the flat schema FacebookProcessor expects"""
+    raw = record.get("raw_data") or {}
+    content = raw.get("content") or ""
+    url = raw.get("url") or record.get("record_url")
+
+    likes = 0
+    nlt = raw.get("num_likes_type")
+    if isinstance(nlt, dict):
+        likes = nlt.get("num") or 0
+    elif isinstance(nlt, (int, float)):
+        likes = nlt
+
+    album_preview = []
+    for att in raw.get("attachments") or []:
+        att_type = (att.get("type") or "").lower()
+        if att_type == "photo":
+            album_preview.append({"type": "photo", "image_file_uri": att.get("url")})
+        elif att_type == "video":
+            album_preview.append({"type": "video", "url": att.get("video_url") or att.get("url")})
+
+    meta_data = {
+        "post_id": raw.get("post_id") or record.get("record_id"),
+        "type": raw.get("post_type") or record.get("scraper_type") or "post",
+        "url": url,
+        "message": content,
+        "message_rich": content,
+        "timestamp": raw.get("date_posted"),
+        "comments_count": raw.get("num_comments") or 0,
+        "reactions_count": likes,
+        "reshare_count": raw.get("num_shares") or 0,
+        "reactions": {"like": likes} if likes else {},
+        "author": {
+            "id": raw.get("profile_id"),
+            "name": raw.get("page_name") or raw.get("user_username_raw"),
+            "url": raw.get("page_url") or raw.get("user_url"),
+            "profile_picture_url": raw.get("page_logo"),
+        },
+        "album_preview": album_preview,
+        "hashtags": raw.get("hashtags"),
+    }
+
+    return {
+        "id": record.get("id") or record.get("record_id"),
+        "url": url,
+        "title": content[:100] if content else None,
+        "content": content,
+        "meta_data": meta_data,
+        "data_type": "facebook",
+        "created_at": record.get("created_at"),
+        "updated_at": record.get("updated_at") or record.get("created_at"),
+    }
+
+
+def _normalize_tiktok_brightdata(record: Dict) -> Dict:
+    """Map a tiktok_brightdata API record into the flat schema TikTokProcessor expects"""
+    raw = record.get("raw_data") or {}
+    content = raw.get("description") or ""
+    url = raw.get("url") or record.get("record_url")
+
+    meta_data = {
+        "url_video": raw.get("video_url"),
+        "username": raw.get("profile_username") or raw.get("account_id"),
+        "views": raw.get("play_count") or 0,
+        "views_text": None,
+        "hashtags": [f"#{h}" for h in (raw.get("hashtags") or [])],
+        "thumbnail_url": raw.get("preview_image"),
+        "badge": None,
+    }
+
+    return {
+        "id": record.get("id") or record.get("record_id"),
+        "url": url,
+        "title": content,
+        "content": content,
+        "meta_data": meta_data,
+        "data_type": "tiktok",
+        "created_at": record.get("created_at"),
+        "updated_at": record.get("updated_at") or record.get("created_at"),
+    }
+
+
+BRIGHTDATA_NORMALIZERS = {
+    "facebook": _normalize_facebook_brightdata,
+    "tiktok": _normalize_tiktok_brightdata,
+}
 
 
 class FetchConfig(BaseModel):
@@ -151,14 +250,27 @@ def _fetch_social_data(data_type: str, config: FetchConfig) -> FetchResult:
     Core function để fetch social/news data
     """
     logger.info(f"Starting fetch for social/{data_type}...")
-    
-    # Use specific endpoint if type_newspaper filter is specified
-    if config.type_newspaper and data_type == "newspaper":
-        api_url = f"http://192.168.30.28:8548/api/v1/posts/by-type-newspaper/{config.type_newspaper}"
-        logger.info(f"Using targeted endpoint for type_newspaper={config.type_newspaper}")
+
+    normalizer = None
+    if data_type == "newspaper":
+        # posts-v2 is the actively-updated source for newspaper (legacy `posts`
+        # table stopped receiving new crawls); schema is unchanged (flat).
+        if config.type_newspaper:
+            api_url = f"{EXTERNAL_API_ROOT}/api/v1/posts-v2/by-type-newspaper/{config.type_newspaper}"
+            logger.info(f"Using targeted endpoint for type_newspaper={config.type_newspaper}")
+        else:
+            api_url = f"{EXTERNAL_API_ROOT}/api/v1/posts-v2/by-type/newspaper"
+    elif data_type in BRIGHTDATA_SOCIAL_TYPES:
+        # facebook/tiktok BrightData tables are the actively-updated source;
+        # response shape differs from the legacy `posts` table and needs normalizing.
+        api_url = f"{EXTERNAL_API_ROOT}/api/v3/{data_type}-brightdata/records"
+        normalizer = BRIGHTDATA_NORMALIZERS[data_type]
     else:
+        # threads/instagram BrightData records are profile-nested (not per-post)
+        # and too low-volume currently to justify a dedicated adapter; keep
+        # using the legacy `posts` table for these until that changes.
         api_url = f"{EXTERNAL_API_BASE}/{data_type}"
-    
+
     save_dir = RAW_DATA_DIR / data_type
     save_dir.mkdir(parents=True, exist_ok=True)
     
@@ -194,11 +306,14 @@ def _fetch_social_data(data_type: str, config: FetchConfig) -> FetchResult:
                 break
             
             records = data.get("data", [])
-            
+
             if not records:
                 logger.info(f"No more records on page {page}")
                 break
-            
+
+            if normalizer:
+                records = [normalizer(r) for r in records]
+
             # Track duplicates within API response
             for record in records:
                 url = record.get("url")

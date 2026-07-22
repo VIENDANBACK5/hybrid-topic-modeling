@@ -123,6 +123,9 @@ def import_posts_to_db(
         print(f"Request Error: {e}")
         raise
 
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 def main():
     parser = argparse.ArgumentParser(
@@ -130,12 +133,12 @@ def main():
     )
     parser.add_argument(
         "--source-url",
-        default="http://192.168.30.28:8548",
+        default=os.getenv("EXTERNAL_API_BASE_URL"),
         help="URL của API nguồn"
     )
     parser.add_argument(
         "--target-url",
-        default="http://localhost:8001",
+        default=os.getenv("LOCAL_API_BASE_URL"),
         help="URL của API target (important-posts)"
     )
     parser.add_argument(

@@ -7,14 +7,17 @@ import json
 from datetime import datetime
 from pathlib import Path
 import time
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 # ============================================
 # CONFIG
 # ============================================
-EXTERNAL_API = "http://192.168.30.28:8548"
+EXTERNAL_API = os.getenv("EXTERNAL_API_BASE_URL")
 DATA_TYPE = "facebook"
 PAGE_SIZE = 100  # Lấy 100 posts mỗi lần
-LOCAL_API = "http://localhost:7777"
+LOCAL_API = os.getenv("LOCAL_API_BASE_URL")
 
 # ============================================
 # STEP 1: FETCH ALL FACEBOOK DATA

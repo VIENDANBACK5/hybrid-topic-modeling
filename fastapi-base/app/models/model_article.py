@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Float, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, Float, Boolean, JSON, DateTime
 from app.models.model_base import BareBaseModel
 
 
@@ -18,6 +18,7 @@ class Article(BareBaseModel):
     summary = Column(Text)
     author = Column(String(256))
     published_date = Column(Float)  # timestamp
+    published_datetime = Column(DateTime, index=True)  # same instant as published_date, as naive UTC datetime
     
     # Metadata
     category = Column(String(256), index=True)

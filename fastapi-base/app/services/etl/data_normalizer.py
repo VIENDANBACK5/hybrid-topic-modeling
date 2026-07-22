@@ -80,13 +80,16 @@ class DataNormalizer:
             
             # ISO format string
             if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    return None
                 # Try ISO format
                 try:
                     return datetime.fromisoformat(value.replace('Z', '+00:00'))
                 except:
                     pass
                 
-                # Try common formats
+                # Try common formats directly first
                 formats = [
                     '%Y-%m-%d %H:%M:%S',
                     '%Y-%m-%d',
@@ -98,6 +101,36 @@ class DataNormalizer:
                         return datetime.strptime(value, fmt)
                     except:
                         continue
+                
+                # Try regex extraction for complex text dates (e.g. "Thứ sáu, 02/12/2016 | 00:00" hoặc "Thứ 2, 17.04.2023")
+                import re
+                
+                # 1. Match DD/MM/YYYY hoặc DD.MM.YYYY
+                match_dmw = re.search(r'\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b', value)
+                if match_dmw:
+                    clean_date = f"{int(match_dmw.group(1)):02d}/{int(match_dmw.group(2)):02d}/{match_dmw.group(3)}"
+                    try:
+                        return datetime.strptime(clean_date, '%d/%m/%Y')
+                    except:
+                        pass
+                
+                # 2. Match YYYY-MM-DD
+                match_ymd = re.search(r'\b(\d{4})-(\d{1,2})-(\d{1,2})\b', value)
+                if match_ymd:
+                    clean_date = f"{match_ymd.group(1)}-{int(match_ymd.group(2)):02d}-{int(match_ymd.group(3)):02d}"
+                    try:
+                        return datetime.strptime(clean_date, '%Y-%m-%d')
+                    except:
+                        pass
+                        
+                # 3. Match DD/MM hoặc DD.MM (thiếu năm, tự động điền năm 2026)
+                match_short = re.search(r'\b(\d{1,2})[./](\d{1,2})\b', value)
+                if match_short:
+                    clean_date = f"{int(match_short.group(1)):02d}/{int(match_short.group(2)):02d}/2026"
+                    try:
+                        return datetime.strptime(clean_date, '%d/%m/%Y')
+                    except:
+                        pass
             
             # Already datetime
             if isinstance(value, datetime):
@@ -165,9 +198,12 @@ class DataNormalizer:
         
         try:
             # 1. Parse datetime fields FIRST
+            meta_data = doc.get('meta_data', {})
             normalized['published_at'] = (
                 self._parse_timestamp(doc.get('published_at')) or
-                self._parse_timestamp(doc.get('meta_data', {}).get('timestamp')) or
+                self._parse_timestamp(meta_data.get('timestamp')) or
+                self._parse_timestamp(meta_data.get('date')) or
+                self._parse_timestamp(meta_data.get('publish_date')) or
                 self._parse_timestamp(doc.get('created_at'))
             )
             normalized['created_at'] = self._parse_timestamp(doc.get('created_at'))
@@ -345,6 +381,8 @@ class DataNormalizer:
     def _normalize_metadata(self, doc: Dict, source_type: str, platform: Optional[str]) -> Dict:
         """Normalize metadata from various sources"""
         metadata = doc.get('metadata', {}).copy()
+        if not metadata and 'meta_data' in doc:
+            metadata = doc.get('meta_data', {}).copy()
         
         # === REQUIRED FIELDS ===
         

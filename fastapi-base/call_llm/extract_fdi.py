@@ -184,7 +184,8 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
                 "url": row[3],
                 "province": row[4],
                 "published_date": row[5],
-                "type_newspaper": row[6]
+                "type_newspaper": row[6],
+                "document_type": row[7]
             })
         
         db.close()
@@ -368,7 +369,7 @@ def process_post(post: Dict, db) -> int:
     
     data = extract_fdi_data(content, url, post_id, province)
     if data:
-        data["document_type"] = document_type
+        data["document_type"] = post.get("document_type")
         if save_to_fdi(db, data):
             logger.info(f"Saved to fdi_detail")
             return 1

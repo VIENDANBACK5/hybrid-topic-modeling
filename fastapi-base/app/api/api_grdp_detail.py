@@ -45,7 +45,13 @@ def list_grdp(
     total = query.count()
     items = query.order_by(desc(GRDPDetail.year), GRDPDetail.quarter).offset(skip).limit(limit).all()
     
-    return {"total": total, "items": items}
+    return {
+        "total": total,
+        "page": (skip // limit) + 1 if limit > 0 else 1,
+        "page_size": limit,
+        "total_pages": (total + limit - 1) // limit if limit > 0 else 1,
+        "data": items
+    }
 
 
 # ==========================================

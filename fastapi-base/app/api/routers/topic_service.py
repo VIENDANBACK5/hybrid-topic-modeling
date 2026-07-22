@@ -1,7 +1,7 @@
 """
 Topic Service API - Core endpoints for topic modeling and sentiment analysis
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -446,4 +446,161 @@ async def get_available_categories():
             {"id": cat_id, "name_vi": info["vi"], "keyword_count": len(info["keywords"])}
             for cat_id, info in CATEGORIES.items()
         ]
+    }
+
+
+_embedding_training_lock = threading.Lock()
+_embedding_training_status = {"is_training": False, "started_at": None, "current_version": None}
+
+
+class EmbeddingFineTuneRequest(BaseModel):
+    epochs: int = 2
+    batch_size: int = 64
+    learning_rate: float = 2e-5
+    warmup_ratio: float = 0.1
+    min_topic_size: int = 20
+    min_avg_prob: float = 0.85
+    max_pairs_per_topic: int = 200
+    min_doc_prob: float = 0.9
+    val_split: float = 0.1
+    force_train: bool = False
+
+
+class EmbeddingSwitchRequest(BaseModel):
+    version: str
+
+
+def _run_embedding_training_task(request: EmbeddingFineTuneRequest):
+    global _embedding_training_status
+    from app.core.database import SessionLocal
+    from app.services.topic.embedding_trainer import EmbeddingTrainer
+    
+    db = SessionLocal()
+    try:
+        trainer = EmbeddingTrainer(db)
+        logger.info("Starting background embedding fine-tuning task...")
+        trainer.run_fine_tuning(
+            epochs=request.epochs,
+            batch_size=request.batch_size,
+            learning_rate=request.learning_rate,
+            warmup_ratio=request.warmup_ratio,
+            min_topic_size=request.min_topic_size,
+            min_avg_prob=request.min_avg_prob,
+            max_pairs_per_topic=request.max_pairs_per_topic,
+            min_doc_prob=request.min_doc_prob,
+            val_split=request.val_split,
+            force_train=request.force_train
+        )
+    except Exception as e:
+        logger.error(f"Error in background embedding fine-tuning: {e}", exc_info=True)
+    finally:
+        db.close()
+        _embedding_training_status["is_training"] = False
+        _embedding_training_status["started_at"] = None
+        _embedding_training_lock.release()
+
+
+@router.post("/embedding/fine-tune")
+async def trigger_embedding_fine_tune(
+    background_tasks: BackgroundTasks,
+    request: Optional[EmbeddingFineTuneRequest] = None,
+    db: Session = Depends(get_db)
+):
+    """Trigger SentenceTransformer embedding model fine-tuning in background"""
+    global _embedding_training_status
+    
+    req = request or EmbeddingFineTuneRequest()
+    
+    if not _embedding_training_lock.acquire(blocking=False):
+        raise HTTPException(
+            status_code=409, 
+            detail=f"Embedding training is already in progress since {_embedding_training_status.get('started_at')}"
+        )
+        
+    _embedding_training_status["is_training"] = True
+    _embedding_training_status["started_at"] = datetime.now().isoformat()
+    _embedding_training_status["current_version"] = "generating..."
+    
+    background_tasks.add_task(_run_embedding_training_task, req)
+    
+    return {
+        "status": "started",
+        "message": "Embedding fine-tuning task has been scheduled in the background",
+        "started_at": _embedding_training_status["started_at"]
+    }
+
+
+@router.get("/embedding/status")
+async def get_embedding_status(db: Session = Depends(get_db)):
+    """Get active embedding version, status of running training and logs history"""
+    from app.services.topic.embedding_manager import EmbeddingManager
+    from app.models.model_embedding_training import EmbeddingTrainingSession
+    from sqlalchemy import desc
+    
+    manager = EmbeddingManager()
+    active_config = manager.get_active_config()
+    all_versions = manager.get_all_versions()
+    
+    # Query database history
+    history = []
+    try:
+        sessions = db.query(EmbeddingTrainingSession).order_by(desc(EmbeddingTrainingSession.started_at)).limit(10).all()
+        for s in sessions:
+            history.append({
+                "id": s.id,
+                "version": s.version,
+                "status": s.status,
+                "num_documents": s.num_documents,
+                "num_pairs": s.num_pairs,
+                "epochs": s.epochs,
+                "loss": s.loss,
+                "metrics": s.metrics,
+                "model_path": s.model_path,
+                "error_message": s.error_message,
+                "started_at": s.started_at.isoformat() if s.started_at else None,
+                "finished_at": s.finished_at.isoformat() if s.finished_at else None,
+            })
+    except Exception as e:
+        logger.error(f"Error querying embedding training session history: {e}")
+        
+    return {
+        "active_model": active_config,
+        "available_versions": all_versions,
+        "training_state": _embedding_training_status,
+        "history": history
+    }
+
+
+@router.post("/embedding/switch")
+async def switch_embedding_version(request: EmbeddingSwitchRequest, db: Session = Depends(get_db)):
+    """Manually switch active embedding version or rollback"""
+    from app.services.topic.embedding_manager import EmbeddingManager
+    from app.models.model_embedding_training import EmbeddingTrainingSession
+    
+    manager = EmbeddingManager()
+    
+    # Perform switch/rollback
+    success = manager.rollback_to(request.version)
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Version '{request.version}' could not be loaded or activated. Make sure it exists."
+        )
+        
+    # Update state in DB if it exists
+    if request.version != "default":
+        try:
+            session = db.query(EmbeddingTrainingSession).filter(
+                EmbeddingTrainingSession.version == request.version
+            ).first()
+            if session:
+                session.status = "deployed"
+                db.commit()
+        except Exception as e:
+            logger.error(f"Could not update status to deployed in DB: {e}")
+            
+    return {
+        "status": "success",
+        "message": f"Successfully activated embedding version: {request.version}",
+        "active_model": manager.get_active_config()
     }

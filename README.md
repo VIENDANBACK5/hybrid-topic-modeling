@@ -1,610 +1,288 @@
 # Pipeline MXH - AI-Powered News & Social Media Analysis System
 
-**Hệ thống phân tích tin tức và mạng xã hội tự động với AI**: Crawl → ETL → Topic Modeling → RAG Search
+**He thong phan tich tin tuc va mang xa hoi tu dong voi AI**: Trich xuat chuyen sau He thong Chi so Kinh te - Xa hoi (GRDP, CPI, PII, ...), Khai thac du lieu Da nen tang, Topic Modeling, va Truc quan hoa du lieu qua Apache Superset.
 
-🚀 **Production-ready** với TopicGPT Integration, Smart Crawling, và Vietnamese BERTopic
-
----
-
-## 📋 Tổng quan
-
-Hệ thống backend hoàn chỉnh để:
-- **Thu thập dữ liệu** từ web, RSS, file, API với smart crawling
-- **Xử lý ETL** tự động với dedupe thông minh (hash + semantic)
-- **Phân tích chủ đề** bằng BERTopic Vietnamese với GPU support
-- **Tìm kiếm semantic** với RAG (FAISS + Vietnamese embeddings)
-- **Làm giàu nội dung** bằng LLM (keywords, categories, entities)
-- **Quản lý chi phí** và budget tracking cho LLM operations
+**Production-ready** voi Vietnamese BERTopic, Tich hop LLM, Smart Crawling va Bao mat SSO Keycloak.
 
 ---
 
-## 🏗️ Kiến trúc hệ thống
+## Tong quan
+
+He thong backend hoan chinh duoc thiet ke phuc vu phan tich quan ly nha nuoc va kinh te xa hoi de:
+- **Crawl & Data Ingestion**: Thu thap du lieu tu Bao chi, MXH (Facebook, TikTok, Threads) va Tai lieu van ban.
+- **Xu ly ETL**: Dedupe thong minh (hash + semantic tokenizer tieng Viet).
+- **Phan loai & Trich xuat 20+ Chi so Kinh te - Xa hoi**: GRDP, CPI, IIP, FDI, PII, Y te, Giao duc, An ninh, PAR Index, Tinh hinh xay dung Dang...
+- **Phan tich chu de & Cam xuc**: BERTopic Vietnamese, Field Classification, Sentiment Analysis cho tung linh vuc chuyen sau.
+- **Tim kiem khong gian vector (RAG)**: Chuc nang Hybrid Search ket hop BM25 + FAISS Vector.
+- **Report & Dashboard**: Dong bo real-time voi nen tang Apache Superset.
+- **Quan ly chi phi**: Theo doi chat che chi phi cho cac API LLM.
+
+---
+
+## Kien truc he thong
 
 ```
 pipeline_mxh/
 ├── fastapi-base/                    # Main Application
 │   ├── app/
 │   │   ├── main.py                  # FastAPI app entry
-│   │   ├── api/routers/            
-│   │   │   ├── crawl.py             # 🕷️ Crawling endpoints (8 endpoints)
-│   │   │   ├── topics.py            # 🏷️ Topic modeling endpoints (7 endpoints)
-│   │   │   ├── dashboard.py         # 📊 Analytics & visualization
-│   │   │   ├── sources.py           # 📰 Source management
-│   │   │   └── rag.py               # 🔍 RAG search endpoints
+│   │   ├── api/                     # API Routers (Fetch, Process, Extract)
+│   │   │   ├── data_fetch_*.py      # Fetchers tu Social & Document
+│   │   │   ├── data_process_*.py    # Processors & Loaders
+│   │   │   ├── api_cpi.py, api_grdp_detail.py... # Cac Indicator Router
+│   │   │   ├── api_social_indicators.py           # Xa hoi & Doi song
+│   │   │   ├── api_important_posts.py             # Loc bai viet trong tam
+│   │   │   ├── routers/
+│   │   │   │   ├── superset_sync.py  # Dong bo voi Superset
+│   │   │   │   ├── topic_service.py  # Topic modeling
+│   │   │   │   └── field_classification.py
 │   │   ├── services/
-│   │   │   ├── crawler/             # 🕷️ Crawler Services
-│   │   │   │   ├── async_crawler.py         # Async multi-URL crawler
-│   │   │   │   ├── smart_pipeline.py        # 5-stage intelligent pipeline
-│   │   │   │   ├── llm_content_enricher.py  # LLM selective enrichment
-│   │   │   │   ├── cost_optimizer.py        # Budget & cost management
-│   │   │   │   ├── pipeline.py              # Base crawler pipeline
-│   │   │   │   ├── fetchers.py              # Web/RSS fetchers
-│   │   │   │   └── content_extractor.py     # Content extraction
-│   │   │   ├── etl/                 # 🧹 ETL Services
-│   │   │   │   ├── hybrid_dedupe.py         # 2-stage deduplication
-│   │   │   │   ├── dedupe_enhanced.py       # Enhanced dedupe logic
-│   │   │   │   ├── text_cleaner.py          # Text cleaning
-│   │   │   │   └── vietnamese_tokenizer.py  # Vietnamese tokenizer
-│   │   │   ├── topic/               # 🏷️ Topic Modeling Services
-│   │   │   │   ├── model.py                 # BERTopic model wrapper
-│   │   │   │   ├── manager.py               # Topic manager
-│   │   │   │   ├── indexer.py               # FAISS indexer
-│   │   │   │   └── topicgpt_service.py      # LLM integration
-│   │   │   ├── storage/             # 💾 Storage Services
-│   │   │   │   ├── db.py                    # Database operations
-│   │   │   │   └── object_store.py          # File storage
-│   │   │   └── rag_service.py       # 🔍 RAG Service
-│   │   ├── models/                  # 🗄️ Database Models
-│   │   │   ├── model_article.py             # Article model
-│   │   │   ├── model_source.py              # Source model
-│   │   │   ├── model_crawl_history.py       # Crawl tracking
-│   │   │   └── model_user.py                # User model
-│   │   ├── schemas/                 # 📝 Pydantic Schemas
-│   │   │   ├── sche_pipeline.py             # Pipeline schemas
-│   │   │   └── sche_response.py             # Response schemas
-│   │   ├── core/                    # ⚙️ Core Modules
-│   │   │   ├── database.py                  # DB connection
-│   │   │   ├── models.py                    # Global model manager
-│   │   │   ├── config.py                    # Configuration
-│   │   │   └── constants.py                 # Constants
-│   │   └── static/
-│   │       ├── index.html                   # Main dashboard
-│   │       └── test_dashboard.html          # Test interface
-│   ├── config/
-│   │   └── topicgpt_config.yaml     # TopicGPT configuration
-│   ├── data/                        # Application data
-│   │   ├── db/                      # SQLite database
-│   │   ├── models/                  # Saved BERTopic models
-│   │   ├── indexes/                 # FAISS indexes
-│   │   ├── cache/                   # LLM cache
-│   │   └── results/                 # Analysis results
+│   │   │   ├── etl/                 # Text pipeline & Tokenizers
+│   │   │   ├── topic/               # BERTopic / FAISS
+│   │   │   ├── trends/, sentiment/  # AI Phan tich cam xuc & xu huong
+│   │   │   ├── social_indicator_extractor.py  # Extractor x hoi
+│   │   │   └── universal_economic_extractor.py # Extractor kinh te
+│   │   ├── models/                  # Database Models (hon 30 models)
+│   │   │   ├── model_economic_*.py  # Models Kinh te
+│   │   │   ├── model_field_*.py     # Phan loai Field & Cam xuc
+│   │   │   └── model_*.py           # Linh vuc giao duc, y te, PAR Index...
+│   │   └── core/                    # Core, DB config, Keycloak Auth
 │   ├── alembic/                     # Database migrations
-│   ├── requirements.txt
 │   └── docker-compose.yml
-└── data/                            # Shared data
-    ├── raw/                         # Raw crawled data
-    ├── processed/                   # Processed data
-    └── results/                     # Final results
+└── data/                            # Thu muc luu tru noi bo
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### 1. Cài đặt
+### 1. Cai dat
 
 ```bash
 cd /home/ai_team/lab/pipeline_mxh/fastapi-base
 
-# Cài đặt dependencies
+# Cai dat dependencies
 pip install -r requirements.txt
-
-# Hoặc sử dụng bertopic_env có sẵn
-./start_with_bertopic_env.sh
-
-# Cài đặt TopicGPT (optional)
-pip install openai google-generativeai
 ```
 
-### 2. Cấu hình
+### 2. Cau hinh (Environment Variables)
 
 ```bash
-# Set API keys (nếu dùng LLM features)
-export OPENAI_API_KEY=sk-your-key-here
-export GEMINI_API_KEY=your-gemini-key
+# Database (Mac dinh dung PostgreSQL)
+export DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/pipeline_db
 
-# Hoặc edit config file
-nano config/topicgpt_config.yaml
+# LLM APIs - Dung OpenRouter key (bat dau bang sk-or-v1-)
+export OPENAI_API_KEY=sk-or-v1-your-openrouter-key
+
+# API Auth & Keycloak (Optional)
+export KEYCLOAK_SERVER_URL=https://sso.example.com/auth/
+export KEYCLOAK_REALM=ai-realm
+export KEYCLOAK_CLIENT_ID=fastapi-client
+export KEYCLOAK_CLIENT_SECRET=your-secret
+export KEYCLOAK_VERIFY=True
 ```
 
-### 3. Khởi động
+### 3. Khoi dong
 
 ```bash
 # Development
-uvicorn app.main:app --reload --port 8548
+uvicorn app.main:app --reload --port 8001
 
-# Production
-uvicorn app.main:app --host 0.0.0.0 --port 8548 --workers 4
-```
-
-### 4. Truy cập
-
-- **API Docs**: http://localhost:8548/docs
-- **Dashboard**: http://localhost:8548/dashboard
-- **Test Interface**: http://localhost:8548/static/test_dashboard.html
-
----
-
-## 📡 API Endpoints
-
-### 🕷️ Crawl API (`/api/crawl`)
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| `POST` | `/` | **Simple crawl** - Chỉ cần URL và mode |
-| `POST` | `/smart` | **Smart crawl** với LLM enrichment |
-| `POST` | `/preview` | Preview domain trước khi crawl |
-| `POST` | `/preview-full` | Preview chi tiết toàn domain |
-| `POST` | `/by-category` | Crawl theo category |
-| `POST` | `/incremental` | Incremental crawl (chỉ crawl mới) |
-| `GET` | `/stats/{domain}` | Thống kê crawl history |
-| `GET` | `/status` | Status và capabilities |
-| `GET` | `/cost/report` | Báo cáo chi phí LLM |
-| `POST` | `/cost/set-budget` | Đặt budget hàng ngày |
-| `POST` | `/cost/estimate` | Ước tính chi phí |
-
-### 🏷️ Topics API (`/api/topics`)
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| `POST` | `/` | Train/update topic model |
-| `POST` | `/fit` | Fit model với documents |
-| `POST` | `/transform` | Transform docs → topics |
-| `POST` | `/search` | Semantic search với FAISS |
-| `GET` | `/` | List all topics |
-| `GET` | `/topics/{id}` | Chi tiết topic |
-| `GET` | `/distribution` | Topic distribution |
-
-### 📊 Dashboard API (`/api/dashboard`)
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| `GET` | `/stats` | Thống kê tổng quan |
-| `GET` | `/articles` | List articles |
-| `GET` | `/sources` | List sources |
-| `GET` | `/topics/trending` | Trending topics |
-
-### 🔍 RAG API (`/api/rag`)
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| `POST` | `/search` | Semantic search |
-| `POST` | `/ask` | Q&A with context |
-| `GET` | `/status` | RAG system status |
-
----
-
-## 💡 Ví dụ sử dụng
-
-### 1. Simple Crawl (Khuyến nghị)
-
-```bash
-# Crawl nhanh
-curl -X POST http://localhost:8548/api/crawl \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://vnexpress.net", "mode": "quick"}'
-
-# Crawl max (5000 pages, depth 5)
-curl -X POST http://localhost:8548/api/crawl \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://baohungyen.vn", "mode": "max"}'
-
-# Preview trước khi crawl
-curl -X POST http://localhost:8548/api/crawl \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "mode": "preview"}'
-```
-
-### 2. Smart Crawl với LLM
-
-```bash
-# Balanced mode (khuyến nghị - 30% docs được enrich)
-curl -X POST http://localhost:8548/api/crawl/smart \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://vnexpress.net",
-    "max_pages": 100,
-    "llm_options": {
-      "extract_keywords": true,
-      "categorize": true,
-      "extract_entities": true
-    },
-    "priority_mode": "balanced"
-  }'
-
-# Low cost mode (10% enrich - tiết kiệm)
-curl -X POST http://localhost:8548/api/crawl/smart \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com",
-    "priority_mode": "low"
-  }'
-
-# High quality mode (80% enrich - chất lượng cao)
-curl -X POST http://localhost:8548/api/crawl/smart \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://important-source.com",
-    "priority_mode": "high"
-  }'
-```
-
-### 3. Topic Modeling
-
-```bash
-# Train model từ database
-curl -X POST http://localhost:8548/api/topics/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "action": "train",
-    "model_name": "my_model_v1",
-    "n_topics": 20,
-    "min_topic_size": 10
-  }'
-
-# Transform new documents
-curl -X POST http://localhost:8548/api/topics/transform \
-  -H "Content-Type: application/json" \
-  -d '{
-    "documents": [
-      "Bài viết về công nghệ AI",
-      "Tin tức kinh tế Việt Nam"
-    ]
-  }'
-
-# Search similar documents
-curl -X POST http://localhost:8548/api/topics/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "công nghệ trí tuệ nhân tạo",
-    "k": 10
-  }'
-```
-
-### 4. Quản lý chi phí
-
-```bash
-# Xem báo cáo chi phí
-curl http://localhost:8548/api/crawl/cost/report
-
-# Đặt budget
-curl -X POST http://localhost:8548/api/crawl/cost/set-budget \
-  -H "Content-Type: application/json" \
-  -d '{"budget": 20.0}'
-
-# Ước tính chi phí
-curl -X POST http://localhost:8548/api/crawl/cost/estimate \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://vnexpress.net", "max_pages": 100}'
-```
-
----
-
-## 🎯 Tính năng chính
-
-### 🕷️ Smart Crawling
-
-- **Multi-mode crawling**: preview, quick, max, full
-- **Smart selection**: Chỉ enrich docs có giá trị cao
-- **Incremental crawling**: Chỉ crawl URLs mới
-- **Cost optimization**: Budget tracking & smart decisions
-- **Content extraction**: Advanced HTML parsing
-- **Quality filtering**: Auto filter low-quality content
-
-### 🧹 ETL Pipeline
-
-- **Two-stage deduplication**:
-  - Stage 1: Hash-based (MD5 + SimHash) - nhanh
-  - Stage 2: Semantic similarity - chính xác
-- **Text cleaning**: Vietnamese-optimized
-- **Tokenization**: Vietnamese word segmentation
-- **Normalization**: Unicode, whitespace, special chars
-
-### 🏷️ Topic Modeling
-
-- **Vietnamese BERTopic**: Optimized for Vietnamese
-- **Embedding models**:
-  - `keepitreal/vietnamese-sbert` (default)
-  - `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
-- **GPU acceleration**: cuML UMAP + HDBSCAN
-- **BM25 weighting**: Better topic quality
-- **Representation**: KeyBERT + MMR
-- **Incremental learning**: Update models with new data
-- **Model persistence**: Save/load trained models
-
-### 🤖 LLM Integration (TopicGPT)
-
-- **Multi-API support**: OpenAI, Gemini, Azure OpenAI
-- **Smart features**:
-  - Keyword extraction (5-10 keywords)
-  - Categorization (12 categories)
-  - Entity extraction (people, places, orgs)
-  - Summarization
-  - Topic labeling & description
-- **Cost optimization**:
-  - Selective enrichment (only high-value docs)
-  - Response caching
-  - Budget management
-  - Usage tracking
-
-### 🔍 RAG Search
-
-- **FAISS indexing**: Fast similarity search
-- **Vietnamese embeddings**: Optimized vectors
-- **Hybrid search**: Combine semantic + keyword
-- **Context retrieval**: Get relevant documents
-- **Q&A**: Answer questions with sources
-
-### 📊 Analytics & Dashboard
-
-- **Real-time stats**: Articles, sources, topics
-- **Trending topics**: Track hot topics
-- **Source monitoring**: Track crawl performance
-- **Cost reports**: LLM usage & spending
-- **Interactive UI**: Web dashboard
-
----
-
-## 💰 Chi phí & Budget
-
-### Priority Modes
-
-| Mode | Enrich % | Chi phí/100 docs | Khi nào dùng |
-|------|----------|------------------|--------------|
-| **Low** | 10% | $0.08 | Crawl số lượng lớn, không quan trọng |
-| **Balanced** ⭐ | 30% | $0.60 | Daily crawl (khuyến nghị) |
-| **High** | 80% | $2.00 | Nguồn quan trọng, phân tích sâu |
-
-### Budget Management
-
-- **Default budget**: $10/ngày (~1,600 docs ở balanced mode)
-- **Auto tracking**: Theo dõi chi phí real-time
-- **Budget alerts**: Cảnh báo khi gần hết budget
-- **Cost estimation**: Ước tính trước khi crawl
-
----
-
-## 🛠️ Configuration
-
-### TopicGPT Config (`config/topicgpt_config.yaml`)
-
-```yaml
-llm:
-  provider: openai  # openai, gemini, azure
-  model: gpt-4o-mini
-  api_key: ${OPENAI_API_KEY}
-  max_tokens: 500
-  temperature: 0.3
-
-crawler:
-  priority_mode: balanced  # low, balanced, high
-  max_pages: 100
-  delay_ms: 100
-  
-cost:
-  daily_budget: 10.0
-  alert_threshold: 0.8
-  
-deduplication:
-  hash_threshold: 0.95
-  semantic_threshold: 0.85
-```
-
-### Environment Variables
-
-```bash
-# Database
-DATABASE_URL=sqlite:///./data/db/pipeline.db
-
-# LLM APIs
-OPENAI_API_KEY=sk-...
-GEMINI_API_KEY=...
-AZURE_OPENAI_KEY=...
-
-# App Settings
-DEBUG=True
-LOG_LEVEL=INFO
-```
-
----
-
-## 📦 Dependencies
-
-### Core
-
-```
-fastapi>=0.104.0
-uvicorn>=0.24.0
-sqlalchemy>=2.0.0
-pydantic>=2.0.0
-```
-
-### Crawler
-
-```
-httpx>=0.25.0
-beautifulsoup4>=4.12.0
-lxml>=4.9.0
-feedparser>=6.0.10
-```
-
-### Topic Modeling
-
-```
-bertopic>=0.16.0
-sentence-transformers>=2.2.0
-umap-learn>=0.5.4
-hdbscan>=0.8.33
-faiss-cpu>=1.7.4
-```
-
-### LLM
-
-```
-openai>=1.0.0
-google-generativeai>=0.3.0
-```
-
-### Vietnamese NLP
-
-```
-pyvi>=0.1.1
-underthesea>=1.3.0
-```
-
----
-
-## 🧪 Testing
-
-### Quick Test
-
-```bash
-# Test all endpoints
-python test_topicgpt.py report
-
-# Test specific feature
-python test_topicgpt.py balanced https://vnexpress.net
-```
-
-### Shell Commands
-
-```bash
-# Balanced crawl
-./topicgpt_commands.sh balanced https://vnexpress.net
-
-# Cost report
-./topicgpt_commands.sh report
-
-# Set budget
-./topicgpt_commands.sh budget 20.0
-
-# Estimate cost
-./topicgpt_commands.sh estimate https://example.com
-```
-
----
-
-## 📈 Performance
-
-### Crawling
-
-- **Speed**: 10-50 pages/sec (depends on delay)
-- **Throughput**: 1000+ pages/minute (parallel)
-- **Memory**: ~500MB base + 2MB per 1000 docs
-
-### Topic Modeling
-
-- **Training**: ~10-30s per 1000 docs (GPU)
-- **Inference**: ~100ms per doc (GPU)
-- **Memory**: ~2GB (model + embeddings)
-
-### RAG Search
-
-- **Index build**: ~5s per 10K docs
-- **Search**: <100ms per query
-- **Memory**: ~1GB per 100K docs
-
----
-
-## 🔒 Security
-
-- SQL injection protection (SQLAlchemy ORM)
-- XSS protection (input sanitization)
-- Rate limiting (optional via middleware)
-- API key authentication (optional)
-- CORS configuration
-
----
-
-## 📚 Documentation
-
-- **API Docs**: http://localhost:8548/docs
-- **ReDoc**: http://localhost:8548/redoc
-- **Source code**: Fully documented với docstrings
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Database locked**
-   ```bash
-   rm data/db/pipeline.db
-   alembic upgrade head
-   ```
-
-2. **Model not found**
-   ```bash
-   # Train new model
-   curl -X POST http://localhost:8548/api/topics/ -d '{"action":"train"}'
-   ```
-
-3. **Out of memory**
-   ```bash
-   # Reduce batch size in config
-   # Or use CPU instead of GPU
-   ```
-
-4. **LLM API errors**
-   ```bash
-   # Check API key
-   echo $OPENAI_API_KEY
-   
-   # Check budget
-   curl http://localhost:8548/api/crawl/cost/report
-   ```
-
----
-
-## 🚀 Deployment
-
-### Docker
-
-```bash
+# Production Docker
 docker-compose up -d
 ```
 
-### Production
+### 4. Truy cap
 
-```bash
-# Use production ASGI server
-gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:8548 \
-  --access-logfile - \
-  --error-logfile -
+- **API Docs**: http://localhost:8001/docs
+- **ReDoc**: http://localhost:8001/re-docs
+- *(Dashboard phan tich Data duoc hien thi ben phia ung dung Apache Superset)*
+
+---
+
+## Chi tiet API Endpoints
+
+Du an hien bao gom rat nhieu endpoint xu ly du lieu phuc tap. Qua trinh refactor (gop tu 71 -> 30 endpoints) chia cau truc thanh cac nhom chinh:
+
+### 1. Nhom Data Fetch & Process Pipeline
+
+Chiu trach nhiem Cao, Thu thap va Lam Sach noi dung (ETL Data):
+- `POST /api/fetch`: Unified endpoint lay data tu da nguon (Facebook, TikTok, Bao chi, Threads, Lap lich). Tham so dau vao cho phep chon target (`sources: ["facebook", "newspaper"]`).
+- `POST /api/process`: Unified ETL endpoint thuc hien don dep ky tu thua (Text Cleaning), Hash-based & Semantic Deduplication, va Load len Database/Storage.
+- `GET /api/fetch/status` va `GET /api/process/status`: Theo doi trang thai worker, thong luong, hang doi loi cua cum.
+
+### 2. Nhom Economic & Social Indicators API
+
+Nhom API trich xuat khong lo phuc vu thong tin quan ly nha nuoc (Phan ra lam nhieu Router Detail doc lap):
+- `GET /api/v1/economic-indicators/`: Khai thac toan bo du lieu tong hop Kinh te.
+- `POST /api/v1/economic-indicators/batch`: Import, fill-missing va generate analyses (hang loat).
+- `GET/POST /api/v1/api_grdp_detail/*`: Ti trong va tong thu nhap quoc noi nen kinh te (GRDP).
+- `GET/POST /api/v1/api_cpi/`, `/api/iip/`, `/api/api_fdi_detail/`: Quan ly cac chi so Tieu dung (CPI), San xuat Cong nghiep (IIP), Von Dau tu (FDI).
+- Khoi Cong nghe - Giao duc: `/api/v1/digital_economy_detail`, `/api/v1/digital_transformation_detail`, `/api/v1/api_tvet_employment/`.
+- Khoi Hanh chinh - Chinh sach: `/api/v1/api_par_index/` (PAR Index), `/api/v1/api_sipas/` (SIPAS), `/api/v1/api_xay_dung_dang/`.
+- Khoi Xa hoi - Khac: `/api/api_social_indicators/`, `/api/api_culture_lifestyle/`, `/api/api_health_statistics/`, `/api/api_security/`, `/api/api_aqi/`.
+- `/api/api_important_posts/`: Bo loc va quan tri rieng cac bai viet/canh bao dac biet quan trong.
+
+### 3. Nhom Topic Service & LLM Extraction (Xu ly AI)
+
+- `POST /topic-service/train`: Huan luyen & Fit model (ho tro ca Standard Mode hoac Hybrid Mode).
+- `POST /topic-service/ingest`: Tiem them du lieu moi vao Model da huan luyen.
+- `GET /topic-service/metadata`: Truy xuat cac nhom chu de (Topics), Categories, Distribution, va Recommendations.
+- `POST /api/llm/*`: Endpoints chuyen sau, dieu huong cho AI trich xuat Keyword, phan lop.
+- `/api/v1/field_classification/`: Tu dong gan nhan linh vuc chuyen mon cho thong tin raw.
+
+### 4. Nhom Apache Superset Syncing & Utility
+
+- `POST /superset/sync`: Endpoint trigger ep buoc dong bo Data Model moi nhat tu API qua Database phuc vu truc quan hoa tren giao dien Superset.
+- `GET /superset/status`: Kiem tra trang thai dong ho Sync giua Backend va GUI Superset.
+
+---
+
+## Cac he thong tinh nang chinh (Core Features)
+
+Du an la mot he sinh thai phan tich van ban khep kin tu khau thu thap den hien thi truc quan. Duoi day la 7 nhom tinh nang cot loi:
+
+### 1. He thong Thu thap Du lieu Da nen tang (Smart Crawling)
+
+Thu thap tu dong du lieu tu nhieu nguon khac nhau de lam dau vao cho bai toan phan tich:
+- Nguon Bao chi & Trang tin tuc dien tu (News).
+- Nguon Mang xa hoi chuyen sau: Facebook, TikTok, Threads.
+- Van ban / Tai lieu (Internal Documents).
+- **Smart Selection:** Chu dong loai bo cac bai rac ngay tu cong crawl thong qua heuristic de giam tai he thong.
+
+### 2. Quy trinh Xu ly & Lam sach (ETL Pipeline)
+
+Du lieu tho sau khi thu thap se duoc di qua "mang loc" 2 lop:
+- Lam sach ky tu dac biet, HTML, chuan hoa bo tieng Viet thong qua Pyvi/Underthesea.
+- **De-duplication (Loai Bai Trung Lap):**
+  - Lop 1 (MD5+Simhash): Bat cac bai copy 100% y het nhau.
+  - Lop 2 (Semantic Vector Search): Bat cac bai "xao nau, viet lai ngu nghia" de loai bo.
+
+### 3. Phan loai Dinh huong & Phan tich Cam xuc (Classification & Sentiment)
+
+- **Field Classification (Phan loai Linh vuc):** Bai bao lap tuc duoc phan loai thuoc mang Y te, Giao duc, Chinh tri hay Kinh te vi mo.
+- **Field Sentiment Analysis:** AI cham diem cam xuc du luan (Tich cuc, Tieu cuc, Trung lap) doi voi tung su kien cu the.
+- **Topic Modeling (BERTopic):** Tu dong phat hien cac chu de dang nong (Trending Topics), cho cau hinh Custom Topics bang tieng Viet.
+
+### 4. He sinh thai Trich xuat Chi so Kinh te - Xa hoi (20+ Chi so Vi mo)
+
+Day la bo phan "Core Business" cuc lon, boc tach 27 Bang du lieu so de thong ke tu dong:
+- **Khoi Kinh Te:** Trich xuat GDP/GRDP, CPI (Chi so gia tieu dung), IIP, San luong XNK, Von FDI.
+- **Khoi Cong nghe & Khac:** PII (Doi moi sang tao), Phat trien Kinh te so, Y te, Thi THPT/Hoc nghe, O nhiem (AQI).
+- **Khoi Hanh Chinh & Chinh Tri:** So lieu PAR Index, SIPAS (Do hai long), Bau cu can bo Dang, va bai viet rui ro an ninh mang.
+
+### 5. Co che LLM Trich xuat So lieu (OpenRouter Architecture)
+
+#### Tai sao can kien truc nay?
+
+Neu dung LLM tu do sinh ra so lieu kinh te, mo hinh co the bia so (Hallucination). Trong he thong quan ly nha nuoc, sai lam nay la khong chap nhan duoc. Do do, he thong to chuc mot quy trinh lai cu ky chat khe:
+
+```
+Bai viet DB
+  → Buoc 1: Pre-filter bang URL/Title (Regex, chua dung LLM)
+  → Buoc 2: LLM Classifier xac nhan boi canh (chi tra loi YES/NO dang JSON)
+  → Buoc 3: Regex Value Extractor lay so tu van ban goc
+  → Buoc 4: Pydantic Validator kiem tra range cho phep
+  → Luu vao DB
 ```
 
+#### Chi tiet tung buoc:
+
+**Buoc 1 – Pre-filter bang URL va Tieu de (khong dung LLM)**
+
+Truoc khi goi LLM, he thong dung danh sach pattern cung de so loc nhanh:
+- Neu URL bai chua tu khoa nhu `bien-che`, `can-bo`, `tai-nan-giao-thong` → bai duoc danh dau la ung vien.
+- Neu tieu de chua tu khoa nhu "bien che", "TNGT", "tot nghiep THPT" → tuong tu.
+- Muc dich: Loai bo ~95% bai khong lien quan truoc khi ton chi phi goi API LLM.
+
+**Buoc 2 – LLM Classifier: Xac nhan boi canh (CHI tra loi Yes/No)**
+
+- Neu bai vuot Pre-filter, LLM duoc goi qua OpenRouter voi `gpt-4o-mini`.
+- Key OpenRouter (`sk-or-v1-...`) → he thong tu nhan dien va route qua `https://openrouter.ai/api/v1`.
+- Key OpenAI thuong (`sk-...`) → goi thang OpenAI API.
+- Prompt gui den LLM cuc ky chat, chi cho phep tra loi dang JSON:
+
+```json
+{"is_relevant": true, "relevant_indicators": ["cadre_statistics"], "confidence": 0.9}
+```
+
+- LLM khong duoc extract so, khong duoc dich, khong duoc tom tat. Chi tra loi bai nay CO hay KHONG lien quan den chi so X.
+
+**Buoc 3 – Regex Value Extractor: Lay so tu van ban goc**
+
+Sau khi LLM xac nhan bai lien quan den chi so nao, Regex moi chay de extract gia tri. Moi linh vuc co bo Regex rieng, vi du:
+- So can bo bien che: pattern tim "tong so ... N nguoi/bien che" trong doan van co context cap tinh/huyen/xa.
+- Ti le tot nghiep THPT: pattern lay phan tram trong khoang [70%, 100%] trong cau co "ty le do/tot nghiep".
+- So vu tai nan giao thong: pattern tim so luong "M vu tai nan/TNGT" bat buoc co context "toan tinh/dia ban".
+- Tinh Hung Yen duoc hard-code, khong auto-detect de tranh nham du lieu toan quoc.
+
+**Buoc 4 – Pydantic Validation: Kiem tra Range**
+
+So lieu qua Regex duoc kiem tra chat che truoc khi luu:
+- Ti le phan tram: phai nam trong [0, 100].
+- So giuong benh/10.000 dan: phai trong [1, 100].
+- So thi sinh: phai tu 5.000 den 35.000 (phu hop quy mo Hung Yen).
+- Du lieu khong hop le → bo qua (NULL), khong duoc ghi DB.
+
+#### Danh sach 11 linh vuc LLM Extraction:
+
+Moi linh vuc co 2 che do goi API:
+- **Async** (`POST /api/llm/extract-{linh-vuc}`): Tra ve ngay `202 Accepted`, job chay nen. Dung khi batch lon.
+- **Sync** (`POST /api/llm/extract-{linh-vuc}/sync`): Cho hoan thanh, tra ve ket qua. Dung khi debug hoac can du lieu ngay.
+
+| STT | Linh vuc | Endpoint | Bang DB | Chi so trich xuat chinh |
+|-----|----------|----------|---------|------------------------|
+| 1 | Xay dung Dang & He thong chinh tri | `/api/llm/extract-politics` | `xay_dung_dang` | Tong so bien che, phan cap tinh/huyen/xa, hop dong |
+| 2 | Y te & Cham soc suc khoe | `/api/llm/extract-medical` | `health_statistics` | Ti le bao phu BHYT, so nguoi tham gia, ti le tang dan so, giuong benh/van dan |
+| 3 | Giao duc & Dao tao | `/api/llm/extract-education` | `highschool_graduation`, `tvet_employment` | Ti le tot nghiep THPT, tong thi sinh du thi, diem trung binh, ti le biet chu, ti le co viec lam sau hoc nghe |
+| 4 | An ninh - Trat tu | `/api/llm/extract-security` | `security` | So vu ma tuy, so doi tuong bi bat, so vu vi pham nong do con, ti le giam toi pham |
+| 5 | Van hoa - Xa hoi | `/api/llm/extract-society` | `culture_lifestyle` | So di tich duoc quan ly, luot khach du lich, doanh thu du lich |
+| 6 | Giao thong & An toan | `/api/llm/extract-transportation` | `transportation` | So vu TNGT, so nguoi tu vong/bi thuong, ti le giam tai nan |
+| 7 | Thong ke Kinh te & Chinh tri | `/api/llm/extract-statistics` | `economic_statistics`, `political_statistics` | Tong hop cac chi so tai khoa va chinh tri tu bao cao quan trong |
+| 8 | Kinh te so | `/api/llm/extract-digital-economy` | `digital_economy_detail` | Ti le DN so hoa, doanh thu kinh te so, ha tang vien thong |
+| 9 | Thu hut FDI | `/api/llm/extract-fdi` | `fdi_detail` | Von dang ky, so du an, tong von giai ngan, thi truong dau tu |
+| 10 | Chuyen doi so | `/api/llm/extract-digital-transformation` | `digital_transformation_detail` | So dich vu cong truc tuyen, ti le xu ly ho so online, chi so DTI |
+| 11 | PII - Doi moi sang tao | `/api/llm/extract-pii` | `pii_detail` | Chi so nang luc doi moi sang tao cap tinh (PII), xep hang so sanh |
+
+### 6. He thong Hoi-Dap & Tra cuu (Hybrid RAG Search)
+
+- Su dung Vietnamese Embeddings nen du lieu thanh vector. Luu vao thu vien FAISS va truy van hon hop (FAISS Semantic + BM25 Keywords) de dam bao khong rot tu khoa khi Bot AI tra loi cau hoi.
+
+### 7. Bang dieu khien Truc quan (Apache Superset Dashboard)
+
+- Tich hop thang Data Visualization Enterprise cua platform **Apache Superset**.
+- So huu endpoint `POST /superset/sync` tu dong day du lieu (Data Warehouse) ve Superset de len bieu do ngay lap tuc.
+
 ---
 
-## 📝 License
+## Quan ly Ngan sach (API LLM)
 
-MIT License
+- **Workflow Routing thong minh:** Phan loai va cham diem News/Social Posts truoc, chi nhung articles chat luong/quan trong cao moi duoc gui qua mo hinh LLM cao cap xu ly.
+- Theo doi log tieu thu va budget hang ngay, tranh vuot muc chi phi OpenAI/Gemini Tokens cho he thong Enterprise.
 
 ---
 
-## 👥 Team
+## Security & Phan quyen
+
+- He thong ho tro tich hop voi kien truc **Keycloak SSO OpenID**.
+- Tang Data Isolation chan SQL injection nho ORM SQLAlchemy.
+- Phan quyen theo Access Token Scopes.
+
+---
+
+## TroubleShooting
+
+1. **Loi database khong ket noi:**
+   - He thong dung PostgreSQL o production. Chac chan set `DATABASE_URL` dung dang.
+2. **Keycloak config rong / khong start duoc Server:**
+   - Hay chac chan cac bien `KEYCLOAK_SERVER_URL` cung config lien quan deu valid o file `.env` truoc khi start uvicorn.
+3. **LLM khong goi duoc:**
+   - Kiem tra `OPENAI_API_KEY`. Key OpenRouter bat dau bang `sk-or-v1-`, key OpenAI thuong bat dau bang `sk-`.
+
+---
+
+## Doi ngu
 
 AI Team - Lab Pipeline MXH
 
----
-
-## 📞 Support
-
-- **Issues**: GitHub Issues
-- **Email**: support@example.com
-- **Docs**: http://localhost:8548/docs
-
----
-
-**Last Updated**: December 2025
+**Last Updated**: April 2026

@@ -8,13 +8,15 @@ import argparse
 import requests
 from typing import List, Dict, Optional
 from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv()
 
 # OpenRouter API Configuration
 LLM_API_URL = os.getenv("LLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
 LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
 LLM_API_KEY = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
 
-TARGET_API_BASE = "http://localhost:7777"
+TARGET_API_BASE = os.getenv("LOCAL_API_BASE_URL", "http://localhost:7777")
 TARGET_LOCATIONS = ["xã Thư Vũ", "phường Trà Lý", "Thư Vũ", "Trà Lý"]
 
 

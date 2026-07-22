@@ -189,6 +189,7 @@ def _load_single_file(processed_file: Path, config: LoadConfig, db: Session) -> 
                     summary=record.get('summary'),
                     author=record.get('account_name'),
                     published_date=record.get('published_date'),
+                    published_datetime=record.get('published_datetime'),
                     category=record.get('category'),
                     tags=record.get('tags'),
                     images=record.get('images'),

@@ -20,12 +20,15 @@ import requests
 import json
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/fetch/document", tags=["Data Fetch - Document"])
 
 # Base URL for external API (posts-v2)
-EXTERNAL_API_BASE = "http://192.168.30.28:8548/api/v1/posts-v2/by-document-type"
+EXTERNAL_API_BASE = os.getenv("EXTERNAL_API_BASE_URL") + "/api/v1/posts-v2/by-document-type"
 
 # Directory structure
 RAW_DATA_DIR = Path("data/raw/document")

@@ -103,6 +103,10 @@ def classify_post(content: str, title: str) -> List[str]:
 def save_to_digital_economy(db, data: Dict) -> bool:
     """Save to digital_economy_detail"""
     try:
+        if not data.get('year'):
+            logger.warning("Bỏ qua save_to_digital_economy vì thiếu year")
+            return False
+
         # Build period_type
         if data.get('month'):
             data['period_type'] = 'month'
@@ -221,6 +225,10 @@ def save_to_fdi(db, data: Dict) -> bool:
 def save_to_digital_transformation(db, data: Dict) -> bool:
     """Save to digital_transformation_detail"""
     try:
+        if not data.get('year'):
+            logger.warning("Bỏ qua save_to_digital_transformation vì thiếu year")
+            return False
+
         # Build period_type
         if data.get('month'):
             data['period_type'] = 'month'
@@ -280,6 +288,21 @@ def save_to_digital_transformation(db, data: Dict) -> bool:
 def save_to_pii(db, data: Dict) -> bool:
     """Save to pii_detail"""
     try:
+        if not data.get('year'):
+            logger.warning("Bỏ qua save_to_pii vì thiếu year")
+            return False
+
+        # Clean numeric fields if returned as string with % or text
+        import re
+        for k, v in list(data.items()):
+            if isinstance(v, str) and k not in ('province', 'period_type', 'data_source'):
+                # Extract number
+                match = re.search(r'[-+]?\d+(?:[.,]\d+)?', v)
+                if match:
+                    data[k] = float(match.group(0).replace(',', '.'))
+                else:
+                    data[k] = None
+
         # Build period_type
         if data.get('month'):
             data['period_type'] = 'month'
