@@ -40,6 +40,7 @@ class IndicatorDetailMixin:
     # Metadata
     data_status = Column(String(20), nullable=False, default='official', comment='Trạng thái: official/estimated/forecast')
     data_source = Column(String(255), nullable=True, comment='Nguồn dữ liệu')
+    document_type = Column(String(20), nullable=True, server_default='external', comment='Source document type: internal or external')
     notes = Column(Text, nullable=True, comment='Ghi chú')
     last_updated = Column(DateTime, server_default=func.now(), comment='Thời điểm cập nhật')
     created_at = Column(DateTime, server_default=func.now(), nullable=False)

@@ -28,6 +28,7 @@ class GRDPDetail(Base):
     # Metadata
     data_status = Column(String, default='estimated')
     data_source = Column(String)
+    document_type = Column(String, default='external')
     last_updated = Column(DateTime, default=func.now(), onupdate=func.now())
     
     __table_args__ = (

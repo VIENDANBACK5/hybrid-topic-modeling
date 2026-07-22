@@ -114,6 +114,8 @@ feedparser==6.0.11
 aiohttp==3.11.11
 bertopic==0.17.4
 sentence-transformers==3.4.1
+datasets==5.0.0
+accelerate>=0.26.0
 scikit-learn>=1.6.1,<2.0.0
 umap-learn>=0.5.9
 hdbscan>=0.8.41

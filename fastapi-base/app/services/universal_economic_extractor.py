@@ -1984,6 +1984,7 @@ class UniversalEconomicExtractor:
             raise ValueError(f"Unknown indicator type: {indicator_type}")
         
         data['data_source'] = source_url
+        data['document_type'] = 'external'  # External crawl always external
         
         # Check for existing record (including data_source for uniqueness)
         query = self.db.query(model_class).filter(

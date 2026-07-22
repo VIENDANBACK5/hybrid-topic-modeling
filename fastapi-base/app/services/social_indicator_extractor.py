@@ -1272,6 +1272,7 @@ class SocialIndicatorService:
                     "month": month,
                     "data_source": article.url[:255] if article.url else None,
                     "data_status": "official",
+                    "document_type": "external",  # articles always external
                     **non_null_values
                 }
                 

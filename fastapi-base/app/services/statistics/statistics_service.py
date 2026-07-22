@@ -17,7 +17,7 @@ from app.models.model_statistics import (
     TopicMentionStats, WebsiteActivityStats, 
     SocialActivityStats, DailySnapshot
 )
-from app.services.statistics.keyphrase_extractor import get_keyphrase_extractor
+from app.services.statistics.keyphrase_extractor_v2 import get_keyphrase_extractor_v2
 import openai
 import os
 import json
@@ -62,7 +62,7 @@ class StatisticsService:
     
     def __init__(self, db: Session):
         self.db = db
-        self.keyphrase_extractor = get_keyphrase_extractor()
+        self.keyphrase_extractor = get_keyphrase_extractor_v2()
         
         # Initialize LangChain LLM for GPT cleaning
         self.llm = None
@@ -97,6 +97,9 @@ class StatisticsService:
             next_month = start.replace(day=28) + timedelta(days=4)
             end = next_month - timedelta(days=next_month.day)
             label = f"Tháng {ref.month}/{ref.year}"
+        elif period_type == "latest_import":
+            start = end = ref
+            label = "Đợt nhập mới nhất"
         else:  # all_time
             start = date(2020, 1, 1)
             end = ref
@@ -495,20 +498,40 @@ Giữ 25-35 cụm có nghĩa.
         """Tính thống kê từ khóa cho WordCloud - ƯU TIÊN TÊN RIÊNG VÀ SỰ KIỆN HOT"""
         start, end, label = self._get_period_range(period_type, reference_date)
         
-        # Lấy tất cả content trong kỳ
-        articles = self.db.query(
-            SentimentAnalysis.content_snippet,
-            SentimentAnalysis.title,
-            SentimentAnalysis.sentiment_group,
-            SentimentAnalysis.topic_id,
-            SentimentAnalysis.topic_name,
-            SentimentAnalysis.source_domain
-        ).filter(
-            and_(
-                func.date(SentimentAnalysis.published_date) >= start,
-                func.date(SentimentAnalysis.published_date) <= end
-            )
-        ).all()
+        if period_type == "latest_import":
+            # Lấy thời gian tạo mới nhất trong bảng articles
+            max_created = self.db.query(func.max(Article.created_at)).scalar()
+            if not max_created:
+                return []
+            
+            # Lấy tất cả các bài thuộc đợt import này (trong vòng 1 giờ từ mốc max)
+            articles = self.db.query(
+                SentimentAnalysis.content_snippet,
+                SentimentAnalysis.title,
+                SentimentAnalysis.sentiment_group,
+                SentimentAnalysis.topic_id,
+                SentimentAnalysis.topic_name,
+                SentimentAnalysis.source_domain
+            ).join(
+                Article, SentimentAnalysis.article_id == Article.id
+            ).filter(
+                Article.created_at >= max_created - 3600
+            ).all()
+        else:
+            # Lấy tất cả content trong kỳ
+            articles = self.db.query(
+                SentimentAnalysis.content_snippet,
+                SentimentAnalysis.title,
+                SentimentAnalysis.sentiment_group,
+                SentimentAnalysis.topic_id,
+                SentimentAnalysis.topic_name,
+                SentimentAnalysis.source_domain
+            ).filter(
+                and_(
+                    func.date(SentimentAnalysis.published_date) >= start,
+                    func.date(SentimentAnalysis.published_date) <= end
+                )
+            ).all()
         
         if not articles:
             return []
@@ -541,196 +564,168 @@ Giữ 25-35 cụm có nghĩa.
             'câu', 'đẹp', 'mua', 'mất', 'đường', 'lương', 'chỗ', 'chứ',
             'tiếng', 'lần', 'giá', 'bài', 'trước', 'hưng', 'yên', 'hình',
             'truyền', 'ocean', 'concert', 'show', 'live', 'clip', 'post',
-            # Social media garbage
+            'bộ', 'nơi', 'mỹ', 'nga', 'hiện', 'no1', 'cuộc', 'lần', 'đầu_tiên',
+            # Social media garbage & TikTok tags
             'translate', 'with', 'created', 'http', 'https', 'www', 'com',
             'tiktoknews', 'truyenhinhhungyen', 'facebook', 'tiktok', 'threads',
             'video', 'photo', 'image', 'link', 'share', 'like', 'comment',
             'by', 'the', 'and', 'for', 'you', 'this', 'that', 'are', 'was',
+            'music', 'songs', 'song', 'lyrics', 'lyric', 'lyricsvideo', 'fyp', 
+            'foryou', 'foryoupage', 'viral', 'trending', 'xyzbca', 'fypシviral', 
+            'targetaudience', 'prodshushy', 'malcolmtodd', 'repost', 'dance', 
+            'singing', 'nmusic', 'applemusic', 'remix', 'nightcore', 'banger', 
+            'edit', 'relatable', 'slow', 'slowed', 'cover', 'vibe',
+            # English common stopwords (non-overlapping with Vietnamese)
+            'to', 'in', 'on', 'at', 'of', 'is', 'am', 'be', 'been', 'being', 
+            'have', 'has', 'had', 'do', 'does', 'did', 'but', 'if', 'then', 
+            'else', 'from', 'up', 'out', 'now', 'about', 'all', 'any', 'both', 
+            'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 
+            'not', 'only', 'own', 'same', 'too', 'very', 'will', 'just',
             # Garbage patterns
             'yêns', 'hưngs', 'việts', 'nams'
         }
         
-        # GARBAGE PATTERNS to filter
         GARBAGE_PATTERNS = [
             'translate', 'http', 'www', 'tiktoknews', 'titkoknews', 'truyenhinhhungyen',
             'created', 'by truyền', 'hưng yêns', '.com', '.vn', 'facebook.com',
             'maduro', 'venezuela', 'khiến', 'khoảng', 'titkok',
-            'hôm nay', 'tối qua', 'thật sự', 'thời gian'
+            'hôm nay', 'tối qua', 'thật sự', 'thời gian',
+            'lyrics', 'music', 'songs', 'song', 'blowthisup', 'xyzbca', 'of the',
+            'foryou', 'fyp', 'viral', 'trending', 'repost', 'applemusic', 'nightcore',
+            'banger', 'edit', 'vibe', 'slow', 'sound', 'audio', 'melaniemartinez',
+            'prodshushy', 'malcolmtodd'
         ]
         
-        # ==== NER: Detect Named Entities (tên riêng) ====
-        named_entities = set()
-        entity_counts = Counter()  # Count frequency of entities
-        
-        # NER garbage filter (emoji, numbers, garbage tokens)
-        NER_GARBAGE = {
-            'translate', 'video', 'photo', 'link', 'http', 'https',
-            'zalo', 'facebook', 'tiktok', 'threads', 'instagram',
-            'ngày', 'tháng', 'năm', 'tuổi', 'số', 'tết', 'ảnh',
-            'phường', 'bố', 'mẹ', 'vụ', 'toàn', '2', '2026', '2025',
-        }
-        
-        try:
-            from underthesea import ner
-            has_ner = True
-        except ImportError:
-            has_ner = False
-            logger.warning("Vietnamese NER not available")
-        
-        # Extract named entities from all articles first
-        if has_ner:
-            for content, title, _, _, _, _ in articles[:200]:  # Limit for performance
-                text = f"{title or ''} {content or ''}"[:1000]
-                try:
-                    entities = ner(text)
-                    for word, pos, chunk, ent_type in entities:
-                        # B-PER (Person), B-LOC (Location), B-ORG (Organization)
-                        if ent_type in ['B-PER', 'I-PER', 'B-LOC', 'I-LOC', 'B-ORG', 'I-ORG']:
-                            clean_word = word.strip().lower()
-                            # Filter garbage
-                            if len(clean_word) < 2:
-                                continue
-                            if clean_word in STOPWORDS or clean_word in NER_GARBAGE:
-                                continue
-                            # Skip emoji, special chars, numbers only
-                            if not any(c.isalpha() for c in clean_word):
-                                continue
-                            if clean_word.replace(' ', '').isdigit():
-                                continue
-                            
-                            named_entities.add(clean_word)
-                            entity_counts[clean_word] += 1
-                except:
-                    pass
-        
-        # Only keep entities that appear multiple times (more reliable)
-        named_entities = {e for e, c in entity_counts.items() if c >= 2}
-        logger.info(f"Found {len(named_entities)} named entities (filtered): {list(named_entities)[:20]}")
-        
-        # ==== HOT EVENT KEYWORDS - Boost these ====
         HOT_EVENT_PATTERNS = [
-            # Sự kiện nóng
             'tai nạn', 'cháy', 'vụ án', 'bắt giữ', 'triệt phá', 'phá án',
             'sập', 'đổ', 'lũ lụt', 'bão', 'động đất', 'dịch bệnh',
-            # Chính trị - xã hội
             'biểu tình', 'đình công', 'tham nhũng', 'kỷ luật', 'bổ nhiệm',
             'bầu cử', 'họp quốc hội', 'nghị quyết', 'chỉ thị',
-            # Kinh tế
             'tăng giá', 'giảm giá', 'lạm phát', 'tỷ giá', 'chứng khoán',
             'bất động sản', 'đấu giá', 'phá sản', 'nợ xấu',
-            # An ninh
             'ma túy', 'cờ bạc', 'lừa đảo', 'trộm cắp', 'cướp',
             'buôn lậu', 'đường dây', 'ổ nhóm', 'băng nhóm',
-            # Giao thông
             'kẹt xe', 'ùn tắc', 'tai nạn giao thông', 'csgt', 'phạt nguội',
-            # Giải trí hot
-            'scandal', 'ly hôn', 'kết hôn', 'qua đời', 'nhập viện',
+            'scandal', 'ly hôn', 'kết hôn', 'qua đời', 'nhập viện'
         ]
         
-        # Count keywords - CHỈ GIỮ CỤM TỪ 2+ TỪ HOẶC TỪ ĐƠN CÓ NGHĨA
-        keyword_data = {}
-        
-        try:
-            from underthesea import word_tokenize
-            has_tokenizer = True
-        except:
-            has_tokenizer = False
-            logger.warning("Vietnamese tokenizer not available")
-        
+        # 1. Prepare raw texts and document info for stats calculation
+        # Run Underthesea tokenizer on each text first for clean word boundaries
+        from underthesea import word_tokenize
+        texts = []
+        tokenized_texts = []
+        doc_info = []
         for content, title, sentiment_group, topic_id, topic_name, domain in articles:
             text = f"{title or ''} {content or ''}"
+            texts.append(text)
+            try:
+                # format="text" replaces spaces inside compound words with underscores
+                tok = word_tokenize(text.lower(), format="text")
+            except:
+                tok = text.lower()
+            tokenized_texts.append(tok)
+            doc_info.append({
+                'sentiment': sentiment_group,
+                'topic_id': topic_id,
+                'topic_name': topic_name,
+                'domain': domain
+            })
             
-            # Tokenize
-            if has_tokenizer:
-                try:
-                    tokens = word_tokenize(text.lower(), format="text").split()
-                except:
-                    tokens = text.lower().split()
-            else:
-                tokens = text.lower().split()
+        # 2. Clean stop words from the tokenized texts
+        cleaned_texts = []
+        for tok in tokenized_texts:
+            words = []
+            for w in tok.split():
+                clean_w = re.sub(r'[^\w\s_àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]', '', w)
+                if clean_w and clean_w not in STOPWORDS and not clean_w.isdigit() and len(clean_w.replace('_', '')) >= 2:
+                    words.append(clean_w)
+            cleaned_texts.append(' '.join(words))
             
-            doc_keywords = set()
-            for token in tokens:
-                # Clean token
-                word = re.sub(r'[^\w\s_àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]', '', token)
+        # 3. Extract keyphrase candidates using Scikit-Learn TF-IDF N-grams (1-2 words)
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        vectorizer = TfidfVectorizer(
+            ngram_range=(1, 2),
+            min_df=1 if len(articles) < 5 else 2,
+            max_df=0.9,
+            max_features=500
+        )
+        
+        try:
+            vectorizer.fit(cleaned_texts)
+            feature_names = vectorizer.get_feature_names_out()
+        except Exception as e:
+            logger.warning(f"TF-IDF Vectorizer fit failed: {e}")
+            feature_names = []
+            
+        # 4. Filter candidates
+        candidates = []
+        for phrase in feature_names:
+            display_phrase = phrase.replace('_', ' ')
+            words_in_phrase = display_phrase.split()
+            
+            # Must not contain stopwords
+            if any(w in STOPWORDS for w in words_in_phrase):
+                continue
+            # Must not match garbage patterns
+            if any(any(p in w for p in GARBAGE_PATTERNS) for w in words_in_phrase):
+                continue
+            # Must satisfy length constraints (at least 2 words / syllables)
+            if len(words_in_phrase) < 2:
+                continue
                 
-                if not word:
-                    continue
+            candidates.append((phrase, display_phrase))
+            
+        # 5. Extract exact count, docs, sentiment, topics, and sources
+        keyword_data = {}
+        entity_set = getattr(self.keyphrase_extractor, 'entity_set', set())
+        
+        for phrase, display_phrase in candidates[:top_n * 2]:
+            boost = 1.0
+            if any(p in display_phrase for p in HOT_EVENT_PATTERNS):
+                boost *= 2.0
+            # Boost multi-word phrases (more than 1 word)
+            if len(display_phrase.split()) >= 2:
+                boost *= 1.5
+            if any(e in display_phrase for e in entity_set):
+                boost *= 2.5
                 
-                # Convert underscore to space for display
-                display_word = word.replace('_', ' ').strip()
-                
-                # SKIP CONDITIONS:
-                # 1. Too short
-                if len(display_word) < 2:
-                    continue
-                
-                # 2. In stopwords
-                if word in STOPWORDS or display_word in STOPWORDS:
-                    continue
-                
-                # 3. Contains garbage pattern
-                if any(p in word.lower() or p in display_word.lower() for p in GARBAGE_PATTERNS):
-                    continue
-                
-                # 4. Is digit
-                if word.isdigit() or display_word.replace(' ', '').isdigit():
-                    continue
-                
-                # 5. CRITICAL: CHỈ GIỮ CỤM TỪ 2+ TỪ (có underscore từ word_tokenize)
-                # Bỏ hoàn toàn từ đơn đứng một mình - không có ý nghĩa
-                is_phrase = '_' in word  # underscore = cụm từ từ tokenizer
-                if not is_phrase:
-                    continue  # Bỏ tất cả từ đơn
-                
-                # 6. Check each word in phrase against stopwords
-                words_in_phrase = display_word.split()
-                # Cụm từ phải có ít nhất 2 từ có nghĩa
-                meaningful_words = [w for w in words_in_phrase if w not in STOPWORDS and len(w) >= 2]
-                if len(meaningful_words) < 1:
-                    continue
-                
-                key = display_word
-                
-                # ==== BOOST CALCULATION ====
-                boost = 1.0
-                # Hot event boost (sự kiện nóng) - 2x
-                if any(p in display_word.lower() for p in HOT_EVENT_PATTERNS):
-                    boost *= 2.0
-                # Longer phrase boost (cụm từ dài hơn) - 1.5x
-                if len(words_in_phrase) >= 3:
-                    boost *= 1.5
-                
-                if key not in keyword_data:
-                    keyword_data[key] = {
-                        'count': 0, 'docs': 0, 'pos': 0, 'neg': 0, 'neu': 0,
-                        'topics': Counter(), 'sources': Counter(),
-                        'boost': boost
-                    }
-                
-                keyword_data[key]['count'] += 1
-                
-                if key not in doc_keywords:
-                    keyword_data[key]['docs'] += 1
-                    doc_keywords.add(key)
+            keyword_data[display_phrase] = {
+                'count': 0, 'docs': 0, 'pos': 0, 'neg': 0, 'neu': 0,
+                'topics': Counter(), 'sources': Counter(),
+                'boost': boost
+            }
+            
+            # Count exact occurrences with word boundaries (\b) in space-separated text
+            pattern = re.compile(r'\b' + re.escape(display_phrase).replace(r'\ ', r'\s+') + r'\b')
+            for idx, tok in enumerate(tokenized_texts):
+                text_lower = tok.replace('_', ' ').lower()
+                matches = pattern.findall(text_lower)
+                if matches:
+                    count = len(matches)
+                    info = doc_info[idx]
+                    keyword_data[display_phrase]['count'] += count
+                    keyword_data[display_phrase]['docs'] += 1
                     
-                    if sentiment_group == 'positive':
-                        keyword_data[key]['pos'] += 1
-                    elif sentiment_group == 'negative':
-                        keyword_data[key]['neg'] += 1
+                    if info['sentiment'] == 'positive':
+                        keyword_data[display_phrase]['pos'] += 1
+                    elif info['sentiment'] == 'negative':
+                        keyword_data[display_phrase]['neg'] += 1
                     else:
-                        keyword_data[key]['neu'] += 1
-                    
-                    if topic_id:
-                        keyword_data[key]['topics'][(topic_id, topic_name)] += 1
-                    if domain:
-                        keyword_data[key]['sources'][domain] += 1
+                        keyword_data[display_phrase]['neu'] += 1
+                        
+                    if info['topic_id']:
+                        keyword_data[display_phrase]['topics'][(info['topic_id'], info['topic_name'])] += 1
+                    if info['domain']:
+                        keyword_data[display_phrase]['sources'][info['domain']] += 1
+                        
+        # Filter out candidates with 0 count
+        keyword_data = {k: v for k, v in keyword_data.items() if v['count'] > 0}
         
         # Calculate weighted score = count * boost
         for key in keyword_data:
             keyword_data[key]['weighted_score'] = keyword_data[key]['count'] * keyword_data[key].get('boost', 1.0)
-        
-        # Sort by weighted_score (ưu tiên tên riêng và sự kiện hot)
+            
+        # Sort by weighted_score
         sorted_keywords = sorted(keyword_data.items(), key=lambda x: x[1]['weighted_score'], reverse=True)[:top_n]
         
         # Normalize weight for WordCloud
@@ -767,14 +762,15 @@ Giữ 25-35 cụm có nghĩa.
                 {"domain": d, "count": c}
                 for d, c in data['sources'].most_common(5)
             ]
-            # Weight now uses weighted_score (with boost for named entities & hot events)
-            stat.weight = round(data['weighted_score'] / max_score, 4)
+            # Weight uses logarithmic scaling to look nice
+            import math
+            stat.weight = round(math.log1p(data['weighted_score']) / math.log1p(max_score), 4)
             
             if not existing:
                 self.db.add(stat)
             results.append(stat)
-        
-        logger.info(f"Calculated {len(results)} keyword stats for {period_type} (found {len(named_entities)} named entities)")
+            
+        logger.info(f"Calculated {len(results)} keyword stats using TF-IDF N-grams for {period_type}")
         return results
     
     # ========== TOPIC MENTION STATS ==========

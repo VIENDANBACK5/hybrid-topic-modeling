@@ -376,6 +376,7 @@ def main():
             SELECT id, title, content, url, dvhc as province 
             FROM important_posts 
             WHERE type_newspaper = 'transportation'
+              AND (document_type IS NULL OR document_type != 'internal')
             ORDER BY id
         """)
         result = db.execute(query)

@@ -20,7 +20,7 @@ class PipelineOrchestrator:
     def __init__(self, db: Session):
         self.db = db
         self.stats_service = StatisticsService(db)
-        self.classifier = CustomTopicClassifier(db)
+        self.classifier = CustomTopicClassifier()
         self.sentiment_service = TopicSentimentService(db)
     
     def run_full_pipeline(
@@ -85,55 +85,39 @@ class PipelineOrchestrator:
             if classify_topics:
                 logger.info("\n  Step 2/6: Classifying topics...")
                 try:
-                    from sqlalchemy import text
-                    
-                    # Get unclassified articles
-                    unclassified = self.db.execute(text("""
-                        SELECT COUNT(DISTINCT a.id)
-                        FROM articles a
-                        LEFT JOIN article_custom_topics act ON a.id = act.article_id
-                        WHERE act.article_id IS NULL
-                        LIMIT :limit
-                    """), {"limit": limit or 999999}).scalar()
-                    
-                    if unclassified > 0:
-                        logger.info(f"   Found {unclassified} unclassified articles")
-                        
-                        # Get articles to classify
-                        articles_to_classify = self.db.execute(text("""
-                            SELECT a.id, a.title, a.content
-                            FROM articles a
-                            LEFT JOIN article_custom_topics act ON a.id = act.article_id
-                            WHERE act.article_id IS NULL
-                            LIMIT :limit
-                        """), {"limit": limit or 1000}).fetchall()
-                        
-                        classified_count = 0
-                        for article in articles_to_classify:
-                            try:
-                                result = self.classifier.classify_article(
-                                    article_id=article[0],
-                                    title=article[1],
-                                    content=article[2]
-                                )
-                                if result and result.get('topics'):
-                                    classified_count += 1
-                            except Exception as e:
-                                logger.debug(f"   Failed to classify article {article[0]}: {e}")
-                        
+                    from app.models.model_article import Article
+                    from app.models.model_custom_topic import CustomTopic, ArticleCustomTopic
+
+                    topics = self.db.query(CustomTopic).filter(CustomTopic.is_active == True).all()
+
+                    classified_ids = self.db.query(ArticleCustomTopic.article_id).distinct()
+                    query = self.db.query(Article).filter(~Article.id.in_(classified_ids))
+                    if limit:
+                        query = query.limit(limit)
+                    articles_to_classify = query.all()
+
+                    if topics and articles_to_classify:
+                        logger.info(f"   Found {len(articles_to_classify)} unclassified articles")
+
+                        bulk_results = self.classifier.classify_articles_bulk(
+                            articles=articles_to_classify,
+                            topics=topics
+                        )
+                        summary = self.classifier.save_classification_results(self.db, bulk_results, save_logs=True)
+
                         results["steps"]["classify"] = {
                             "status": "success",
                             "processed": len(articles_to_classify),
-                            "classified": classified_count
+                            "classified": summary.get("saved", 0)
                         }
-                        logger.info(f"    Classified {classified_count}/{len(articles_to_classify)} articles")
+                        logger.info(f"    Classified {summary.get('saved', 0)}/{len(articles_to_classify)} articles")
                     else:
                         results["steps"]["classify"] = {
                             "status": "skipped",
-                            "message": "No unclassified articles"
+                            "message": "No unclassified articles or no active topics"
                         }
                         logger.info("     No unclassified articles found")
-                        
+
                 except Exception as e:
                     logger.error(f"    Classification failed: {e}")
                     results["errors"].append(f"Classify: {str(e)}")
@@ -205,7 +189,7 @@ class PipelineOrchestrator:
                         self.db.add(trend_report)
                     
                     # Update hot topics
-                    hot_topics = self.stats_service.calculate_hot_topics(period_days=7, top_n=10)
+                    hot_topics = self.stats_service.calculate_hot_topics(period_type='weekly', top_n=10)
                     
                     # Update daily snapshot
                     snapshot = self.stats_service.create_daily_snapshot()

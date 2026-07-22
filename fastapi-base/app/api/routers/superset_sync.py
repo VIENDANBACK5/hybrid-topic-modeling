@@ -211,6 +211,7 @@ async def update_all_superset_tables(
             
             # Keyword stats
             stats_service.calculate_keyword_stats("weekly")
+            stats_service.calculate_keyword_stats("latest_import")
             db.commit()
             results['keyword_stats'] = 'updated'
             
@@ -405,9 +406,9 @@ async def update_field_summaries_only(
         
         logger.info(f" Using provider: {summary_service.provider}")
         
-        # Create monthly summary for January 2026 (current data)
+        # Create monthly summary for the current month
         all_summaries = []
-        target_date = datetime(2026, 1, 15).date()  # Jan 2026
+        target_date = datetime.now().date()
         
         logger.info(f"   Creating summaries for {target_date.strftime('%B %Y')}...")
         try:
@@ -472,8 +473,8 @@ async def update_field_sentiments_only(
         
         logger.info(f" Using provider: {sentiment_service.provider}")
         
-        # Create sentiment analysis for January 2026
-        target_date = datetime(2026, 1, 15).date()
+        # Create sentiment analysis for the current month
+        target_date = datetime.now().date()
         
         logger.info(f"   Analyzing sentiment for {target_date.strftime('%B %Y')}...")
         try:

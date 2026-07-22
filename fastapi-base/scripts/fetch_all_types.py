@@ -7,8 +7,11 @@ import requests
 import json
 import time
 from datetime import datetime
+from dotenv import load_dotenv
+import os
 
-BASE_URL = "http://localhost:7777"
+load_dotenv()
+BASE_URL = os.getenv("LOCAL_API_BASE_URL", "http://localhost:7777")
 
 # All known type_newspaper values
 TYPE_NEWSPAPERS = [
@@ -30,7 +33,7 @@ def fetch_by_type(type_newspaper: str):
     print(f"📥 Fetching: {type_newspaper}")
     print(f"{'='*60}")
     
-    url = f"{BASE_URL}/api/fetch/newspaper"
+    url = f"{BASE_URL}/api/fetch/social/newspaper"
     payload = {
         "page_size": 500,
         "type_newspaper": type_newspaper,

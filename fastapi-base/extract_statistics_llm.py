@@ -9,15 +9,17 @@ import requests
 from typing import List, Dict, Optional
 from datetime import datetime
 import re
+from dotenv import load_dotenv
+load_dotenv()
 
 
 # LLM API configuration - OpenRouter
 LLM_API_URL = os.getenv("LLM_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen/qwen-2.5-72b-instruct")
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
 LLM_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 # Target API configuration
-TARGET_API_BASE = "http://localhost:7777"
+TARGET_API_BASE = os.getenv("LOCAL_API_BASE_URL", "http://localhost:7777")
 
 # Target locations
 TARGET_LOCATIONS = [

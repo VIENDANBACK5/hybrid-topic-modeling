@@ -49,10 +49,11 @@ class KeyphraseExtractorV2:
     def _setup_tools(self):
         """Setup tokenizer and NER"""
         try:
-            from underthesea import word_tokenize, ner
+            from underthesea import word_tokenize
             self.tokenizer = word_tokenize
-            self.ner_model = ner
-            logger.info("Vietnamese tokenizer and NER loaded")
+            # Vô hiệu hóa NER model để tối ưu hiệu năng
+            self.ner_model = None
+            logger.info("Vietnamese tokenizer loaded, NER disabled for performance")
         except Exception as e:
             logger.warning(f"Could not load tools: {e}")
     

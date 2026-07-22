@@ -381,7 +381,7 @@ class GRDPDataExtractor:
         # Prepare clean data (exclude computed properties like period_label)
         fields = ['province', 'period_type', 'year', 'quarter', 
                   'actual_value', 'forecast_value', 'change_yoy', 
-                  'change_qoq', 'change_prev_period', 'data_status', 'data_source']
+                  'change_qoq', 'change_prev_period', 'data_status', 'data_source', 'document_type']
         clean_data = {k: data.get(k) for k in fields if k in data}
         
         if existing and force_update:

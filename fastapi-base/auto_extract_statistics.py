@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:7777")
 LLM_API_KEY = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-4-turbo")
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "10"))  # Số bài xử lý mỗi lần
 DELAY_BETWEEN_CALLS = float(os.getenv("DELAY_BETWEEN_CALLS", "1"))  # seconds
 

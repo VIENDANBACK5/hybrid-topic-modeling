@@ -140,9 +140,9 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
         session = SessionLocal()
         
         query = text("""
-            SELECT id, title, content, url, dvhc, published_date
-            FROM important_posts
+            SELECT id, title, content, url, dvhc, published_date, document_type FROM important_posts
             WHERE type_newspaper = 'education'
+              AND (document_type IS NULL OR document_type != 'internal')
             ORDER BY id DESC
             LIMIT :limit
         """)
@@ -157,7 +157,8 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
                 "content": row[2],
                 "url": row[3],
                 "dvhc": row[4],
-                "published_date": row[5]
+                "published_date": row[5],
+                "document_type": row[6] or "external"
             })
         
         session.close()
@@ -360,6 +361,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 1. Highschool Graduation
     hs_grad = extract_highschool_graduation(content, url, province)
     if hs_grad:
+        hs_grad["document_type"] = document_type
         if save_to_highschool_graduation(db, hs_grad):
             logger.info(f"Saved to highschool_graduation_detail")
             results["highschool_graduation"] = 1
@@ -371,6 +373,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 2. EQI Detail
     eqi = extract_eqi_detail(content, url, province)
     if eqi:
+        eqi["document_type"] = document_type
         if save_to_eqi_detail(db, eqi):
             logger.info(f"Saved to eqi_detail")
             results["eqi_detail"] = 1

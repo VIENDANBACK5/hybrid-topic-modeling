@@ -5,7 +5,7 @@
 # ==================================================================
 
 BACKUP_DIR="/home/ai_team/lab/pipeline_mxh/backups"
-DB_CONTAINER="fastapi-base-db-1"
+DB_CONTAINER="pipeline-mxh-db-1"
 DB_NAME="DBHuYe"
 DB_USER="postgres"
 DATE=$(date +%Y%m%d_%H%M%S)

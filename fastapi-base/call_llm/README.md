@@ -9,12 +9,48 @@ Hệ thống trích xuất dữ liệu **100% bằng LLM** từ bảng `importan
 ```
 call_llm/
 ├── __init__.py
+├── dual_model_client.py         # 🆕 Gemini + GPT dual-model
 ├── extract_xay_dung_dang.py    # politics - Xây dựng Đảng (3 posts)
 ├── extract_medical.py           # medical - Y tế (37 posts) 
 ├── extract_education.py         # education - Giáo dục (22 posts)
 ├── extract_security.py          # security - An ninh (36 posts)
 ├── extract_society.py           # society - Văn hóa xã hội (5 posts)
 └── README.md
+```
+
+## 🚀 Dual-Model System (NEW)
+
+Kết hợp 2 model để tối ưu extraction:
+
+| Model | Vai trò | Điểm mạnh |
+|-------|---------|-----------|
+| **Gemini 2.5 Flash** | Hiểu context, extract thô | Context 1M tokens, nhanh, rẻ |
+| **GPT-4o-mini** | Format JSON chuẩn | Structured output tốt |
+
+### Cách sử dụng:
+
+```python
+from call_llm.dual_model_client import extract_with_dual_model, call_gemini, call_gpt
+
+# Dual-model extraction
+schema = {"year": None, "value": None, "growth_rate": None}
+result = extract_with_dual_model(content, title, schema, category="economy")
+
+# Hoặc gọi riêng từng model
+gemini_response = call_gemini("Phân tích bài viết này...")
+gpt_response = call_gpt("Format JSON: ...")
+```
+
+### Environment Variables:
+
+```bash
+# Model config
+export GEMINI_MODEL="google/gemini-2.5-flash-preview"
+export GPT_MODEL="openai/gpt-4o-mini"
+export USE_DUAL_MODEL="true"  # false để chỉ dùng GPT
+
+# API Key
+export OPENROUTER_API_KEY="sk-or-..."
 ```
 
 ## API Endpoints

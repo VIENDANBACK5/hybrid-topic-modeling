@@ -193,9 +193,9 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
         session = Session()
         
         query = text("""
-            SELECT id, title, content, url, dvhc, published_date
-            FROM important_posts
+            SELECT id, title, content, url, dvhc, published_date, document_type FROM important_posts
             WHERE type_newspaper = 'security'
+              AND (document_type IS NULL OR document_type != 'internal')
             ORDER BY id DESC
             LIMIT :limit
         """)
@@ -209,7 +209,8 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
                 "title": row[1],
                 "content": row[2],
                 "province": row[3] or "Unknown",
-                "published_date": row[4]
+                "published_date": row[4],
+                "document_type": row[5] or "external"
             })
         
         session.close()
@@ -545,6 +546,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 1. Security (ma túy)
     security = extract_security_detail(content, url, province)
     if security:
+        security["document_type"] = document_type
         if save_to_security_detail(db, security):
             logger.info(f"Saved to security_detail")
             results["security"] = 1
@@ -556,6 +558,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 2. Crime Prevention
     crime_prev = extract_crime_prevention(content, url, province)
     if crime_prev:
+        crime_prev["document_type"] = document_type
         if save_to_crime_prevention_detail(db, crime_prev):
             logger.info(f"Saved to crime_prevention_detail")
             results["crime_prevention"] = 1
@@ -567,6 +570,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 3. Traffic Safety
     traffic = extract_traffic_safety(content, url, province)
     if traffic:
+        traffic["document_type"] = document_type
         if save_to_traffic_safety_detail_sec(db, traffic):
             logger.info(f"Saved to traffic_safety_detail")
             results["traffic_safety"] = 1
@@ -578,6 +582,7 @@ def process_post(post: Dict, db) -> Dict[str, int]:
     # 4. Public Order
     public_ord = extract_public_order(content, url, province)
     if public_ord:
+        public_ord["document_type"] = document_type
         if save_to_public_order_detail(db, public_ord):
             logger.info(f"Saved to public_order_detail")
             results["public_order"] = 1

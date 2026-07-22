@@ -6,8 +6,12 @@ Test script for the 4 new LLM extraction services
 import requests
 import json
 import time
+from dotenv import load_dotenv
+import os
 
-BASE_URL = "http://localhost:7777"
+load_dotenv()
+
+BASE_URL = os.getenv("LOCAL_API_BASE_URL", "http://localhost:7777")
 
 def test_endpoint(endpoint: str, field_name: str):
     """Test a single extraction endpoint"""

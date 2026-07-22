@@ -154,9 +154,9 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
     try:
         db = SessionLocal()
         query = text("""
-            SELECT id, title, content, url, dvhc as province, published_date, type_newspaper
-            FROM important_posts
+            SELECT id, title, content, url, dvhc as province, published_date, type_newspaper, document_type FROM important_posts
             WHERE type_newspaper = 'economy'
+               AND (document_type IS NULL OR document_type != 'internal')
                AND (
                 content ILIKE '%chuyển đổi số%' OR
                 content ILIKE '%cds%' OR
@@ -186,7 +186,8 @@ def get_posts_from_db(limit: int = 100) -> List[Dict]:
                 "url": row[3],
                 "province": row[4],
                 "published_date": row[5],
-                "type_newspaper": row[6]
+                "type_newspaper": row[6],
+                "document_type": row[7]
             })
         
         db.close()
@@ -371,6 +372,7 @@ def process_post(post: Dict, db) -> int:
     
     data = extract_digital_transformation_data(content, url, post_id, province)
     if data:
+        data["document_type"] = post.get("document_type")
         if save_to_digital_transformation(db, data):
             logger.info(f"Saved to digital_transformation_detail")
             return 1

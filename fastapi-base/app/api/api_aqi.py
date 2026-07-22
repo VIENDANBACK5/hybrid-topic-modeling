@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.services.aqi_service import AQIService
 
-router = APIRouter(prefix="/api/aqi", tags=["AQI - Air Quality"])
+router = APIRouter(prefix="/api/aqi", tags=["air_quality_detail"])
 
 
 # =============================================================================

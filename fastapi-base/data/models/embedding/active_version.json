@@ -1,0 +1,6 @@
+{
+  "active_version": "default",
+  "model_path": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "deployed_at": null,
+  "notes": "Reset to default model after verification tests"
+}

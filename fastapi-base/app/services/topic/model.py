@@ -68,11 +68,19 @@ class TopicModel:
             self.topicgpt_service = None
     
     def _setup_embedding_model(self):
-        from sentence_transformers import SentenceTransformer
-        
         device = 'cuda' if self.use_gpu else 'cpu'
-        self.embedding_model = SentenceTransformer(self.embedding_model_name, device=device)
-        logger.info(f"Embedding model loaded on {device}")
+        
+        # If model name is default, delegate to EmbeddingManager to load active fine-tuned version
+        if self.embedding_model_name == "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2":
+            from app.services.topic.embedding_manager import EmbeddingManager
+            manager = EmbeddingManager()
+            self.embedding_model = manager.get_current_model(device=device)
+            self.embedding_model_name = manager.get_current_model_path()
+        else:
+            from sentence_transformers import SentenceTransformer
+            logger.info(f"Loading custom explicit embedding model: {self.embedding_model_name} on {device}")
+            self.embedding_model = SentenceTransformer(self.embedding_model_name, device=device)
+            
         return self.embedding_model
     
     def _setup_umap(self, n_samples: int):
