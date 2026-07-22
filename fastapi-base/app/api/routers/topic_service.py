@@ -2,7 +2,7 @@
 Topic Service API - Core endpoints for topic modeling and sentiment analysis
 """
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -454,16 +454,86 @@ _embedding_training_status = {"is_training": False, "started_at": None, "current
 
 
 class EmbeddingFineTuneRequest(BaseModel):
-    epochs: int = 2
-    batch_size: int = 64
-    learning_rate: float = 2e-5
-    warmup_ratio: float = 0.1
-    min_topic_size: int = 20
-    min_avg_prob: float = 0.85
-    max_pairs_per_topic: int = 200
-    min_doc_prob: float = 0.9
-    val_split: float = 0.1
-    force_train: bool = False
+    epochs: int = Field(
+        default=2,
+        ge=1,
+        le=10,
+        description=(
+            "Số lượt huấn luyện (Epochs). [Hợp lệ: 1 -> 10]. "
+            "Tăng epochs giúp mô hình học sâu hơn vào dữ liệu cụ thể, nâng cao độ chính xác biểu diễn (Cosine Similarity). "
+            "Tuy nhiên, nếu > 5 sẽ dễ gây quá khớp (overfitting) - làm giảm khả năng nhận diện dữ liệu mới và tăng thời gian train."
+        )
+    )
+    batch_size: int = Field(
+        default=64,
+        ge=8,
+        le=256,
+        description=(
+            "Kích thước lô dữ liệu (Batch size). [Hợp lệ: 8 -> 256]. "
+            "Tăng giúp tối ưu hóa phần cứng (GPU) và ổn định gradient (MultipleNegativesRankingLoss cần batch size lớn để so sánh chéo). "
+            "Tuy nhiên, nếu quá lớn (> 128) sẽ dễ gây tràn bộ nhớ VRAM của GPU (lỗi OOM)."
+        )
+    )
+    learning_rate: float = Field(
+        default=2e-5,
+        ge=1e-6,
+        le=1e-3,
+        description=(
+            "Tốc độ học (Learning rate). [Hợp lệ: 1e-6 -> 1e-3]. "
+            "Tốc độ học lớn giúp mô hình hội tụ nhanh hơn. Tuy nhiên, giá trị quá lớn (> 1e-4) có thể khiến mô hình bị mất ổn định, "
+            "học hỏng mô hình (lỗi NaN hoặc bùng nổ gradient), trong khi giá trị quá nhỏ khiến mô hình học rất chậm."
+        )
+    )
+    warmup_ratio: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=0.5,
+        description="Tỉ lệ khởi động (Warmup ratio). [Hợp lệ: 0.0 -> 0.5]. Tỉ lệ số bước tăng dần learning rate từ 0 lên tối đa trong giai đoạn đầu để ổn định trọng số transformer."
+    )
+    min_topic_size: int = Field(
+        default=10,
+        ge=2,
+        le=100,
+        description=(
+            "Kích thước chủ đề tối thiểu để sinh mẫu. [Hợp lệ: 2 -> 100]. "
+            "Giảm xuống giúp lấy được nhiều cụm chủ đề nhỏ hơn, tăng lượng dữ liệu huấn luyện. "
+            "Nhưng nếu quá nhỏ (< 5) có thể khiến dữ liệu huấn luyện bị nhiễu do các cụm nhỏ thường chứa bài viết không đồng đều."
+        )
+    )
+    min_avg_prob: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Độ tin cậy trung bình tối thiểu của chủ đề. [Hợp lệ: 0.0 -> 1.0]. "
+            "Giảm xuống giúp tăng số lượng cụm chủ đề được chọn để huấn luyện, nhưng có nguy cơ kéo theo các cụm phân loại kém chất lượng."
+        )
+    )
+    max_pairs_per_topic: int = Field(
+        default=200,
+        ge=10,
+        le=1000,
+        description="Số lượng cặp tối đa trên mỗi chủ đề. [Hợp lệ: 10 -> 1000]. Tránh bùng nổ tổ hợp mẫu và mất cân bằng dữ liệu giữa các chủ đề lớn và nhỏ."
+    )
+    min_doc_prob: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Độ tin cậy gán chủ đề tối thiểu của mỗi bài viết. [Hợp lệ: 0.0 -> 1.0]. "
+            "Lọc bài viết chắc chắn thuộc chủ đề để sinh cặp chất lượng. Giảm xuống giúp có thêm nhiều bài viết để ghép cặp huấn luyện."
+        )
+    )
+    val_split: float = Field(
+        default=0.1,
+        ge=0.05,
+        le=0.5,
+        description="Tỉ lệ chia dữ liệu xác thực (Validation split). [Hợp lệ: 0.05 -> 0.5]. Tỉ lệ dùng để đánh giá độc lập mô hình sau khi huấn luyện."
+    )
+    force_train: bool = Field(
+        default=False,
+        description="Bắt buộc huấn luyện. Nếu True, bỏ qua kiểm tra số lượng mẫu và tiến hành chạy huấn luyện kể cả khi không tìm thấy phiên phân cụm mới."
+    )
 
 
 class EmbeddingSwitchRequest(BaseModel):
@@ -506,7 +576,38 @@ async def trigger_embedding_fine_tune(
     request: Optional[EmbeddingFineTuneRequest] = None,
     db: Session = Depends(get_db)
 ):
-    """Trigger SentenceTransformer embedding model fine-tuning in background"""
+    """
+    Kích hoạt tiến trình tinh chỉnh (Fine-tune) mô hình Vector Embedding (SentenceTransformer) dưới nền.
+    
+    ### HƯỚNG DẪN DÀNH CHO NGƯỜI VẬN HÀNH (MLOps Guide)
+    
+    API này cho phép bạn cấu hình và tinh chỉnh lại mô hình biểu diễn ngôn ngữ (vector embeddings) dựa trên các bài viết đã phân cụm thành công trong hệ thống.
+    
+    ---
+    ### 🛡️ NGUYÊN TẮC AN TOÀN TRÁNH HỎNG MÔ HÌNH (Safety Bounds)
+    Để tránh làm suy giảm chất lượng biểu diễn ngôn ngữ hoặc gây lỗi hệ thống, các ngưỡng giới hạn cứng đã được thiết lập:
+    * **Epochs (1 -> 10):** Không nên chỉnh vượt quá **5**. Số lượng quá lớn sẽ gây hiện tượng **Quá khớp (Overfitting)**, khiến mô hình chỉ nhớ các bài viết cũ và không thể gom cụm các bài viết mới sau này.
+    * **Batch Size (8 -> 256):** Khuyên dùng **64** (nếu có GPU CUDA) hoặc **16** (nếu chạy bằng CPU). Đặt quá lớn (> 128) sẽ gây tràn bộ nhớ VRAM của card đồ họa, dẫn đến lỗi **Out Of Memory (OOM)** và sập tiến trình ngầm.
+    * **Learning Rate (1e-6 -> 1e-3):** **Ngưỡng cực kỳ quan trọng!** Khuyên dùng từ `2e-5` đến `3e-5`. Tránh đặt quá lớn (> 1e-4) vì sẽ làm đứt gãy trọng số của mô hình (lỗi gradient bùng nổ, loss trả về `NaN`).
+    
+    ---
+    ### ⚙️ HƯỚNG DẪN THAM SỐ LỌC DỮ LIỆU ĐỂ ĐẠT HIỆU QUẢ CAO
+    Dữ liệu huấn luyện được sinh ra tự động bằng cách kết hợp các bài viết trong cùng một cụm chủ đề chất lượng.
+    * **min_topic_size:** Nên đặt **10**. Nếu đặt quá lớn (ví dụ: 50), bạn sẽ có ít chủ đề hợp lệ, dẫn đến **0 mẫu để train**. Nếu đặt quá nhỏ (ví dụ: 2), dữ liệu sẽ bị nhiễu do các cụm nhỏ chưa đủ tin cậy.
+    * **min_avg_prob:** Độ chắc chắn trung bình của chủ đề. Nên đặt **0.7** hoặc **0.5**. Đặt quá cao (0.9) sẽ khiến bộ lọc loại bỏ toàn bộ chủ đề, không sinh được dữ liệu train.
+    * **min_doc_prob:** Độ chắc chắn của bài viết trong cụm. Nên đặt **0.5**.
+    
+    ---
+    ### 💡 CẤU HÌNH KHUYÊN DÙNG (Best Practices)
+    * **Dành cho chạy thử nghiệm nhanh:**
+      ```json
+      { "epochs": 2, "min_topic_size": 10, "min_avg_prob": 0.7, "min_doc_prob": 0.5 }
+      ```
+    * **Dành cho huấn luyện kỹ lưỡng (Cần GPU):**
+      ```json
+      { "epochs": 3, "learning_rate": 3e-5, "min_topic_size": 10, "min_avg_prob": 0.6, "min_doc_prob": 0.5 }
+      ```
+    """
     global _embedding_training_status
     
     req = request or EmbeddingFineTuneRequest()
